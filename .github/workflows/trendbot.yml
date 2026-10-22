@@ -1,0 +1,59 @@
+name: Roblox trend bot
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+    inputs:
+      digest_now:
+        description: "Post the daily digest now"
+        type: boolean
+        default: false
+      test_webhooks:
+        description: "Just post a hello to both Discord channels"
+        type: boolean
+        default: false
+
+concurrency:
+  group: trendbot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Restore bot memory
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: trendbot-state-${{ github.run_id }}
+          restore-keys: trendbot-state-
+
+      - name: Run
+        env:
+          ROWATCHER_API_KEY: ${{ secrets.ROWATCHER_API_KEY }}
+          DISCORD_ALERTS_WEBHOOK: ${{ secrets.DISCORD_ALERTS_WEBHOOK }}
+          DISCORD_DIGEST_WEBHOOK: ${{ secrets.DISCORD_DIGEST_WEBHOOK }}
+          STATE_PATH: state/state.json
+        run: |
+          if [ "${{ inputs.test_webhooks }}" = "true" ]; then
+            python bot.py --test-webhooks
+          elif [ "${{ inputs.digest_now }}" = "true" ]; then
+            python bot.py --digest-now
+          else
+            python bot.py
+          fi
+
+      - name: Save bot memory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: trendbot-state-${{ github.run_id }}
