@@ -25,6 +25,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: write   # lets the bot back up its database to this repo's Releases page (private repos only)
+
 concurrency:
   group: trendbot
   cancel-in-progress: false
@@ -32,7 +35,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +43,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # The bot's memory (daily highs per game) lives in the Actions cache,
+      # The bot's memory (state.json + the trendbot.db database) lives in the Actions cache,
       # so nothing is committed to the repo on every run.
       - name: Restore bot memory
         uses: actions/cache/restore@v4
@@ -57,7 +60,9 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
           TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATE_PATH: state/state.json
+          DB_PATH: state/trendbot.db
         run: |
           if [ "${{ inputs.test_webhooks }}" = "true" ]; then
             python bot.py --test-webhooks
