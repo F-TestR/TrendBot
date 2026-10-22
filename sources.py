@@ -9,6 +9,7 @@ Extra data sources for the trend bot (stage 1):
 Each collector runs on its own timer (see config.py) and fails quietly: if one
 source is down, the rest of the bot carries on as normal.
 """
+import html
 import json
 import math
 import re
@@ -167,8 +168,8 @@ def collect_youtube(state, t, key):
             views = int(st.get("viewCount", 0) or 0)
             rec = videos.get(vid)
             if rec is None:
-                title = sn.get("title", "")
-                desc = sn.get("description", "")
+                title = html.unescape(sn.get("title", ""))
+                desc = html.unescape(sn.get("description", ""))
                 uids = []
                 for pid in dict.fromkeys(GAME_LINK.findall(desc + " " + title)):
                     if lookups >= C.YT_MAX_PLACE_LOOKUPS_PER_RUN and pid not in src["place_map"]:
@@ -278,7 +279,7 @@ def collect_twitch(state, t, cid, secret):
             v = st.get("viewer_count", 0)
             total += v
             streams += 1
-            for u in match_title(st.get("title", ""), idx):
+            for u in match_title(html.unescape(st.get("title", "") or ""), idx):
                 g = per_game.setdefault(u, {"v": 0, "s": 0})
                 g["v"] += v
                 g["s"] += 1
@@ -695,7 +696,7 @@ def check_sources(env):
         try:
             d = get_json("https://www.googleapis.com/youtube/v3/search?" + urllib.parse.urlencode(
                 {"part": "snippet", "type": "video", "q": "roblox", "maxResults": 1, "key": key}))
-            title = d["items"][0]["snippet"]["title"] if d.get("items") else "(no results)"
+            title = html.unescape(d["items"][0]["snippet"]["title"]) if d.get("items") else "(no results)"
             out.append(f"✅ YouTube — e.g. \"{title[:60]}\"")
         except urllib.error.HTTPError as e:
             out.append(f"❌ YouTube — HTTP {e.code}: {e.read()[:150].decode(errors='ignore')}")
