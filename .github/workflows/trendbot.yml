@@ -2,6 +2,8 @@ name: Roblox trend bot
 
 on:
   schedule:
+    # Every 20 minutes. For a PRIVATE repo, change to "*/30 * * * *" to stay inside
+    # GitHub's free monthly minutes. Public repos have no minute limit.
     - cron: "*/20 * * * *"
   workflow_dispatch:
     inputs:
@@ -11,6 +13,10 @@ on:
         default: false
       test_webhooks:
         description: "Just post a hello to both Discord channels"
+        type: boolean
+        default: false
+      check_sources:
+        description: "Test YouTube / Roblox / Discord access"
         type: boolean
         default: false
 
@@ -41,10 +47,13 @@ jobs:
           ROWATCHER_API_KEY: ${{ secrets.ROWATCHER_API_KEY }}
           DISCORD_ALERTS_WEBHOOK: ${{ secrets.DISCORD_ALERTS_WEBHOOK }}
           DISCORD_DIGEST_WEBHOOK: ${{ secrets.DISCORD_DIGEST_WEBHOOK }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           STATE_PATH: state/state.json
         run: |
           if [ "${{ inputs.test_webhooks }}" = "true" ]; then
             python bot.py --test-webhooks
+          elif [ "${{ inputs.check_sources }}" = "true" ]; then
+            python bot.py --check-sources
           elif [ "${{ inputs.digest_now }}" = "true" ]; then
             python bot.py --digest-now
           else
@@ -52,7 +61,7 @@ jobs:
           fi
 
       - name: Save bot memory
-        if: always()
+        if: always() && hashFiles('state/state.json') != ''
         uses: actions/cache/save@v4
         with:
           path: state
