@@ -3,7 +3,8 @@ Extra data sources for the trend bot (stage 1):
 
   * YouTube  - recent Roblox videos, which games they feature, how many views
   * Roblox   - Roblox's own public game data: likes/dislikes, favourites, last update
-  * Discord  - member counts of each game's community server
+  * Community - member counts of each game's Roblox group (automatic) and of any
+                Discord servers you list in config.DISCORD_INVITES
 
 Each collector runs on its own timer (see config.py) and fails quietly: if one
 source is down, the rest of the bot carries on as normal.
@@ -36,7 +37,7 @@ def get_json(url, timeout=20):
 
 def src_state(state):
     s = state.setdefault("src", {})
-    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc"):
+    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc", "grp"):
         s.setdefault(k, {})
     return s
 
@@ -269,9 +270,14 @@ def collect_roblox(state, t):
             d = get_json(f"https://games.roblox.com/v1/games?universeIds={batch}")
             for g in d.get("data", []):
                 r = rbx.setdefault(str(g["id"]), {})
+                cr = g.get("creator") or {}
                 r.update({"name": g.get("name"), "place": g.get("rootPlaceId"),
                           "playing": g.get("playing", 0), "visits": g.get("visits", 0),
-                          "updated": (g.get("updated") or "")[:10], "seen": today})
+                          "updated": (g.get("updated") or "")[:10], "seen": today,
+                          "group": cr.get("id") if cr.get("type") == "Group" else None})
+                m = INVITE.search(g.get("description") or "")
+                if m:
+                    r["invite"] = m.group(1)
                 fav = g.get("favoritedCount")
                 if fav is not None:
                     r.setdefault("fav_days", {})[today] = fav
@@ -313,65 +319,66 @@ def roblox_link(state, gid):
 INVITE = re.compile(r"(?:discord\.gg|discord(?:app)?\.com/invite)/([A-Za-z0-9-]+)", re.I)
 
 
-def collect_discord(state, t):
+def collect_community(state, t):
+    """Roblox group member counts (automatic) + Discord member counts (invites you list)."""
     src = src_state(state)
     today = t.strftime("%Y-%m-%d")
-    social, dc = src["social"], src["dc"]
-    ids = [i for i in candidate_games(state, today, C.DISCORD_MAX_GAMES) if i.isdigit()]
+    rbx, grp, dc = src["rbx"], src["grp"], src["dc"]
+    ids = [i for i in candidate_games(state, today, C.COMMUNITY_MAX_GAMES) if i.isdigit()]
 
-    checks = 0
+    # Roblox groups (public, no key). Several games can share one group.
+    groups = []
     for gid in ids:
-        s = social.get(gid)
-        fresh = s and (datetime.fromisoformat(s["checked"] + "T00:00:00+00:00") > t - timedelta(days=7))
-        if fresh or checks >= C.DISCORD_SOCIAL_CHECKS_PER_RUN:
-            continue
-        checks += 1
-        code = None
+        g = (rbx.get(gid) or {}).get("group")
+        if g and str(g) not in groups:
+            groups.append(str(g))
+    for g in groups[:C.GROUP_LOOKUPS_PER_RUN]:
         try:
-            d = get_json(f"https://games.roblox.com/v1/games/{gid}/social-links/list")
-            for link in d.get("data", []):
-                m = INVITE.search(link.get("url", "") or "")
-                if m:
-                    code = m.group(1)
-                    break
+            d = get_json(f"https://groups.roblox.com/v1/groups/{g}")
+            n = d.get("memberCount")
+            if n:
+                grp.setdefault(g, {})[today] = n
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                log("Roblox groups rate limit hit; stopping this run")
+                break
+            log(f"group {g} failed: {e}")
         except Exception as e:
-            log(f"social links failed for {gid}: {e}")
-            continue
-        social[gid] = {"checked": today, "invite": code}
+            log(f"group {g} failed: {e}")
         time.sleep(0.5)
 
+    # Discord: invites from config (plus any found in a game's description)
+    invites = dict(C.DISCORD_INVITES)
     for gid in ids:
-        code = (social.get(gid) or {}).get("invite")
-        if not code:
-            continue
+        inv = (rbx.get(gid) or {}).get("invite")
+        if inv and gid not in invites:
+            invites[gid] = inv
+    for gid, code in list(invites.items())[:C.DISCORD_MAX_GAMES]:
+        code = INVITE.search(code).group(1) if INVITE.search(code) else code
         try:
             d = get_json(f"https://discord.com/api/v10/invites/{code}?with_counts=true")
             n = d.get("approximate_member_count")
             if n:
                 dc.setdefault(gid, {})[today] = n
         except urllib.error.HTTPError as e:
-            if e.code == 404:  # invite expired: look for a new one next time
-                social[gid]["invite"] = None
-                social[gid]["checked"] = "2000-01-01"
-            elif e.code == 429:
+            if e.code == 429:
                 log("Discord rate limit hit; stopping member lookups this run")
                 break
-            else:
-                log(f"discord invite {code} failed: {e}")
+            log(f"discord invite {code} for {gid} failed ({e.code}) — is the invite still valid?")
         except Exception as e:
             log(f"discord invite {code} failed: {e}")
         time.sleep(1.2)
 
     keep = (t - timedelta(days=C.KEEP_DAYS)).strftime("%Y-%m-%d")
-    for gid in list(dc):
-        dc[gid] = {d: v for d, v in dc[gid].items() if d >= keep}
-        if not dc[gid]:
-            del dc[gid]
+    for store in (dc, grp):
+        for k in list(store):
+            store[k] = {d: v for d, v in store[k].items() if d >= keep}
+            if not store[k]:
+                del store[k]
 
 
-def discord_growth(state, gid, today):
-    """(members now, % growth vs ~2 days earlier) or (members, None)."""
-    days = src_state(state)["dc"].get(gid) or {}
+def _growth_of(days):
+    """(latest value, % growth vs ~2 days earlier) from a {day: count} dict."""
     if not days:
         return None, None
     latest = max(days)
@@ -382,6 +389,18 @@ def discord_growth(state, gid, today):
         return now, None
     prev = days[max(older)]
     return now, ((now / prev - 1) * 100 if prev else None)
+
+
+def group_growth(state, gid):
+    g = (src_state(state)["rbx"].get(gid) or {}).get("group")
+    if not g:
+        return None, None
+    return _growth_of(src_state(state)["grp"].get(str(g)) or {})
+
+
+def discord_growth(state, gid, today=None):
+    """(members now, % growth vs ~2 days earlier) or (members, None)."""
+    return _growth_of(src_state(state)["dc"].get(gid) or {})
 
 
 def fav_growth(state, gid):
@@ -423,14 +442,17 @@ def heat(state, gid, today, cutoff, yts):
         if y["n"] >= C.YT_SIGNAL_MIN_VIDEOS or y["views"] >= C.YT_SIGNAL_MIN_VIEWS:
             signals.append("youtube")
 
-    # Discord: community growth over ~2 days
-    members, pct = discord_growth(state, gid, today)
-    if members:
-        parts["discord"] = (members, pct)
-        if pct is not None:
-            score += max(0, min(20, pct * 2))
-            if pct >= C.DISCORD_SIGNAL_PCT and members >= 500:
-                signals.append("discord")
+    # Community: Roblox group and/or Discord growth over ~2 days
+    best = None
+    for key, (members, pct) in (("group", group_growth(state, gid)), ("discord", discord_growth(state, gid))):
+        if members:
+            parts[key] = (members, pct)
+            if pct is not None and (best is None or pct > best[1]):
+                best = (members, pct)
+    if best:
+        score += max(0, min(20, best[1] * 2))
+        if best[1] >= C.COMMUNITY_SIGNAL_PCT and best[0] >= 500:
+            signals.append("community")
 
     # Favourites growth (Roblox) - a small bonus
     fg = fav_growth(state, gid)
@@ -457,9 +479,10 @@ def heat_line(state, gid, h, name=None):
         bits.append(f"players {p['players']:.1f}×")
     if "yt" in p:
         bits.append(f"YouTube {p['yt']['n']} vid{'s' if p['yt']['n'] != 1 else ''} / {fmt(p['yt']['views'])} views")
-    if "discord" in p:
-        m, pct = p["discord"]
-        bits.append(f"Discord {fmt(m)}" + (f" ({pct:+.0f}%)" if pct is not None else ""))
+    for key, label in (("group", "group"), ("discord", "Discord")):
+        if key in p:
+            m, pct = p[key]
+            bits.append(f"{label} {fmt(m)}" + (f" ({pct:+.0f}%)" if pct is not None else ""))
     if "likes" in p:
         bits.append(f"👍 {p['likes']*100:.0f}%")
     name = name or game_name(state, gid)
@@ -488,7 +511,7 @@ def collect_all(state, t, env):
     jobs = [
         ("youtube", C.YT_EVERY_MIN, (lambda: collect_youtube(state, t, yt_key)) if yt_key else None),
         ("roblox", C.ROBLOX_EVERY_MIN, lambda: collect_roblox(state, t)),
-        ("discord", C.DISCORD_EVERY_MIN, lambda: collect_discord(state, t)),
+        ("community", C.COMMUNITY_EVERY_MIN, lambda: collect_community(state, t)),
     ]
     ran = []
     for name, every, fn in jobs:
@@ -518,21 +541,26 @@ def check_sources(env):
         out.append(f"✅ Roblox likes — 👍 {g['upVotes']:,} / 👎 {g['downVotes']:,}")
     except Exception as e:
         out.append(f"❌ Roblox likes — {e}")
-    code = None
     try:
-        d = get_json("https://games.roblox.com/v1/games/10155360168/social-links/list")
-        for link in d.get("data", []):
-            m = INVITE.search(link.get("url", "") or "")
-            if m:
-                code = m.group(1)
-        out.append(f"✅ Roblox social links — Discord invite {'found' if code else 'not listed for this game'}")
+        d = get_json("https://games.roblox.com/v1/games?universeIds=10155360168")
+        cr = d["data"][0].get("creator") or {}
+        if cr.get("type") == "Group":
+            g = get_json(f"https://groups.roblox.com/v1/groups/{cr['id']}")
+            out.append(f"✅ Roblox group members — {g.get('name', cr.get('name'))}: {g.get('memberCount', 0):,} members")
+        else:
+            out.append("⚪ Roblox group members — test game isn't group-owned, can't check")
     except Exception as e:
-        out.append(f"❌ Roblox social links — {e}")
-    try:
-        d = get_json(f"https://discord.com/api/v10/invites/{code or 'roblox'}?with_counts=true")
-        out.append(f"✅ Discord member counts — {d.get('approximate_member_count', 0):,} members")
-    except Exception as e:
-        out.append(f"❌ Discord member counts — {e}")
+        out.append(f"❌ Roblox group members — {e}")
+    if C.DISCORD_INVITES:
+        gid, code = next(iter(C.DISCORD_INVITES.items()))
+        code = INVITE.search(code).group(1) if INVITE.search(code) else code
+        try:
+            d = get_json(f"https://discord.com/api/v10/invites/{code}?with_counts=true")
+            out.append(f"✅ Discord member counts — {C.WATCHLIST.get(gid, gid)}: {d.get('approximate_member_count', 0):,} members")
+        except Exception as e:
+            out.append(f"❌ Discord member counts — invite '{code}': {e} (is the invite still valid?)")
+    else:
+        out.append("⚪ Discord member counts — no invites added to DISCORD_INVITES in config.py yet (optional)")
     try:
         d = get_json("https://apis.roblox.com/universes/v1/places/4924922222/universe")
         out.append(f"✅ Roblox place → game lookup — {d.get('universeId')}")

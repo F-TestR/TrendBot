@@ -555,9 +555,9 @@ def extras(state, gid, today):
     lr = S.like_ratio(state, gid)
     if lr is not None:
         bits.append(f"👍 {lr*100:.0f}%")
-    m, pct = S.discord_growth(state, gid, today)
-    if m:
-        bits.append(f"Discord {fmt(m)}" + (f" {pct:+.0f}%" if pct is not None else ""))
+    for label, (m, pct) in (("group", S.group_growth(state, gid)), ("Discord", S.discord_growth(state, gid))):
+        if m:
+            bits.append(f"{label} {fmt(m)}" + (f" {pct:+.0f}%" if pct is not None else ""))
     upd = (S.src_state(state)["rbx"].get(gid) or {}).get("updated")
     if upd:
         bits.append(f"updated {upd[5:]}")

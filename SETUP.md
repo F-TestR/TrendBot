@@ -5,13 +5,13 @@ The bot checks RoWatcher every 20 minutes and posts to your Discord:
 - **#alerts** (instant): a new game entering the top 1,000, a young game surging 3×+ against last week, or 3+ copies of something appearing in a week.
 - **#daily-digest** (once a day, about 08:00 UK): top risers, new games, title words shared by new games, and your watchlist up or down.
 
-It also reads **YouTube**, **Roblox's own public game data** (likes, favourites, update dates) and **Discord server sizes**, and combines them into one **heat score** per game:
+It also reads **YouTube**, **Roblox's own public game data** (likes, favourites, update dates) and **community size** (each game's Roblox group members, plus any Discord servers you list), and combines them into one **heat score** per game:
 
-- 🔥 **Heating up** alert: a young game rising on 2+ platforms at once (e.g. players and YouTube and Discord).
+- 🔥 **Heating up** alert: a young game rising on 2+ platforms at once (e.g. players, YouTube and community growth).
 - 👀 **Early warning** alert: a game getting lots of YouTube videos while it still has under 5K players.
 - The digest gains a heat table, the most-watched games on Roblox YouTube, and words rising in Roblox video titles.
 
-Roblox and Discord need no keys. YouTube needs one free key (Step 3).
+Roblox data needs no key. YouTube needs one free key (Step 3). Discord tracking is optional (see Tuning).
 
 It uses no AI, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day; the bot uses about 720 and stops itself at 950).
 
@@ -23,7 +23,7 @@ It uses no AI, so it costs no tokens. It stays inside RoWatcher's free API allow
 2. Open <https://rowatcher.com/docs/api> and generate an API key (a long string of letters and numbers).
 3. Keep it private, like a password.
 
-## Step 2a — Run it on GitHub (recommended: works when your PC is off)
+## Step 2 — Run it on GitHub (recommended: works when your PC is off)
 
 1. Create a free account at <https://github.com> if you don't have one.
 2. Click **New repository** → name it `trend-bot`.
@@ -59,7 +59,7 @@ No card is needed. The bot uses about half of YouTube's free daily allowance and
 **Actions → Roblox trend bot → Run workflow** → tick **"Test YouTube / Roblox / Discord access"** → **Run**.
 Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows ❌, screenshot it and send it over.
 
-## Step 2b — Or run it on your PC
+## Alternative — run it on your PC instead of GitHub
 
 1. Install Python 3 from <https://python.org> (tick "Add Python to PATH").
 2. Copy `.env.example` to `.env` in the same folder and paste in your values (YouTube is optional).
@@ -71,12 +71,14 @@ Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows �
 ## What to expect
 
 - **Day 1:** the bot builds its memory. New-game alerts start after the first run; the digest starts the next morning.
-- **Day 1–2:** YouTube and Roblox data start straight away; Discord growth needs 2 days of counts; "rising title words" needs 2 days to compare.
+- **Day 1–2:** YouTube and Roblox data start straight away; group/Discord growth needs 2 days of counts; "rising title words" needs 2 days to compare.
 - **After about a week:** weekday-vs-last-week comparisons kick in properly, so surge alerts, the risers list and the players part of the heat score become reliable.
 
 ## Tuning
 
 Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`).
+
+**Tracking a game's Discord server (optional):** Roblox hides games' Discord links from bots, so add the ones you care about to `DISCORD_INVITES` in `config.py`, e.g. `"10767380385": "https://discord.gg/abc123",` (game's universe ID, then its invite link). Find the invite on the game's Roblox page or in YouTube video descriptions. Use an invite that never expires.
 
 ## If a webhook URL ever leaks
 

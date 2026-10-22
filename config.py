@@ -48,7 +48,6 @@ API_BASE = "https://rowatcher.com/api/v1"
 # ---- How often each source is checked (minutes) ----
 YT_EVERY_MIN = 120               # YouTube: every 2 hours (keeps well inside the free quota)
 ROBLOX_EVERY_MIN = 60            # Roblox likes/favourites/updates: hourly
-DISCORD_EVERY_MIN = 360          # Discord member counts: every 6 hours
 
 # ---- YouTube (free quota = 10,000 units/day; a search costs 100) ----
 YT_DAILY_UNIT_CAP = 8000
@@ -82,10 +81,19 @@ NAME_EDGE_WORDS = set("new upd update updated event beta alpha release x2 x5 x10
 ROBLOX_MAX_GAMES = 300           # watchlist + young games + YouTube-linked games
 ENRICH_MIN_PLAYERS = 1000        # only enrich young games with at least this many players
 
-# ---- Discord ----
-DISCORD_MAX_GAMES = 40           # member counts checked for this many games per run
-DISCORD_SOCIAL_CHECKS_PER_RUN = 15   # new "which Discord does this game link?" lookups per run
-DISCORD_SIGNAL_PCT = 3           # +3% members in ~2 days counts as growing
+# ---- Community (Roblox groups automatic, Discord optional) ----
+COMMUNITY_EVERY_MIN = 360        # every 6 hours
+COMMUNITY_MAX_GAMES = 120        # games whose group members are tracked
+GROUP_LOOKUPS_PER_RUN = 80
+COMMUNITY_SIGNAL_PCT = 3         # +3% members in ~2 days counts as growing
+
+# Roblox hides games' Discord links from bots, so list the servers you want tracked:
+#   "universe id": "invite code or full discord.gg link"
+# Find a game's invite on its Roblox page (Social links) or in its YouTube descriptions.
+DISCORD_INVITES = {
+    # "10767380385": "https://discord.gg/example",
+}
+DISCORD_MAX_GAMES = 40
 
 # ---- Heat score alerts ----
 HEAT_ALERT_SCORE = 55            # 🔥 alert when heat >= this AND 2+ sources agree
