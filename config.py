@@ -2,12 +2,12 @@
 
 # ---- API budget (RoWatcher free tier = 1,000 requests/day) ----
 DAILY_REQUEST_CAP = 950          # hard stop, leaves headroom under 1,000
-TOP_PAGES = 10                   # 10 pages x 100 = top 1,000 games by live players
+TOP_PAGES = 10                   # (legacy) see CORE_PAGES / DEEP_LAST_PAGE further down
 PAGE_SIZE = 100
 MAX_DETAIL_LOOKUPS_PER_RUN = 5   # extra calls for new candidates (created date etc.)
 
 # ---- What counts as interesting ----
-MIN_PLAYERS_NEW_ENTRY = 2000     # a brand-new game entering the top 1,000 with at least this many players
+MIN_PLAYERS_NEW_ENTRY = 2000     # alert when a young game first crosses this many players
 YOUNG_GAME_DAYS = 60             # only alert on games created within this many days (when known)
 SURGE_MULTIPLIER = 3.0           # weekday high >= 3x last week's weekday highs
 SURGE_MIN_PLAYERS = 3000         # ...and at least this many players
@@ -156,3 +156,40 @@ PING_EARLY_VIEWS = 1_000_000     # ...or 1M+ YouTube views on a small game
 PING_COPY_WAVE_GAMES = 5         # ...or a copy wave of 5+ games
 DIGEST_CHARTS = True             # attach player-curve charts to the digest
 DASHBOARD = True                 # attach a dashboard.html file to the daily digest
+
+# =====================================================================
+# Deeper scanning + database + learning
+# =====================================================================
+# RoWatcher budget is paced across the day (DAILY_REQUEST_CAP above). Roughly per day:
+#   core pages 216 · deep rotation 360 · charts 24 · discovery 30 · backfill ~140  =  ~770
+CORE_PAGES = 3                   # pages 1-3 (top 300) every run
+DEEP_LAST_PAGE = 30              # pages 4-30 (down to ~350 players) in rotation...
+DEEP_PAGES_PER_RUN = 5           # ...5 per run, so each is refreshed about every 1.8 hours
+DISCOVERY_FIRST_PAGE = 31        # once a day, pages 31-60 (~350 down to ~150 players)
+DISCOVERY_LAST_PAGE = 60         # to find tiny young games for the model
+CHARTS_EVERY_MIN = 60            # Roblox's algorithm charts (via RoWatcher)
+BACKFILL_PER_RUN = 2             # past-history downloads per run (for the model)
+BACKFILL_MAX_AGE_DAYS = 75       # only backfill games created within this many days
+COPY_WAVE_MIN_PLAYERS = 500      # copies smaller than this don't count towards a copy wave
+
+# ---- Database ----
+HOURLY_MAX_AGE_DAYS = 62         # hourly player curves kept for games younger than this (the model needs ~60)
+HOURLY_KEEP_DAYS = 120
+DAILY_KEEP_DAYS = 400
+BACKUP_TO_RELEASES = True        # daily backup to the repo's Releases page (private repos only)
+BACKUP_TAG = "trendbot-db"
+
+# ---- Learning ----
+EXPLODE_CCU = 25000              # "exploded" = reached this many players...
+LABEL_DAYS = 21                  # ...within this many days of first being noticed
+LEARN_ENTRY_CCU = 300            # a game is "noticed" the first day it reaches this many players
+LEARN_MAX_AGE_DAYS = 60          # only learn from games noticed within 60 days of creation
+LEARN_MIN_EXAMPLES = 60          # don't train until there are this many finished examples...
+LEARN_MIN_POSITIVES = 8          # ...including this many explosions
+LEARN_L2 = 0.01
+PREDICT_ALERT_PROB = 0.5         # 🎯 alert when the model gives a game 50%+...
+PREDICT_ALERT_MAX_PLAYERS = 8000 # ...while it still has fewer than this many players
+PREDICT_MAX_DAYS_AFTER = 5       # only predict for games noticed in the last few days
+
+# ---- YouTube channel size ----
+YT_BIG_CHANNEL_SUBS = 1_000_000  # a video from a channel this big counts as a "big creator" video

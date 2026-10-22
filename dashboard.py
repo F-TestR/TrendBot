@@ -71,6 +71,7 @@ def build(state, today, cutoff):
             "yt_n": y.get("n"), "yt_v": y.get("views"), "tw": tw[0] if tw else None,
             "comm": comm[1] if comm and comm[1] is not None else None,
             "likes": p.get("likes"), "age": age_days(r, today) if r else None,
+            "model": (state.get("_preds") or {}).get(gid),
             "mech": ", ".join(I.mechanics_of(name)) or "",
             "link": (S.roblox_link(state, gid) or f"<https://rowatcher.com/games/{gid}>").strip("<>"),
         })
@@ -81,12 +82,13 @@ def build(state, today, cutoff):
     def table(rs, tid):
         out = [f'<table id="{tid}" class="sortable"><thead><tr>'
                '<th data-t="s">Game</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th>'
-               '<th>Heat</th><th>YouTube 48h</th><th>Twitch</th><th>Community</th><th>👍</th><th>Age</th>'
+               '<th>Heat</th><th>Model</th><th>YouTube 48h</th><th>Twitch</th><th>Community</th><th>👍</th><th>Age</th>'
                '<th data-t="s">Type</th></tr></thead><tbody>']
         for x in rs:
             ratio_s = f"{x['ratio']:.1f}×" if x["ratio"] else "—"
             comm_s = f"{x['comm']:+.1f}%" if x["comm"] is not None else "—"
             likes_s = f"{x['likes'] * 100:.0f}%" if x["likes"] else "—"
+            model_s = f"{x['model'] * 100:.0f}%" if x["model"] is not None else "—"
             sig = "".join(f'<span class="tag">{_e(s)}</span>' for s in x["signals"])
             heat_cls = "hot" if x["heat"] >= C.HEAT_ALERT_SCORE else ("warm" if x["heat"] >= 30 else "")
             out.append(
@@ -96,6 +98,7 @@ def build(state, today, cutoff):
                 + f'<td>{spark(x["days"], today)}</td>'
                 + f'<td data-v="{x["ratio"] or -1}">{ratio_s}</td>'
                 + f'<td data-v="{x["heat"]}"><span class="heat {heat_cls}">{x["heat"]}</span> {sig}</td>'
+                + f'<td data-v="{x["model"] if x["model"] is not None else -1}">{model_s}</td>'
                 + f'<td data-v="{x["yt_v"] or -1}">{(str(x["yt_n"]) + " · " + fmt(x["yt_v"]) + " views") if x["yt_n"] else "—"}</td>'
                 + _num(x["tw"], fmt)
                 + f'<td data-v="{x["comm"] if x["comm"] is not None else -999}">{comm_s}</td>'
@@ -173,7 +176,7 @@ p.note{{color:var(--muted);font-size:12.5px;margin:8px 2px}}
 <nav><button class="on" data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
 <button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="hot" class="on"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
-<div class="card">{table(hot, "t-hot")}</div><p class="note">Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
+<div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
 <section id="watch"><div class="card">{table(watch, "t-watch")}</div></section>
 <section id="mech"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Mechanic</th><th>Avg players (7d)</th><th>vs last week</th><th>Games</th><th>New this week</th><th>New hits</th><th class="nosort">Top games</th></tr></thead><tbody>{mech_rows}</tbody></table></div>
 <p class="note">🟢 open gap = demand up 10%+ with few new games · 🟡 growing but crowding · 🔴 saturating = demand falling while copies keep arriving.</p></section>

@@ -37,7 +37,9 @@ import config as C
 import dashboard as DB
 import discord_out as DO
 import insights as I
+import learn as L
 import sources as S
+import warehouse as W
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.environ.get("STATE_PATH", os.path.join(HERE, "state", "state.json"))
@@ -219,7 +221,7 @@ def growth(game, day, cutoff, baseline_day=None):
         return None, None
     base = baseline_high(game["days"], day)
     if base is None:
-        entered_later = baseline_day is not None and game["first_seen"] > baseline_day
+        entered_later = baseline_day is not None and game["first_seen"] > baseline_day and not game.get("base")
         if entered_later and parse_day(game["first_seen"]) > parse_day(day) - timedelta(days=5):
             base = cutoff  # it was below the top list last week
         else:
@@ -227,6 +229,11 @@ def growth(game, day, cutoff, baseline_day=None):
     if not base:
         return None, None
     return high / base, base
+
+
+def is_base(state, r):
+    """True for games that were already there when the bot (or deep scanning) started."""
+    return bool(r.get("base")) or r["first_seen"] == state.get("baseline_day")
 
 
 def cooled(state, key, today, days=C.ALERT_COOLDOWN_DAYS):
@@ -249,46 +256,108 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     today = day_str(t)
     api = RoWatcher(api_key, state, today)
 
-    # 1. Pull the top games
-    top = []
+    restored = W.restore_if_missing()
+    if restored:
+        print(restored)
+    db = W.connect()
+
+    def paced():
+        """Optional calls only while we're under the day's pro-rata budget."""
+        mins = t.hour * 60 + t.minute + 20
+        return state["requests"].get(today, 0) < C.DAILY_REQUEST_CAP * min(1.0, mins / 1440)
+
+    # 1. Pull the game lists: top 300 every run, deeper pages in rotation, very deep once a day
+    pages = list(range(1, C.CORE_PAGES + 1))
+    deep = list(range(C.CORE_PAGES + 1, C.DEEP_LAST_PAGE + 1))
+    ptr = state.get("deep_ptr", 0) % max(len(deep), 1)
+    rotation = [deep[(ptr + i) % len(deep)] for i in range(min(C.DEEP_PAGES_PER_RUN, len(deep)))]
+    first_run = not state["games"]
+    upgrading = "deep_ptr" not in state
+    if first_run or upgrading:
+        rotation = deep  # build the full picture on the very first (deep) run
+    discovery = []
+    if state.get("last_discovery") != today and t.hour >= 2 and not first_run:
+        discovery = list(range(C.DISCOVERY_FIRST_PAGE, C.DISCOVERY_LAST_PAGE + 1))
+
+    top, raw_seen = [], 0
+    fetched_deepest = None
+    def fetch(page):
+        nonlocal raw_seen, fetched_deepest
+        resp = api.get("/games", {"sort": "playing", "page": page, "pageSize": C.PAGE_SIZE})
+        data = resp.get("data") or []
+        for g in data:
+            ng = normalise_game(g)
+            ng["raw"] = g
+            top.append(ng)
+        raw_seen += len(data)
+        if page == C.DEEP_LAST_PAGE and data:
+            fetched_deepest = min(normalise_game(g)["playing"] for g in data)
+        return len(data)
     try:
-        for page in range(1, C.TOP_PAGES + 1):
-            resp = api.get("/games", {"sort": "playing", "page": page, "pageSize": C.PAGE_SIZE})
-            data = resp.get("data") or []
-            top += [normalise_game(g) for g in data]
-            if len(data) < C.PAGE_SIZE:
+        for page in pages:
+            if fetch(page) < C.PAGE_SIZE:
                 break
+        done = 0
+        for page in rotation:
+            if not (first_run or upgrading) and not paced():
+                break
+            fetch(page)
+            done += 1
+        state["deep_ptr"] = ptr + done
+        if discovery and paced():
+            for page in discovery:
+                if fetch(page) < C.PAGE_SIZE:
+                    break
+            state["last_discovery"] = today
     except BudgetExceeded as e:
         print(f"Stopping fetch: {e}")
     if not top:
         print("No games fetched this run.")
         save_state(state)
+        db.commit()
         return
 
-    first_run = not state["games"]
     if first_run:
         state["baseline_day"] = today
-    cutoff = min(g["playing"] for g in top)
+    if fetched_deepest:
+        state["cutoff"] = fetched_deepest
+    cutoff = state.get("cutoff") or min(g["playing"] for g in top)
 
     games = state["games"]
-    new_ids = []
+    new_ids, crossed = [], []
     for g in top:
         rec = games.get(g["id"])
-        if rec is None:
+        is_new = rec is None
+        if is_new:
             rec = games[g["id"]] = {"name": g["name"], "first_seen": today,
                                     "created": g["created"], "days": {}}
-            if not first_run:
+            if first_run or upgrading:
+                # already there when the bot started (or first deep run): not "new",
+                # so it can't trigger new-game, copy-wave or riser alerts
+                rec["base"] = True
+            else:
                 new_ids.append(g["id"])
+        prev_max = max(rec["days"].values() or [0])
         rec["name"] = g["name"]
         rec["last"] = g["playing"]
         rec["last_seen"] = today
         if g["created"]:
             rec["created"] = g["created"]
+        if g["raw"].get("creatorId"):
+            rec["creator"] = str(g["raw"].get("creatorId"))
         rec["days"][today] = max(rec["days"].get(today, 0), g["playing"])
+        if g["playing"] >= C.MIN_PLAYERS_NEW_ENTRY and not rec.get("crossed"):
+            rec["crossed"] = today
+            if not first_run and (prev_max < C.MIN_PLAYERS_NEW_ENTRY):
+                crossed.append(g["id"])
+        try:
+            W.record_snapshot(db, g["raw"], t, ", ".join(I.mechanics_of(g["name"])))
+        except Exception as e:
+            print(f"db write failed for {g['id']}: {e}", file=sys.stderr)
 
-    # 2. Look up creation dates for promising new games (a few calls only)
+    # 2. Look up creation dates for promising games that lack one (rare: the list usually has it)
     lookups = 0
-    for gid in sorted(new_ids, key=lambda i: -games[i]["last"]):
+    for gid in sorted(set(new_ids) | set(crossed), key=lambda i: -games[i]["last"]):
         rec = games[gid]
         if rec.get("created") or rec.get("detail_checked") or rec["last"] < C.MIN_PLAYERS_NEW_ENTRY:
             continue
@@ -306,6 +375,51 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         rec["detail_checked"] = True
         lookups += 1
 
+    # 2b. Roblox's algorithm charts (hourly)
+    charted_now = []
+    if (not state.get("charts_at") or (t - datetime.fromisoformat(state["charts_at"])) >= timedelta(minutes=C.CHARTS_EVERY_MIN - 2)) \
+            and (first_run or paced()):
+        try:
+            ch = (api.get("/charts") or {}).get("data") or []
+            W.record_chart(db, ch, t)
+            prev = set(state.get("charted", []))
+            now_ids = [str(g.get("universeId")) for g in ch if g.get("universeId")]
+            charted_now = [u for u in now_ids if u not in prev] if prev else []
+            state["charted"] = sorted(set(now_ids) | {u for u in prev if games.get(u, {}).get("last_seen") == today})[-300:]
+            state["chart_rank"] = {u: i + 1 for i, u in enumerate(now_ids)}
+            state["charts_at"] = t.isoformat()
+        except BudgetExceeded:
+            pass
+        except Exception as e:
+            print(f"charts failed: {e}", file=sys.stderr)
+
+    # 2c. Backfill past history for young games (teaches the model faster)
+    if not first_run:
+        since = day_str(t - timedelta(days=C.BACKFILL_MAX_AGE_DAYS))
+        # alternate: one game that exploded, one that didn't, so the model sees both kinds
+        want_hit = (state.get("bf_flip", 0) % 2 == 0)
+        state["bf_flip"] = state.get("bf_flip", 0) + 1
+        cands = db.execute("""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
+                              WHERE g.created >= ? AND g.uid NOT IN (SELECT uid FROM backfill)
+                              GROUP BY g.uid ORDER BY ((MAX(d.peak) >= ?) = ?) DESC, RANDOM() LIMIT ?""",
+                           (since, C.EXPLODE_CCU, 1 if want_hit else 0, C.BACKFILL_PER_RUN)).fetchall()
+        for c in cands:
+            if not paced():
+                break
+            try:
+                frm = max(c["created"], since) + "T00:00:00Z"
+                h = api.get(f"/games/{c['uid']}/history", {"from": frm})
+                n = W.record_history(db, c["uid"], (h or {}).get("data") or [], c["created"])
+                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
+                           (c["uid"], t.isoformat(), n, "ok"))
+            except BudgetExceeded:
+                break
+            except Exception as e:
+                print(f"backfill failed for {c['uid']}: {e}", file=sys.stderr)
+                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
+                           (c["uid"], t.isoformat(), 0, "error"))
+    db.commit()
+
     alerts = []  # each: {kind, gid, title, desc, url, fields, ping, text}
 
     def add(kind, gid, title, desc, fields=(), ping=False, extra_text=""):
@@ -314,16 +428,26 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                        "fields": list(fields), "ping": ping,
                        "text": f"**{title}** — {desc}{extra_text}" + (f" {link(gid, state)}" if gid else "")})
 
-    # 3a. Brand-new games entering the top list
-    for gid in new_ids:
+    # 3a. Young games crossing 2K players for the first time
+    for gid in crossed:
         rec = games[gid]
-        if rec["last"] >= C.MIN_PLAYERS_NEW_ENTRY and is_young(rec, today) and cooled(state, "new:" + gid, today, 9999):
+        if is_young(rec, today) and cooled(state, "new:" + gid, today, 9999):
             a = age_days(rec, today)
-            add("new", gid, f"🆕 New in the top {len(top)}: {rec['name'][:80]}",
+            add("new", gid, f"🆕 Just crossed {fmt(C.MIN_PLAYERS_NEW_ENTRY)} players: {rec['name'][:80]}",
                 f"{fmt(rec['last'])} playing right now.",
                 [("Players", fmt(rec["last"])), ("Age", f"{a} days" if a is not None else "unknown"),
-                 ("Type", ", ".join(I.mechanics_of(rec["name"])) or "—")])
+                 ("Type", ", ".join(I.mechanics_of(rec["name"])) or "—")] + studio_field(db, gid))
             state["alerts"]["new:" + gid] = today
+
+    # 3a2. Young games that just appeared in Roblox's algorithm charts
+    for gid in charted_now:
+        rec = games.get(gid)
+        if rec and is_young(rec, today) and rec.get("last", 0) < C.EARLY_WARNING_MAX_PLAYERS * 4 and cooled(state, "chart:" + gid, today, 14):
+            add("chart", gid, f"📈 Entered Roblox's algorithm charts: {rec['name'][:70]}",
+                f"Now #{state['chart_rank'].get(gid)} in the charts with {fmt(rec['last'])} playing — Roblox is pushing it.",
+                [("Players", fmt(rec["last"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
+                + studio_field(db, gid))
+            state["alerts"]["chart:" + gid] = today
 
     # 3b. Weekday-to-weekday surges in young games
     for gid, rec in games.items():
@@ -343,7 +467,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     # 3c. Copy waves: 3+ games new to the list in 7 days sharing a title word
     week_ago = parse_day(today) - timedelta(days=7)
     recent = [(gid, r) for gid, r in games.items()
-              if r["first_seen"] != state.get("baseline_day") and parse_day(r["first_seen"]) >= week_ago]
+              if not is_base(state, r) and parse_day(r["first_seen"]) >= week_ago
+              and max(r["days"].values() or [0]) >= C.COPY_WAVE_MIN_PLAYERS]
     by_kw = {}
     for gid, r in recent:
         for kw in keywords(r["name"]):
@@ -378,7 +503,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 and cooled(state, "heat:" + gid, today)):
             add("heat", gid, f"🔥 Heating up on {len(h['signals'])} platforms: {S.game_name(state, gid)[:70]}",
                 f"Rising on **{', '.join(h['signals'])}** · heat score **{h['score']}**/100",
-                heat_fields(state, gid, h),
+                heat_fields(state, gid, h) + studio_field(db, gid),
                 ping=h["score"] >= C.PING_HEAT_SCORE and len(h["signals"]) >= 3,
                 extra_text=" · " + S.heat_line(state, gid, h).split(" — ", 1)[-1].rsplit(" <", 1)[0])
             state["alerts"]["heat:" + gid] = today
@@ -387,12 +512,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         players = S.players_now(state, gid)
         if name == gid or players >= C.EARLY_WARNING_MAX_PLAYERS:
             continue
-        if (y["n"] >= C.EARLY_WARNING_VIDEOS or y["views"] >= C.EARLY_WARNING_VIEWS) and cooled(state, "early:" + gid, today, 7):
+        if (y["n"] >= C.EARLY_WARNING_VIDEOS or y["views"] >= C.EARLY_WARNING_VIEWS or y.get("big", 0) >= 1) \
+                and cooled(state, "early:" + gid, today, 7):
             views, title, vid = y["top"]
             add("early", gid, f"👀 Early warning: {name[:80]}",
                 f"Hot on YouTube while still small on Roblox.\nTop video: [{title[:80]}](https://youtu.be/{vid}) ({fmt(views)} views)",
-                [("Playing now", fmt(players)), ("YouTube 48h", f"{y['n']} videos"), ("Views 48h", fmt(y["views"]))],
-                ping=y["views"] >= C.PING_EARLY_VIEWS,
+                [("Playing now", fmt(players)), ("YouTube 48h", f"{y['n']} videos"), ("Views 48h", fmt(y["views"]))]
+                + ([("Big creators", f"{y['big']} video{'s' if y['big'] != 1 else ''} from 1M+ sub channels")] if y.get("big") else [])
+                + studio_field(db, gid),
+                ping=y["views"] >= C.PING_EARLY_VIEWS or y.get("big", 0) >= 2,
                 extra_text=f" · top video <https://youtu.be/{vid}>")
             state["alerts"]["early:" + gid] = today
 
@@ -412,19 +540,63 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             [("Players", fmt(r["peak"])), ("Age", f"{r['age']} days" if r.get("age") is not None else "unknown"),
              ("Type", ", ".join(r["mech"]) or "—")])
 
+    # 3f. Learning: once a day (with the digest) retrain and score today's young games
+    digest_due = force_digest or (state.get("last_digest") != today and t.hour >= C.DIGEST_HOUR_UTC and not first_run)
+    preds = []
+    if digest_due or force_weekly:
+        try:
+            status = L.train(db, today)
+            print(f"model: {status.get('examples')} examples, {status.get('positives')} explosions, trained={status.get('trained')}")
+            preds = L.predictions(db, today)
+            db.commit()
+        except Exception as e:
+            print(f"learning failed: {e}", file=sys.stderr)
+        state["_preds"] = {e["uid"]: p for p, e in preds}
+        for p, e in preds:
+            gid = e["uid"]
+            if p >= C.PREDICT_ALERT_PROB and S.players_now(state, gid) < C.PREDICT_ALERT_MAX_PLAYERS \
+                    and cooled(state, "predict:" + gid, today, 14):
+                add("predict", gid, f"🎯 Model predicts a breakout: {e['name'][:70]}",
+                    f"**{p*100:.0f}%** chance of reaching {fmt(C.EXPLODE_CCU)}+ players within {C.LABEL_DAYS} days of being noticed "
+                    f"(noticed {e['t0'][5:]}).",
+                    [("Playing now", fmt(S.players_now(state, gid))), ("Type", ", ".join(I.mechanics_of(e["name"])) or "—")]
+                    + studio_field(db, gid), ping=p >= 0.7)
+                state["alerts"]["predict:" + gid] = today
+
+    for a in alerts:
+        if a.get("gid"):
+            try:
+                W.record_alert(db, t, a["gid"], a["kind"], S.players_now(state, a["gid"]))
+            except Exception as e:
+                print(f"couldn't log alert: {e}", file=sys.stderr)
+    db.commit()
+
     if alerts:
         header = f"**Trend alert** · {t.strftime('%a %d %b %H:%M')} UTC"
         icons = S.game_icons([a["gid"] for a in alerts if a.get("gid")]) if (C.RICH_CARDS and not dry_run) else {}
         DO.post_alerts(alerts_url, alerts, header, icons, dry_run)
 
     # 4. Daily digest (+ charts and dashboard), weekly report on the chosen day
-    if force_digest or (state.get("last_digest") != today and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
+    if digest_due:
+        try:
+            W.record_sources_day(db, day_str(t - timedelta(days=1)), sources_day(state, day_str(t - timedelta(days=1))))
+            W.prune(db, today)
+            db.commit()
+        except Exception as e:
+            print(f"daily source write failed: {e}", file=sys.stderr)
+        state["_dbstats"] = W.stats(db)
         files = digest_files(state, today, cutoff)
         post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
         state["last_digest"] = today
+        try:
+            state["backup"] = W.backup(db)
+        except Exception as e:
+            state["backup"] = f"failed: {e}"
+        print("backup: " + state["backup"])
     if force_weekly or (state.get("last_weekly") != today and t.weekday() == C.WEEKLY_REPORT_WEEKDAY
                         and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
         text, table = I.weekly_report(state, today)
+        text += "\n\n" + "\n".join(L.report_lines(db, today, fmt))
         files = []
         rows = [r for r in table if r["chg"] is not None]
         if C.DIGEST_CHARTS and rows:
@@ -434,6 +606,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 files.append(("mechanics.png", png, "image/png"))
         post_discord(digest_url, text, dry_run, "weekly", files)
         state["last_weekly"] = today
+
+    db.commit()
+    db.close()
+    state.pop("_preds", None)
+    state.pop("_dbstats", None)
 
     # 5. Tidy up
     keep_from = parse_day(today) - timedelta(days=C.KEEP_DAYS)
@@ -450,13 +627,56 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
           f"{state['requests'].get(today, 0)} API requests today")
 
 
+def studio_field(db, gid):
+    try:
+        g = db.execute("SELECT creator_id, creator_name FROM games WHERE uid=?", (gid,)).fetchone()
+        if not g or not g["creator_id"]:
+            return []
+        best = W.creator_best(db, g["creator_id"], gid)
+        name = (g["creator_name"] or "unknown")[:40]
+        if best >= C.HIT_PLAYERS:
+            return [("Studio", f"🏆 {name} · their best other game peaked at {fmt(best)}")]
+        return [("Studio", name)]
+    except Exception:
+        return []
+
+
+def sources_day(state, day):
+    """Per-game YouTube / Twitch / community numbers for a finished day (for the database)."""
+    src = S.src_state(state)
+    rows = {}
+    for vid, r in src["videos"].items():
+        if (r.get("p") or "")[:10] != day:
+            continue
+        big = 1 if (src.get("channels", {}).get(r.get("ch") or "", 0) or 0) >= C.YT_BIG_CHANNEL_SUBS else 0
+        for u in r.get("u", []):
+            x = rows.setdefault(u, {"yt_n": 0, "yt_views": 0, "yt_big": 0})
+            x["yt_n"] += 1
+            x["yt_views"] += r.get("v", 0)
+            x["yt_big"] += big
+    for u, days in src["tw"].items():
+        if day in days:
+            rows.setdefault(u, {})["tw_v"] = days[day]["v"]
+    for u, r in src["rbx"].items():
+        g = r.get("group")
+        if g and day in (src["grp"].get(str(g)) or {}):
+            rows.setdefault(u, {})["grp"] = src["grp"][str(g)][day]
+        if r.get("updated"):
+            rows.setdefault(u, {})["updated"] = r["updated"]
+    for u, days in src["dc"].items():
+        if day in days:
+            rows.setdefault(u, {})["dc"] = days[day]
+    return rows
+
+
 def heat_fields(state, gid, h):
     p = h["parts"]
     f = [("Playing", fmt(S.players_now(state, gid)))]
     if "players" in p:
         f.append(("Players vs last week", f"{p['players']:.1f}×"))
     if "yt" in p:
-        f.append(("YouTube 48h", f"{p['yt']['n']} videos · {fmt(p['yt']['views'])} views"))
+        f.append(("YouTube 48h", f"{p['yt']['n']} videos · {fmt(p['yt']['views'])} views"
+                  + (f" · {p['yt']['big']} from 1M+ channels" if p['yt'].get('big') else "")))
     if "twitch" in p:
         tv, tr, ts = p["twitch"]
         f.append(("Twitch", f"{fmt(tv)} viewers" + (f" ({tr:.1f}×)" if tr else "")))
@@ -529,7 +749,7 @@ def build_digest(state, today, cutoff, t=None):
 
     # New entries in the last day
     new = [(gid, r) for gid, r in games.items()
-           if r["first_seen"] in (today, yday) and r["first_seen"] != state.get("baseline_day")
+           if r["first_seen"] in (today, yday) and not is_base(state, r)
            and r.get("last", 0) >= 1000]
     lines += ["", "🆕 **New in the top list (last 24h, 1K+ players)**"]
     if new:
@@ -542,7 +762,7 @@ def build_digest(state, today, cutoff, t=None):
     week_ago = parse_day(today) - timedelta(days=7)
     by_kw = {}
     for gid, r in games.items():
-        if r["first_seen"] != state.get("baseline_day") and parse_day(r["first_seen"]) >= week_ago:
+        if not is_base(state, r) and parse_day(r["first_seen"]) >= week_ago:
             for kw in keywords(r["name"]):
                 by_kw.setdefault(kw, []).append(r)
     clusters, seen_sets = [], set()
@@ -596,6 +816,15 @@ def build_digest(state, today, cutoff, t=None):
     else:
         lines += ["", "📺 _YouTube not connected yet — add a YOUTUBE_API_KEY secret (see SETUP.md)._"]
 
+    # Model predictions
+    preds = state.get("_preds") or {}
+    lines += ["", f"🎯 **Model: chance of reaching {fmt(C.EXPLODE_CCU)}+ players** (young games noticed in the last few days)"]
+    if preds:
+        for gid, p in sorted(preds.items(), key=lambda kv: -kv[1])[:8]:
+            lines.append(f"• {S.game_name(state, gid)[:40]} — **{p*100:.0f}%** · {fmt(S.players_now(state, gid))} playing {link(gid, state)}")
+    else:
+        lines.append("• Still learning — predictions start once enough past breakouts are in the database (see the weekly report).")
+
     # Twitch
     tw = S.top_twitch(state, yday) or S.top_twitch(state, today)
     if tw:
@@ -629,6 +858,10 @@ def build_digest(state, today, cutoff, t=None):
     if drops:
         lines += ["", "⚠️ **Falling week over week:** " + ", ".join(drops)]
 
+    dbs = state.get("_dbstats") or {}
+    if dbs:
+        lines += ["", f"_🗄️ Database: {dbs.get('games', 0):,} games · {dbs.get('daily', 0):,} game-days · "
+                      f"{dbs.get('backfill', 0):,} histories downloaded · {dbs.get('mb', 0)} MB · last backup: {state.get('backup', 'not yet')}_"]
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     lines += ["", "📎 _Charts and **dashboard.html** attached — open the dashboard in your browser for sortable tables._"
               if (C.DASHBOARD or C.DIGEST_CHARTS) else ""]

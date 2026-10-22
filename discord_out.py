@@ -11,7 +11,8 @@ import config as C
 UA = "roblox-trend-bot/1.2"
 
 COLORS = {"new": 0x3BA55D, "surge": 0xFAA61A, "copy": 0x9B59B6, "heat": 0xED4245,
-          "early": 0x5865F2, "update": 0x95A5A6, "breakout": 0xE67E22}
+          "early": 0x5865F2, "update": 0x95A5A6, "breakout": 0xE67E22,
+          "chart": 0x1ABC9C, "predict": 0xF1C40F}
 
 
 def _multipart(payload, files):

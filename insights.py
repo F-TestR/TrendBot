@@ -78,7 +78,7 @@ def mechanic_table(state, today):
             continue
         now = _avg_high(r["days"], this_start, y)
         prev = _avg_high(r["days"], last_start, last_end)
-        is_new = r["first_seen"] != state.get("baseline_day") and _d(r["first_seen"]) >= week_ago
+        is_new = not (r.get("base") or r["first_seen"] == state.get("baseline_day")) and _d(r["first_seen"]) >= week_ago
         peak = max([v for d, v in r["days"].items() if _d(d) >= this_start] or [0])
         for m in mechs:
             row = rows[m]
@@ -195,7 +195,7 @@ def track_lifecycle(state, today):
         if rec is None:
             if high >= C.BREAKOUT_PLAYERS and is_young(r, today):
                 # games already big when the bot started: kept for reference, left out of the stats
-                pre = r["first_seen"] == state.get("baseline_day") and min(r["days"]) == state.get("baseline_day") \
+                pre = (r.get("base") or r["first_seen"] == state.get("baseline_day")) \
                     and r["days"][min(r["days"])] >= C.BREAKOUT_PLAYERS
                 a = age_days(r, today)
                 rec = life[gid] = {"name": r["name"][:50], "mech": mechanics_of(r["name"]),

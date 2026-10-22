@@ -38,7 +38,7 @@ def get_json(url, timeout=20):
 
 def src_state(state):
     s = state.setdefault("src", {})
-    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc", "grp", "tw", "tw_total"):
+    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc", "grp", "tw", "tw_total", "channels", "channels_at"):
         s.setdefault(k, {})
     return s
 
@@ -182,11 +182,30 @@ def collect_youtube(state, t, key):
                 linked = bool(uids)
                 if not uids:
                     uids = match_title(title, idx)
-                rec = videos[vid] = {"t": title[:120], "c": sn.get("channelTitle", "")[:40],
+                rec = videos[vid] = {"t": title[:120], "c": sn.get("channelTitle", "")[:40], "ch": sn.get("channelId", ""),
                                      "p": sn.get("publishedAt", t.isoformat()), "u": uids[:3],
                                      "l": linked, "v0": views, "t0": t.isoformat()}
             rec["v"] = views
             rec["t1"] = t.isoformat()
+
+    # channel sizes (1 unit per 50 channels; refreshed weekly)
+    week_ago = (t - timedelta(days=7)).isoformat()
+    need = list({r.get("ch") for r in videos.values() if r.get("ch")
+                 and (r["ch"] not in src["channels"] or src["channels_at"].get(r["ch"], "") < week_ago)})
+    for i in range(0, len(need), 50):
+        try:
+            d = yt("channels", {"part": "statistics", "id": ",".join(need[i:i + 50]), "maxResults": 50}, 1)
+        except RuntimeError as e:
+            log(str(e))
+            break
+        for it in d.get("items", []):
+            st = it.get("statistics", {})
+            src["channels"][it["id"]] = 0 if st.get("hiddenSubscriberCount") else int(st.get("subscriberCount", 0) or 0)
+            src["channels_at"][it["id"]] = t.isoformat()
+    live = {r.get("ch") for r in videos.values()}
+    for cid in [c for c in src["channels"] if c not in live and src["channels_at"].get(c, "") < week_ago]:
+        src["channels"].pop(cid, None)
+        src["channels_at"].pop(cid, None)
 
     # forget videos older than 5 days
     old = t - timedelta(days=5)
@@ -204,7 +223,11 @@ def yt_stats(state, t, hours=48):
         if datetime.fromisoformat(r["p"].replace("Z", "+00:00")) < since:
             continue
         for u in r.get("u", []):
-            s = out.setdefault(u, {"n": 0, "views": 0, "top": (0, "", "")})
+            s = out.setdefault(u, {"n": 0, "views": 0, "top": (0, "", ""), "big": 0, "subs": 0})
+            subs = src_state(state)["channels"].get(r.get("ch") or "", 0) or 0
+            s["subs"] = max(s["subs"], subs)
+            if subs >= C.YT_BIG_CHANNEL_SUBS:
+                s["big"] += 1
             s["n"] += 1
             s["views"] += r.get("v", 0)
             if r.get("v", 0) > s["top"][0]:
@@ -531,7 +554,8 @@ def heat(state, gid, today, cutoff, yts):
     if y:
         parts["yt"] = y
         score += min(20, 5 * y["n"]) + max(0, min(15, 5 * math.log10(max(y["views"], 1) / 10000)))
-        if y["n"] >= C.YT_SIGNAL_MIN_VIDEOS or y["views"] >= C.YT_SIGNAL_MIN_VIEWS:
+        score += min(10, 5 * y.get("big", 0))
+        if y["n"] >= C.YT_SIGNAL_MIN_VIDEOS or y["views"] >= C.YT_SIGNAL_MIN_VIEWS or y.get("big", 0) >= 1:
             signals.append("youtube")
 
     # Community: Roblox group and/or Discord growth over ~2 days
@@ -578,7 +602,8 @@ def heat_line(state, gid, h, name=None):
     if "players" in p:
         bits.append(f"players {p['players']:.1f}×")
     if "yt" in p:
-        bits.append(f"YouTube {p['yt']['n']} vid{'s' if p['yt']['n'] != 1 else ''} / {fmt(p['yt']['views'])} views")
+        bits.append(f"YouTube {p['yt']['n']} vid{'s' if p['yt']['n'] != 1 else ''} / {fmt(p['yt']['views'])} views"
+                    + (f" ({p['yt']['big']} from 1M+ channels)" if p['yt'].get('big') else ""))
     for key, label in (("group", "group"), ("discord", "Discord")):
         if key in p:
             m, pct = p[key]

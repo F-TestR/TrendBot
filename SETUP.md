@@ -17,7 +17,15 @@ It also reads **YouTube**, **Twitch**, **Roblox's own public game data** (likes,
 
 Roblox data needs no key. YouTube needs one free key (Step 3). Twitch (Step 5), @mentions (Step 6) and Discord tracking (see Tuning) are optional.
 
-It uses no AI, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day; the bot uses about 720 and stops itself at 950).
+It also keeps its **own database** and **learns**:
+
+- It scans the top ~3,000 games (down to ~350 players) through the day, and once a day goes down to ~150 players to catch tiny new games.
+- It downloads the **past player history** of young games (about 2 months back) so it can learn from real breakouts straight away.
+- Every day it retrains a small **prediction model**: "how likely is this young game to reach 25K+ players within 3 weeks?" 🎯 alerts fire when a still-small game scores 50%+.
+- Every alert and prediction is logged and **scored** later, so the weekly report shows how often each signal was actually right.
+- 📈 alerts when a young game enters Roblox's **algorithm charts**, and 🏆 **proven studio** tags on games from studios that have had hits before.
+
+It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
 
@@ -96,17 +104,26 @@ Each daily digest has a **dashboard.html** attached. Click it in Discord → dow
    - `python bot.py --digest-now` / `--weekly-now` — post the digest or weekly report straight away.
    - `python bot.py --loop 20` — runs every 20 minutes while the window stays open.
 
+## The database and backups
+
+The database (`trendbot.db`) lives in GitHub's Actions cache next to the bot's memory, so nothing extra is needed.
+
+- **Private repo:** it's also backed up once a day to your repo's **Releases** page (a release called "Trend bot database backup" — don't delete it). If the cache is ever cleared, the bot restores itself from there.
+- **Public repo:** the backup is skipped, because anyone could download it. The cache alone is normally fine, but if you want the safety net, make the repo private (Settings → General → Danger Zone → Change visibility) and change the schedule to every 30 minutes as described in Step 2.
+
 ## What to expect
 
 - **Day 1:** the bot builds its memory. New-game alerts start after the first run; the digest starts the next morning.
 - **Day 1–2:** YouTube and Roblox data start straight away; group/Discord growth needs 2 days of counts; "rising title words" needs 2 days to compare.
 - **After about a week:** weekday-vs-last-week comparisons kick in properly, so surge alerts, the risers list and the players part of the heat score become reliable.
+- **First few days:** the bot downloads past histories in the background; the weekly report shows how many examples the model has.
+- **Usually within the first week:** the model has enough finished examples (60+, including 8+ explosions) to train, and 🎯 predictions start. Its accuracy is reported every Sunday — trust it more as the "AUC" and scorecard numbers climb.
 - **After two weeks:** the weekly report can compare mechanics week over week, so the 🟢 / 🟡 / 🔴 labels switch on.
 - **Over the following months:** breakouts and update results pile up (kept for 6 months), so "how long trends last" and "what updates do" get more trustworthy.
 
 ## Tuning
 
-Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`), the **mechanic groups** (`MECHANICS` — add your own words or groups), the weekly report day, and on/off switches for cards, charts and the dashboard (`RICH_CARDS`, `DIGEST_CHARTS`, `DASHBOARD`).
+Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`), the **mechanic groups** (`MECHANICS` — add your own words or groups), the weekly report day, what counts as "exploded" for the model (`EXPLODE_CCU`, `LABEL_DAYS`), when 🎯 alerts fire (`PREDICT_ALERT_PROB`), and on/off switches for cards, charts and the dashboard (`RICH_CARDS`, `DIGEST_CHARTS`, `DASHBOARD`).
 
 **Tracking a game's Discord server (optional):** Roblox hides games' Discord links from bots, so add the ones you care about to `DISCORD_INVITES` in `config.py`, e.g. `"10767380385": "https://discord.gg/abc123",` (game's universe ID, then its invite link). Find the invite on the game's Roblox page or in YouTube video descriptions. Use an invite that never expires.
 
