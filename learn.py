@@ -159,10 +159,10 @@ def _sigmoid(z):
     return 1 / (1 + math.exp(-max(-30, min(30, z))))
 
 
-def fit(examples, l2=None, iters=None, lr=0.3):
+def fit(examples, l2=None, iters=None, lr=0.3, names=None):
     l2 = C.LEARN_L2 if l2 is None else l2
     iters = iters or 600
-    names = [f for f, _ in FEATURES]
+    names = names or [f for f, _ in FEATURES]
     X = [[e["x"][f] for f in names] for e in examples]
     y = [e["y"] for e in examples]
     n, k = len(X), len(names)

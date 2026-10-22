@@ -25,6 +25,14 @@ It also keeps its **own database** and **learns**:
 - Every alert and prediction is logged and **scored** later, so the weekly report shows how often each signal was actually right.
 - 📈 alerts when a young game enters Roblox's **algorithm charts**, and 🏆 **proven studio** tags on games from studios that have had hits before.
 
+**Trend prediction (themes):** besides single games, it tracks **themes** — words and phrases shared by game titles ("cat", "chocolate", "anomaly") plus RoWatcher's curated trend list — and learns which ones are about to become trends:
+
+- 🌱 **Emerging theme** alert: a small theme the model thinks will soon have 3+ games over 2K players (before that, when several early signals fire at once: copy bursts, many studios, tiny-game bursts, renames…).
+- 🌉 **Outside trend reaching Roblox** alert: something rising on **Steam**, **YouTube trending**, **Wikipedia** or **Twitch** that has just started appearing in brand-new Roblox games.
+- The digest gets **🌱 Themes to watch** and **🌍 Outside Roblox**; the dashboard gets a **Themes** tab.
+- The Sunday report gets **🔬 Which indicators actually work**: for every signal, how often it was followed by a breakout, how much better than chance, and how many days' warning it gave. The theme model weights signals by what actually worked.
+- Seasonal themes (Halloween, Christmas, summer…) are in `config.py` → `SEASONS`; add your own.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
@@ -69,7 +77,7 @@ No card is needed. The bot uses about half of YouTube's free daily allowance and
 ## Step 4 — Check every source works
 
 **Actions → Roblox trend bot → Run workflow** → tick **"Test YouTube / Roblox / Twitch / Discord access"** → **Run**.
-Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows ❌, screenshot it and send it over.
+Your #alerts channel gets a ✅ / ❌ line for each source (including Steam, Wikipedia, YouTube trending and Twitch top games). If anything shows ❌, screenshot it and send it over.
 
 ## Step 5 — Add Twitch (optional, free, about 5 minutes)
 

@@ -137,6 +137,23 @@ def build(state, today, cutoff):
         urows.append(f'<tr><td data-v="{_e(e["name"].lower())}">{_e(e["name"])}</td><td data-v="{e["date"]}">{e["date"][5:]}</td>'
                      f'<td data-v="{e.get("before") or -1}">{fmt(e["before"]) if e.get("before") else "—"}</td>{cells}</tr>')
 
+    # --- themes
+    import themes as T
+    trows = []
+    for p, sc, k, r, fired in (state.get("_themes") or [])[:60]:
+        prob = f"{p*100:.0f}%" if p is not None else "—"
+        sig = "".join(f'<span class="tag">{_e(T.INDICATORS[i][0])}</span>' for i in fired)
+        trows.append(f'<tr><td data-v="{_e(T.display(k, state).lower())}"><b>{_e(T.display(k, state))}</b></td>'
+                     f'<td data-v="{p if p is not None else -1}">{prob}</td><td data-v="{sc}">{sc}</td>'
+                     f'<td data-v="{r["ccu"]}">{fmt(r["ccu"])}</td><td data-v="{r["games"]}">{r["games"]}</td>'
+                     f'<td data-v="{r["new7"]}">{r["new7"]}</td><td data-v="{r["studios7"]}">{r["studios7"]}</td>'
+                     f'<td data-v="{r["hits"]}">{r["hits"]}</td><td>{sig or "—"}</td></tr>')
+    brs = state.get("_bridges") or []
+    bridge_html = ""
+    if brs:
+        bridge_html = '<p class="note"><b>🌉 Outside trends already reaching Roblox:</b> ' + ", ".join(
+            f'"{_e(w)}" ({row["new7"]} new games)' for w, _, row in brs[:10]) + "</p>"
+
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     tw_total = S.src_state(state)["tw_total"].get(yday) or S.src_state(state)["tw_total"].get(today)
@@ -174,10 +191,13 @@ p.note{{color:var(--muted);font-size:12.5px;margin:8px 2px}}
 <div class="stats">{stat_html}</div></header>
 <main>
 <nav><button class="on" data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
-<button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
+<button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="hot" class="on"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
 <div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
 <section id="watch"><div class="card">{table(watch, "t-watch")}</div></section>
+<section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
+<div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
+<p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>
 <section id="mech"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Mechanic</th><th>Avg players (7d)</th><th>vs last week</th><th>Games</th><th>New this week</th><th>New hits</th><th class="nosort">Top games</th></tr></thead><tbody>{mech_rows}</tbody></table></div>
 <p class="note">🟢 open gap = demand up 10%+ with few new games · 🟡 growing but crowding · 🔴 saturating = demand falling while copies keep arriving.</p></section>
 <section id="life"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Game</th><th>Broke out</th><th>Age then</th><th>Peak</th><th>Days to peak</th><th class="nosort">Now</th><th class="nosort">Type</th></tr></thead><tbody>{"".join(lrows) or '<tr><td colspan=7 class=muted>No breakouts logged yet.</td></tr>'}</tbody></table></div></section>

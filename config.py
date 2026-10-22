@@ -193,3 +193,49 @@ PREDICT_MAX_DAYS_AFTER = 5       # only predict for games noticed in the last fe
 
 # ---- YouTube channel size ----
 YT_BIG_CHANNEL_SUBS = 1_000_000  # a video from a channel this big counts as a "big creator" video
+
+# =====================================================================
+# Themes (trend prediction) + outside-Roblox signals
+# =====================================================================
+THEME_MIN_GAME_CCU = 100         # games below this never count towards a theme
+THEME_MIN_CCU = 300              # themes smaller than this (with no new games) are ignored
+THEME_HIT_CCU = 2000             # a theme's game "hits" at this many players...
+THEME_BREAKOUT_GAMES = 3         # ...and a theme "breaks out" when it goes from <=1 hit to this many
+THEME_HISTORY_DAYS = 60          # how far back to rebuild theme history the first time
+THEME_KEEP_DAYS = 150
+THEME_MIN_EXAMPLES = 200         # theme-days needed before the theme model trains...
+THEME_MIN_POSITIVES = 8          # ...including this many breakouts
+THEME_ALERT_PROB = 0.4           # 🌱 alert when a small theme scores this or more
+THEME_ALERT_MAX_HITS = 1         # ...and still has at most this many 2K+ games
+RW_TRENDS_EVERY_DAYS = 7         # refresh RoWatcher's curated trend list weekly (1 request)
+
+# Outside Roblox
+STEAM_RANK_CLIMB = 10            # a Steam game counts as rising if it climbed this many places in a week (or is new to the top 100)
+YT_TRENDING_REGIONS = ["US", "GB"]
+UPSTREAM_KEEP_DAYS = 150
+SEASONS = {                      # month -> words that tend to trend then (next month's are included early)
+    1: ["winter", "snow", "new year"],
+    2: ["valentine", "valentines", "love"],
+    3: ["spring", "easter", "egg"],
+    4: ["easter", "egg", "spring"],
+    6: ["summer", "beach", "pool", "water"],
+    7: ["summer", "beach", "pool", "water"],
+    8: ["summer", "school", "back to school"],
+    9: ["school", "autumn", "fall"],
+    10: ["halloween", "spooky", "ghost", "zombie", "pumpkin", "haunted"],
+    11: ["thanksgiving", "turkey", "winter", "christmas"],
+    12: ["christmas", "santa", "elf", "snow", "winter", "gift"],
+}
+
+# Words that are never themes on their own
+THEME_STOPWORDS = set("""
+the and for you your with from new upd update updated event beta alpha testing release free
+game games play roblox obby simulator sim tycoon x2 x5 x10 2x 5x 10x part chapter season
+but not are was have has can get got all any one two three more most very just how why what
+when who out over into off our its his her they them this that there then than like
+official full edition version remastered remake ultimate deluxe online world worlds
+""".split())
+THEME_GENERIC = set("""
+game games world life city time super best mega ultra simulator tycoon roblox legends legend
+battle battles war wars fight hero heroes story adventure online season update official
+""".split())

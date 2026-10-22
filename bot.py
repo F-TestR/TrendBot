@@ -39,6 +39,8 @@ import discord_out as DO
 import insights as I
 import learn as L
 import sources as S
+import themes as T
+import upstream as U
 import warehouse as W
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -260,6 +262,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if restored:
         print(restored)
     db = W.connect()
+    T.ensure(db)
 
     def paced():
         """Optional calls only while we're under the day's pro-rata budget."""
@@ -338,6 +341,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             else:
                 new_ids.append(g["id"])
         prev_max = max(rec["days"].values() or [0])
+        if not is_new and rec.get("name") and rec["name"] != g["name"]:
+            try:
+                T.record_rename(db, g["id"], today, rec["name"], g["name"])
+            except Exception as e:
+                print(f"rename log failed: {e}", file=sys.stderr)
         rec["name"] = g["name"]
         rec["last"] = g["playing"]
         rec["last_seen"] = today
@@ -392,6 +400,33 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             pass
         except Exception as e:
             print(f"charts failed: {e}", file=sys.stderr)
+
+    # 2b2. RoWatcher's curated trend list (weekly, 1 request) - extra ready-made themes
+    if (not state.get("rw_trends_at") or (t - datetime.fromisoformat(state["rw_trends_at"])).days >= C.RW_TRENDS_EVERY_DAYS) \
+            and paced():
+        try:
+            tr = (api.get("/trends", {"limit": 500}) or {}).get("data") or []
+            state["rw_trends"] = [(str(x.get("id")), x.get("name") or str(x.get("id")),
+                                   [re.sub(r"[^a-z0-9]+", " ", k.lower()).strip() for k in (x.get("keywords") or []) if k])
+                                  for x in tr if x.get("id")]
+            state["rw_trends_at"] = t.isoformat()
+        except BudgetExceeded:
+            pass
+        except Exception as e:
+            print(f"trends failed: {e}", file=sys.stderr)
+
+    # 2b3. Outside-Roblox signals (Steam, Wikipedia daily; YouTube trending, Twitch top every 6h)
+    def yt_units(n):
+        u = S.src_state(state)["yt_units"]
+        if u.get(today, 0) + n > C.YT_DAILY_UNIT_CAP:
+            raise RuntimeError("YouTube daily quota cap reached")
+        u[today] = u.get(today, 0) + n
+    try:
+        up_ran = U.collect_all(db, state, t, os.environ, yt_units)
+        if up_ran:
+            print("outside sources: " + ", ".join(up_ran))
+    except Exception as e:
+        print(f"outside sources failed: {e}", file=sys.stderr)
 
     # 2c. Backfill past history for young games (teaches the model faster)
     if not first_run:
@@ -552,6 +587,54 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             print(f"learning failed: {e}", file=sys.stderr)
         state["_preds"] = {e["uid"]: p for p, e in preds}
+
+        # Themes: rebuild yesterday's theme numbers, retrain, score small themes, spot bridges
+        tpreds, brs = [], []
+        try:
+            yday_s = day_str(t - timedelta(days=1))
+            T.record_roblox_youtube_words(db, state, yday_s)
+            n = T.update(db, state, today)
+            tst = T.train(db, today)
+            print(f"themes: {n} rows, model {tst.get('examples')} examples / {tst.get('positives')} breakouts, trained={tst.get('trained')}")
+            tpreds = T.predict(db, today)
+            brs = T.bridges(db, state, today)
+            db.commit()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"themes failed: {e}", file=sys.stderr)
+        state["_themes"] = [(p, sc, k, dict(r), f) for p, sc, k, r, f in tpreds[:40]]
+        state["_bridges"] = [(w, srcs, row) for w, srcs, row in brs]
+        rw = state.get("rw_trends", [])
+        for p, sc, k, r, fired in tpreds[:30]:
+            strong = (p is not None and p >= C.THEME_ALERT_PROB) or (p is None and sc >= 3 and r["new7"] >= 3)
+            if not strong or r["hits"] > C.THEME_ALERT_MAX_HITS or not cooled(state, "theme:" + k, today, 14):
+                continue
+            tops = T.top_games(db, k, rw, day_str(t - timedelta(days=1)))
+            lead = tops[0][2] if tops else None
+            labels = ", ".join(T.INDICATORS[i][0] for i in fired) or "—"
+            add("theme", lead, f"🌱 Emerging theme: \"{T.display(k, state)}\"",
+                (f"Model: **{p*100:.0f}%** chance that {C.THEME_BREAKOUT_GAMES}+ games of this theme pass "
+                 f"{fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days." if p is not None else
+                 "Several early indicators are firing at once (the theme model is still learning).")
+                + "\n" + "\n".join(f"• {nm[:45]} — {fmt(pk)}" for pk, nm, _ in tops),
+                [("Games", str(r["games"])), ("New this week", f"{r['new7']} (from {r['studios7']} studios)"),
+                 ("With 2K+ players", str(r["hits"])), ("Signals", labels)],
+                ping=p is not None and p >= 0.6)
+            alerts[-1]["url"] = None
+            state["alerts"]["theme:" + k] = today
+        for w, srcs, row in brs:
+            if not cooled(state, "bridge:" + w, today, 30):
+                continue
+            where = "; ".join(sorted({d for _, d in srcs if d}))[:300]
+            tops = T.top_games(db, ("b:" if " " in w else "w:") + w, rw, day_str(t - timedelta(days=1)))
+            add("bridge", tops[0][2] if tops else None, f"🌉 Outside trend reaching Roblox: \"{w}\"",
+                f"Rising outside Roblox ({where}) and now in {row['new7']} brand-new Roblox game"
+                f"{'s' if row['new7'] != 1 else ''} this week.\n"
+                + "\n".join(f"• {nm[:45]} — {fmt(pk)}" for pk, nm, _ in tops),
+                [("New Roblox games", str(row["new7"])), ("Total players", fmt(row["ccu"]))], ping=row["new7"] >= 3)
+            alerts[-1]["url"] = None
+            state["alerts"]["bridge:" + w] = today
         for p, e in preds:
             gid = e["uid"]
             if p >= C.PREDICT_ALERT_PROB and S.players_now(state, gid) < C.PREDICT_ALERT_MAX_PLAYERS \
@@ -564,7 +647,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 state["alerts"]["predict:" + gid] = today
 
     for a in alerts:
-        if a.get("gid"):
+        if a.get("gid") and a["kind"] not in ("theme", "bridge"):
             try:
                 W.record_alert(db, t, a["gid"], a["kind"], S.players_now(state, a["gid"]))
             except Exception as e:
@@ -597,6 +680,10 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                         and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
         text, table = I.weekly_report(state, today)
         text += "\n\n" + "\n".join(L.report_lines(db, today, fmt))
+        try:
+            text += "\n\n" + "\n".join(T.report_lines(db, today, fmt))
+        except Exception as e:
+            print(f"theme report failed: {e}", file=sys.stderr)
         files = []
         rows = [r for r in table if r["chg"] is not None]
         if C.DIGEST_CHARTS and rows:
@@ -610,6 +697,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     db.commit()
     db.close()
     state.pop("_preds", None)
+    state.pop("_themes", None)
+    state.pop("_bridges", None)
     state.pop("_dbstats", None)
 
     # 5. Tidy up
@@ -825,6 +914,35 @@ def build_digest(state, today, cutoff, t=None):
     else:
         lines.append("• Still learning — predictions start once enough past breakouts are in the database (see the weekly report).")
 
+    # Themes
+    th = state.get("_themes") or []
+    lines += ["", "🌱 **Themes to watch** (small themes that could become trends)"]
+    if th:
+        for p, sc, k, r, fired in th[:7]:
+            pct = f"**{p*100:.0f}%**" if p is not None else f"{sc} signal{'s' if sc != 1 else ''}"
+            sig = (" · " + ", ".join(T.INDICATORS[i][0] for i in fired[:3])) if fired else ""
+            lines.append(f"• \"{T.display(k, state)}\" — {pct} · {r['games']} games, {r['new7']} new this week, "
+                         f"{fmt(r['ccu'])} players{sig}")
+    else:
+        lines.append("• Building theme history — appears after the first full day of data.")
+
+    # Outside Roblox
+    ust = state.get("upstream", {})
+    outside = []
+    if ust.get("steam_rising"):
+        outside.append("🎮 Steam climbers: " + ", ".join(f"{x['name']} (#{x['rank']})" for x in ust["steam_rising"][:5]))
+    if ust.get("ytt_rising"):
+        outside.append("🔥 Rising on YouTube trending: " + ", ".join(f"\"{w}\"" for w in ust["ytt_rising"][:8]))
+    if ust.get("tw_top_new"):
+        outside.append("🟣 New in Twitch's top games: " + ", ".join(ust["tw_top_new"][:5]))
+    if ust.get("wiki_spikes"):
+        outside.append("📚 New on Wikipedia's top pages: " + ", ".join(ust["wiki_spikes"][:6]))
+    brs = state.get("_bridges") or []
+    if brs:
+        outside.append("🌉 **Already reaching Roblox:** " + ", ".join(f"\"{w}\" ({row['new7']} new games)" for w, _, row in brs[:6]))
+    if outside:
+        lines += ["", "🌍 **Outside Roblox** (things that often become Roblox trends a few weeks later)"] + ["• " + o for o in outside]
+
     # Twitch
     tw = S.top_twitch(state, yday) or S.top_twitch(state, today)
     if tw:
@@ -896,7 +1014,7 @@ def main():
 
     if a.check_sources:
         load_dotenv()
-        lines = S.check_sources(os.environ)
+        lines = S.check_sources(os.environ) + U.check(os.environ)
         post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), "**Source check**\n" + "\n".join(lines), a.dry_run, "alerts")
         return
 
