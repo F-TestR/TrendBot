@@ -40,3 +40,55 @@ game games simulator sim tycoon roblox obby
 
 KEEP_DAYS = 21                   # how many days of daily highs to keep per game
 API_BASE = "https://rowatcher.com/api/v1"
+
+# =====================================================================
+# Extra sources (stage 1): YouTube, Roblox public data, Discord servers
+# =====================================================================
+
+# ---- How often each source is checked (minutes) ----
+YT_EVERY_MIN = 120               # YouTube: every 2 hours (keeps well inside the free quota)
+ROBLOX_EVERY_MIN = 60            # Roblox likes/favourites/updates: hourly
+DISCORD_EVERY_MIN = 360          # Discord member counts: every 6 hours
+
+# ---- YouTube (free quota = 10,000 units/day; a search costs 100) ----
+YT_DAILY_UNIT_CAP = 8000
+YT_QUERIES = [                   # 4 searches x 12 runs/day x 100 units = 4,800 units/day
+    "roblox",
+    "new roblox game",
+    "roblox tycoon",
+    "roblox simulator",
+]
+YT_MAX_PLACE_LOOKUPS_PER_RUN = 25   # game links in video descriptions -> which game
+YT_MIN_NAME_CHARS = 8            # game names shorter than this aren't matched in titles (too generic)
+YT_SIGNAL_MIN_VIDEOS = 2         # a game counts as "hot on YouTube" with 2+ videos in 48h...
+YT_SIGNAL_MIN_VIEWS = 100_000    # ...or 100K+ views in 48h
+YT_RISING_MIN_VIDEOS = 4         # a title word needs 4+ videos in 48h to count as rising
+YT_GENERIC_NAMES = set("""
+roblox|the game|obby game|tycoon game|simulator|hide and seek|tower defense|the floor is lava|
+murder mystery|untitled game|escape the|natural disasters|survive the|find the
+""".replace("\n", "").split("|"))
+YT_TITLE_STOPWORDS = set("""
+the and for you your this that with from but not are was were have has had got get gets getting
+how why what when who which into out over all every any one two three new best most more very
+just can cant dont did does its it's i'm me my our we they them his her their roblox robloxs
+video videos game games play played playing playthrough gameplay part funny insane secret
+became become becoming made make making tried trying try first last ever day days hour hours
+vs win won lose lost each only never again here there then than like even still really
+shorts short youtube viral trending update new free gets got
+""".split())
+NAME_EDGE_WORDS = set("new upd update updated event beta alpha release x2 x5 x10 2x 5x 10x".split())
+
+# ---- Roblox public data ----
+ROBLOX_MAX_GAMES = 300           # watchlist + young games + YouTube-linked games
+ENRICH_MIN_PLAYERS = 1000        # only enrich young games with at least this many players
+
+# ---- Discord ----
+DISCORD_MAX_GAMES = 40           # member counts checked for this many games per run
+DISCORD_SOCIAL_CHECKS_PER_RUN = 15   # new "which Discord does this game link?" lookups per run
+DISCORD_SIGNAL_PCT = 3           # +3% members in ~2 days counts as growing
+
+# ---- Heat score alerts ----
+HEAT_ALERT_SCORE = 55            # 🔥 alert when heat >= this AND 2+ sources agree
+EARLY_WARNING_VIDEOS = 3         # 👀 alert: 3+ YouTube videos in 48h...
+EARLY_WARNING_VIEWS = 300_000    # ...or 300K+ views, while the game is still small
+EARLY_WARNING_MAX_PLAYERS = 5000

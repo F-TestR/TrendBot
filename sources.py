@@ -1,0 +1,554 @@
+"""
+Extra data sources for the trend bot (stage 1):
+
+  * YouTube  - recent Roblox videos, which games they feature, how many views
+  * Roblox   - Roblox's own public game data: likes/dislikes, favourites, last update
+  * Discord  - member counts of each game's community server
+
+Each collector runs on its own timer (see config.py) and fails quietly: if one
+source is down, the rest of the bot carries on as normal.
+"""
+import json
+import math
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timedelta, timezone
+
+import config as C
+
+# bot.py fills these in at start-up (is_young, growth, fmt) to avoid a circular import
+HOOKS = {}
+
+UA = {"User-Agent": "roblox-trend-bot/1.1", "Accept": "application/json"}
+
+
+# ---------------------------------------------------------------- helpers ---
+
+def get_json(url, timeout=20):
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def src_state(state):
+    s = state.setdefault("src", {})
+    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc"):
+        s.setdefault(k, {})
+    return s
+
+
+def due(src, name, t, every_min):
+    last = src["last"].get(name)
+    if not last:
+        return True
+    return (t - datetime.fromisoformat(last)) >= timedelta(minutes=every_min - 2)
+
+
+def mark(src, name, t):
+    src["last"][name] = t.isoformat()
+
+
+def norm(s):
+    """Normalise a game name or video title for matching."""
+    s = s.lower()
+    s = re.sub(r"\[.*?\]|\(.*?\)|【.*?】|\{.*?\}", " ", s)
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    words = s.split()
+    while words and words[0] in C.NAME_EDGE_WORDS:
+        words.pop(0)
+    while words and words[-1] in C.NAME_EDGE_WORDS:
+        words.pop()
+    return " ".join(words)
+
+
+def log(msg):
+    print(msg, file=sys.stderr)
+
+
+# ---------------------------------------------------------------- youtube ---
+
+GAME_LINK = re.compile(r"roblox\.com/(?:[a-z]{2}/)?games/(\d+)", re.I)
+
+
+def place_to_universe(src, place_id):
+    m = src["place_map"]
+    if place_id in m:
+        return m[place_id]
+    try:
+        d = get_json(f"https://apis.roblox.com/universes/v1/places/{place_id}/universe")
+        uid = str(d.get("universeId") or "") or None
+    except Exception as e:
+        log(f"place lookup failed for {place_id}: {e}")
+        return None  # don't cache failures; try again later
+    m[place_id] = uid
+    return uid
+
+
+def name_index(state):
+    """normalised game name -> universe id (highest-player game wins on duplicates)."""
+    idx = {}
+    cands = []
+    for gid, r in state["games"].items():
+        cands.append((r["name"], gid, r.get("last", 0)))
+    for gid, r in src_state(state)["rbx"].items():
+        if r.get("name"):
+            cands.append((r["name"], gid, r.get("playing", 0)))
+    best = {}
+    for name, gid, players in cands:
+        n = norm(name)
+        if len(n) < C.YT_MIN_NAME_CHARS or n in C.YT_GENERIC_NAMES:
+            continue
+        if n not in best or players > best[n][1]:
+            best[n] = (gid, players)
+    for n, (gid, _) in best.items():
+        idx[n] = gid
+    return idx
+
+
+def match_title(title, idx):
+    t = " " + norm(title) + " "
+    hits = [n for n in idx if " " + n + " " in t]
+    # drop names contained in a longer matched name ("sell fries" inside "sell fries 2")
+    hits = [h for h in hits if not any(h != o and h in o for o in hits)]
+    return [idx[h] for h in hits]
+
+
+def collect_youtube(state, t, key):
+    src = src_state(state)
+    today = t.strftime("%Y-%m-%d")
+    used = src["yt_units"].get(today, 0)
+
+    def yt(path, params, cost):
+        nonlocal used
+        if used + cost > C.YT_DAILY_UNIT_CAP:
+            raise RuntimeError("YouTube daily quota cap reached")
+        params = dict(params, key=key)
+        url = "https://www.googleapis.com/youtube/v3/" + path + "?" + urllib.parse.urlencode(params)
+        used += cost
+        src["yt_units"][today] = used
+        return get_json(url)
+
+    after = (t - timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    found = set()
+    for q in C.YT_QUERIES:
+        try:
+            d = yt("search", {"part": "snippet", "type": "video", "order": "viewCount", "q": q,
+                              "publishedAfter": after, "maxResults": 50, "relevanceLanguage": "en"}, 100)
+        except RuntimeError as e:
+            log(str(e))
+            break
+        for it in d.get("items", []):
+            vid = (it.get("id") or {}).get("videoId")
+            if vid:
+                found.add(vid)
+
+    videos = src["videos"]
+    cutoff = t - timedelta(days=4)
+    refresh = set(found) | {v for v, r in videos.items()
+                            if datetime.fromisoformat(r["p"].replace("Z", "+00:00")) >= cutoff}
+    refresh = list(refresh)
+    idx = name_index(state)
+    lookups = 0
+    for i in range(0, len(refresh), 50):
+        batch = refresh[i:i + 50]
+        try:
+            d = yt("videos", {"part": "snippet,statistics", "id": ",".join(batch), "maxResults": 50}, 1)
+        except RuntimeError as e:
+            log(str(e))
+            break
+        for it in d.get("items", []):
+            vid = it["id"]
+            sn, st = it.get("snippet", {}), it.get("statistics", {})
+            views = int(st.get("viewCount", 0) or 0)
+            rec = videos.get(vid)
+            if rec is None:
+                title = sn.get("title", "")
+                desc = sn.get("description", "")
+                uids = []
+                for pid in dict.fromkeys(GAME_LINK.findall(desc + " " + title)):
+                    if lookups >= C.YT_MAX_PLACE_LOOKUPS_PER_RUN and pid not in src["place_map"]:
+                        continue
+                    if pid not in src["place_map"]:
+                        lookups += 1
+                    u = place_to_universe(src, pid)
+                    if u and u not in uids:
+                        uids.append(u)
+                linked = bool(uids)
+                if not uids:
+                    uids = match_title(title, idx)
+                rec = videos[vid] = {"t": title[:120], "c": sn.get("channelTitle", "")[:40],
+                                     "p": sn.get("publishedAt", t.isoformat()), "u": uids[:3],
+                                     "l": linked, "v0": views, "t0": t.isoformat()}
+            rec["v"] = views
+            rec["t1"] = t.isoformat()
+
+    # forget videos older than 5 days
+    old = t - timedelta(days=5)
+    for vid in [v for v, r in videos.items()
+                if datetime.fromisoformat(r["p"].replace("Z", "+00:00")) < old]:
+        del videos[vid]
+    src["yt_units"] = {d: n for d, n in src["yt_units"].items() if d >= (t - timedelta(days=7)).strftime("%Y-%m-%d")}
+
+
+def yt_stats(state, t, hours=48):
+    """universe id -> {"n": videos, "views": total views, "top": (views, title, vid)}"""
+    out = {}
+    since = t - timedelta(hours=hours)
+    for vid, r in src_state(state)["videos"].items():
+        if datetime.fromisoformat(r["p"].replace("Z", "+00:00")) < since:
+            continue
+        for u in r.get("u", []):
+            s = out.setdefault(u, {"n": 0, "views": 0, "top": (0, "", "")})
+            s["n"] += 1
+            s["views"] += r.get("v", 0)
+            if r.get("v", 0) > s["top"][0]:
+                s["top"] = (r.get("v", 0), r["t"], vid)
+    return out
+
+
+def rising_title_words(state, t):
+    """Words/phrases appearing in many more Roblox video titles in the last 48h than the 48h before."""
+    now_c, prev_c = {}, {}
+    for r in src_state(state)["videos"].values():
+        age = (t - datetime.fromisoformat(r["p"].replace("Z", "+00:00"))).total_seconds() / 3600
+        bucket = now_c if age <= 48 else (prev_c if age <= 96 else None)
+        if bucket is None:
+            continue
+        words = [w for w in norm(r["t"]).split() if len(w) >= 3 and not any(ch.isdigit() for ch in w)]
+        grams = {w for w in words if w not in C.YT_TITLE_STOPWORDS}
+        for a, b in zip(words, words[1:]):
+            if a not in C.YT_TITLE_STOPWORDS and b not in C.YT_TITLE_STOPWORDS:
+                grams.add(a + " " + b)
+        for g in grams:
+            bucket[g] = bucket.get(g, 0) + 1
+    have_prev = bool(prev_c)
+    out = []
+    for g, n in now_c.items():
+        p = prev_c.get(g, 0)
+        if n >= C.YT_RISING_MIN_VIDEOS and (not have_prev or n >= 3 * (p + 1)):
+            out.append((n, p, g))
+    out.sort(reverse=True)
+    # keep a phrase over its single words when counts are similar
+    keep = []
+    for n, p, g in out:
+        if " " not in g and any(g in k.split() and kn >= n - 1 for kn, _, k in keep):
+            continue
+        keep.append((n, p, g))
+    return keep[:8], have_prev
+
+
+# ----------------------------------------------------------------- roblox ---
+
+def candidate_games(state, today, limit):
+    """Games worth enriching: watchlist, young games in the top list, YouTube-linked games."""
+    is_young = HOOKS["is_young"]
+    pri = {}
+    for gid in C.WATCHLIST:
+        pri[gid] = 1e12
+    for gid, r in state["games"].items():
+        if r.get("last_seen") == today and r.get("last", 0) >= C.ENRICH_MIN_PLAYERS and is_young(r, today):
+            pri[gid] = max(pri.get(gid, 0), r["last"])
+    for vid, r in src_state(state)["videos"].items():
+        for u in r.get("u", []):
+            pri[u] = max(pri.get(u, 0), 1e9 + r.get("v", 0))
+    return [g for g, _ in sorted(pri.items(), key=lambda kv: -kv[1])][:limit]
+
+
+def collect_roblox(state, t):
+    src = src_state(state)
+    today = t.strftime("%Y-%m-%d")
+    ids = [i for i in candidate_games(state, today, C.ROBLOX_MAX_GAMES) if i.isdigit()]
+    rbx = src["rbx"]
+    for i in range(0, len(ids), 50):
+        batch = ",".join(ids[i:i + 50])
+        try:
+            d = get_json(f"https://games.roblox.com/v1/games?universeIds={batch}")
+            for g in d.get("data", []):
+                r = rbx.setdefault(str(g["id"]), {})
+                r.update({"name": g.get("name"), "place": g.get("rootPlaceId"),
+                          "playing": g.get("playing", 0), "visits": g.get("visits", 0),
+                          "updated": (g.get("updated") or "")[:10], "seen": today})
+                fav = g.get("favoritedCount")
+                if fav is not None:
+                    r.setdefault("fav_days", {})[today] = fav
+        except Exception as e:
+            log(f"roblox games lookup failed: {e}")
+        try:
+            d = get_json(f"https://games.roblox.com/v1/games/votes?universeIds={batch}")
+            for g in d.get("data", []):
+                r = rbx.setdefault(str(g["id"]), {})
+                r["up"], r["down"] = g.get("upVotes", 0), g.get("downVotes", 0)
+        except Exception as e:
+            log(f"roblox votes lookup failed: {e}")
+        time.sleep(0.5)
+    keep = (t - timedelta(days=C.KEEP_DAYS)).strftime("%Y-%m-%d")
+    for gid in list(rbx):
+        r = rbx[gid]
+        if r.get("seen", today) < keep:
+            del rbx[gid]
+            continue
+        if "fav_days" in r:
+            r["fav_days"] = {d: v for d, v in r["fav_days"].items() if d >= keep}
+
+
+def like_ratio(state, gid):
+    r = src_state(state)["rbx"].get(gid) or {}
+    up, down = r.get("up", 0) or 0, r.get("down", 0) or 0
+    if up + down < 100:
+        return None
+    return up / (up + down)
+
+
+def roblox_link(state, gid):
+    place = (src_state(state)["rbx"].get(gid) or {}).get("place")
+    return f"<https://www.roblox.com/games/{place}>" if place else None
+
+
+# ---------------------------------------------------------------- discord ---
+
+INVITE = re.compile(r"(?:discord\.gg|discord(?:app)?\.com/invite)/([A-Za-z0-9-]+)", re.I)
+
+
+def collect_discord(state, t):
+    src = src_state(state)
+    today = t.strftime("%Y-%m-%d")
+    social, dc = src["social"], src["dc"]
+    ids = [i for i in candidate_games(state, today, C.DISCORD_MAX_GAMES) if i.isdigit()]
+
+    checks = 0
+    for gid in ids:
+        s = social.get(gid)
+        fresh = s and (datetime.fromisoformat(s["checked"] + "T00:00:00+00:00") > t - timedelta(days=7))
+        if fresh or checks >= C.DISCORD_SOCIAL_CHECKS_PER_RUN:
+            continue
+        checks += 1
+        code = None
+        try:
+            d = get_json(f"https://games.roblox.com/v1/games/{gid}/social-links/list")
+            for link in d.get("data", []):
+                m = INVITE.search(link.get("url", "") or "")
+                if m:
+                    code = m.group(1)
+                    break
+        except Exception as e:
+            log(f"social links failed for {gid}: {e}")
+            continue
+        social[gid] = {"checked": today, "invite": code}
+        time.sleep(0.5)
+
+    for gid in ids:
+        code = (social.get(gid) or {}).get("invite")
+        if not code:
+            continue
+        try:
+            d = get_json(f"https://discord.com/api/v10/invites/{code}?with_counts=true")
+            n = d.get("approximate_member_count")
+            if n:
+                dc.setdefault(gid, {})[today] = n
+        except urllib.error.HTTPError as e:
+            if e.code == 404:  # invite expired: look for a new one next time
+                social[gid]["invite"] = None
+                social[gid]["checked"] = "2000-01-01"
+            elif e.code == 429:
+                log("Discord rate limit hit; stopping member lookups this run")
+                break
+            else:
+                log(f"discord invite {code} failed: {e}")
+        except Exception as e:
+            log(f"discord invite {code} failed: {e}")
+        time.sleep(1.2)
+
+    keep = (t - timedelta(days=C.KEEP_DAYS)).strftime("%Y-%m-%d")
+    for gid in list(dc):
+        dc[gid] = {d: v for d, v in dc[gid].items() if d >= keep}
+        if not dc[gid]:
+            del dc[gid]
+
+
+def discord_growth(state, gid, today):
+    """(members now, % growth vs ~2 days earlier) or (members, None)."""
+    days = src_state(state)["dc"].get(gid) or {}
+    if not days:
+        return None, None
+    latest = max(days)
+    now = days[latest]
+    ref = datetime.strptime(latest, "%Y-%m-%d") - timedelta(days=2)
+    older = [d for d in days if datetime.strptime(d, "%Y-%m-%d") <= ref]
+    if not older:
+        return now, None
+    prev = days[max(older)]
+    return now, ((now / prev - 1) * 100 if prev else None)
+
+
+def fav_growth(state, gid):
+    days = (src_state(state)["rbx"].get(gid) or {}).get("fav_days") or {}
+    ds = sorted(days)
+    if len(ds) < 3:
+        return None
+    a, b = days[ds[-3]], days[ds[-1]]
+    return (b / a - 1) * 100 if a else None
+
+
+# ------------------------------------------------------------------- heat ---
+
+def heat(state, gid, today, cutoff, yts):
+    """Combine every source into one 0-100 score. Returns dict or None."""
+    growth = HOOKS["growth"]
+    r = state["games"].get(gid)
+    parts, signals = {}, []
+    score = 0.0
+
+    # Players (RoWatcher): today's high vs same kind of day last week
+    ratio = None
+    if r:
+        ratio, _ = growth(r, today, cutoff, state.get("baseline_day"))
+        if not ratio:
+            yday = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+            ratio, _ = growth(r, yday, cutoff, state.get("baseline_day"))
+    if ratio:
+        parts["players"] = ratio
+        score += max(0, min(40, 25 * math.log2(ratio)))
+        if ratio >= 1.5:
+            signals.append("players")
+
+    # YouTube: videos in the last 48h and their views
+    y = yts.get(gid)
+    if y:
+        parts["yt"] = y
+        score += min(20, 5 * y["n"]) + max(0, min(15, 5 * math.log10(max(y["views"], 1) / 10000)))
+        if y["n"] >= C.YT_SIGNAL_MIN_VIDEOS or y["views"] >= C.YT_SIGNAL_MIN_VIEWS:
+            signals.append("youtube")
+
+    # Discord: community growth over ~2 days
+    members, pct = discord_growth(state, gid, today)
+    if members:
+        parts["discord"] = (members, pct)
+        if pct is not None:
+            score += max(0, min(20, pct * 2))
+            if pct >= C.DISCORD_SIGNAL_PCT and members >= 500:
+                signals.append("discord")
+
+    # Favourites growth (Roblox) - a small bonus
+    fg = fav_growth(state, gid)
+    if fg is not None:
+        parts["fav"] = fg
+        score += max(0, min(10, fg))
+
+    # Quality: like ratio
+    lr = like_ratio(state, gid)
+    if lr is not None:
+        parts["likes"] = lr
+        score += 5 if lr >= 0.9 else (-10 if lr < 0.7 else 0)
+
+    if not parts:
+        return None
+    return {"score": max(0, min(100, round(score))), "signals": signals, "parts": parts}
+
+
+def heat_line(state, gid, h, name=None):
+    fmt = HOOKS["fmt"]
+    p = h["parts"]
+    bits = [f"**heat {h['score']}**"]
+    if "players" in p:
+        bits.append(f"players {p['players']:.1f}×")
+    if "yt" in p:
+        bits.append(f"YouTube {p['yt']['n']} vid{'s' if p['yt']['n'] != 1 else ''} / {fmt(p['yt']['views'])} views")
+    if "discord" in p:
+        m, pct = p["discord"]
+        bits.append(f"Discord {fmt(m)}" + (f" ({pct:+.0f}%)" if pct is not None else ""))
+    if "likes" in p:
+        bits.append(f"👍 {p['likes']*100:.0f}%")
+    name = name or game_name(state, gid)
+    link = roblox_link(state, gid) or f"<https://rowatcher.com/games/{gid}>"
+    return f"{name[:40]} — " + " · ".join(bits) + f" {link}"
+
+
+def game_name(state, gid):
+    r = state["games"].get(gid) or src_state(state)["rbx"].get(gid) or {}
+    return r.get("name") or C.WATCHLIST.get(gid) or gid
+
+
+def players_now(state, gid):
+    r = state["games"].get(gid)
+    if r and r.get("last_seen"):
+        return r.get("last", 0)
+    return (src_state(state)["rbx"].get(gid) or {}).get("playing", 0)
+
+
+# ---------------------------------------------------------------- driver ---
+
+def collect_all(state, t, env):
+    """Run each collector that is due. Never raises."""
+    src = src_state(state)
+    yt_key = env.get("YOUTUBE_API_KEY")
+    jobs = [
+        ("youtube", C.YT_EVERY_MIN, (lambda: collect_youtube(state, t, yt_key)) if yt_key else None),
+        ("roblox", C.ROBLOX_EVERY_MIN, lambda: collect_roblox(state, t)),
+        ("discord", C.DISCORD_EVERY_MIN, lambda: collect_discord(state, t)),
+    ]
+    ran = []
+    for name, every, fn in jobs:
+        if fn is None or not due(src, name, t, every):
+            continue
+        try:
+            fn()
+            ran.append(name)
+        except Exception as e:
+            log(f"{name} collector failed: {e}")
+        mark(src, name, t)
+    return ran
+
+
+def check_sources(env):
+    """Tiny live test of every source. Returns a list of result lines."""
+    out = []
+    try:
+        d = get_json("https://games.roblox.com/v1/games?universeIds=10155360168")
+        g = d["data"][0]
+        out.append(f"✅ Roblox games data — {g['name']}: {g['playing']:,} playing, {g.get('favoritedCount', 0):,} favourites")
+    except Exception as e:
+        out.append(f"❌ Roblox games data — {e}")
+    try:
+        d = get_json("https://games.roblox.com/v1/games/votes?universeIds=10155360168")
+        g = d["data"][0]
+        out.append(f"✅ Roblox likes — 👍 {g['upVotes']:,} / 👎 {g['downVotes']:,}")
+    except Exception as e:
+        out.append(f"❌ Roblox likes — {e}")
+    code = None
+    try:
+        d = get_json("https://games.roblox.com/v1/games/10155360168/social-links/list")
+        for link in d.get("data", []):
+            m = INVITE.search(link.get("url", "") or "")
+            if m:
+                code = m.group(1)
+        out.append(f"✅ Roblox social links — Discord invite {'found' if code else 'not listed for this game'}")
+    except Exception as e:
+        out.append(f"❌ Roblox social links — {e}")
+    try:
+        d = get_json(f"https://discord.com/api/v10/invites/{code or 'roblox'}?with_counts=true")
+        out.append(f"✅ Discord member counts — {d.get('approximate_member_count', 0):,} members")
+    except Exception as e:
+        out.append(f"❌ Discord member counts — {e}")
+    try:
+        d = get_json("https://apis.roblox.com/universes/v1/places/4924922222/universe")
+        out.append(f"✅ Roblox place → game lookup — {d.get('universeId')}")
+    except Exception as e:
+        out.append(f"❌ Roblox place → game lookup — {e}")
+    key = env.get("YOUTUBE_API_KEY")
+    if not key:
+        out.append("⚪ YouTube — no YOUTUBE_API_KEY secret yet (see SETUP.md)")
+    else:
+        try:
+            d = get_json("https://www.googleapis.com/youtube/v3/search?" + urllib.parse.urlencode(
+                {"part": "snippet", "type": "video", "q": "roblox", "maxResults": 1, "key": key}))
+            title = d["items"][0]["snippet"]["title"] if d.get("items") else "(no results)"
+            out.append(f"✅ YouTube — e.g. \"{title[:60]}\"")
+        except urllib.error.HTTPError as e:
+            out.append(f"❌ YouTube — HTTP {e.code}: {e.read()[:150].decode(errors='ignore')}")
+        except Exception as e:
+            out.append(f"❌ YouTube — {e}")
+    return out
