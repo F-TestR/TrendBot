@@ -5,13 +5,17 @@ The bot checks RoWatcher every 20 minutes and posts to your Discord:
 - **#alerts** (instant): a new game entering the top 1,000, a young game surging 3×+ against last week, or 3+ copies of something appearing in a week.
 - **#daily-digest** (once a day, about 08:00 UK): top risers, new games, title words shared by new games, and your watchlist up or down.
 
-It also reads **YouTube**, **Roblox's own public game data** (likes, favourites, update dates) and **community size** (each game's Roblox group members, plus any Discord servers you list), and combines them into one **heat score** per game:
+It also reads **YouTube**, **Twitch**, **Roblox's own public game data** (likes, favourites, update dates) and **community size** (each game's Roblox group members, plus any Discord servers you list), and combines them into one **heat score** per game:
 
 - 🔥 **Heating up** alert: a young game rising on 2+ platforms at once (e.g. players, YouTube and community growth).
 - 👀 **Early warning** alert: a game getting lots of YouTube videos while it still has under 5K players.
-- The digest gains a heat table, the most-watched games on Roblox YouTube, and words rising in Roblox video titles.
+- 💥 **Breakout** alert: a young game crossing 10K players (it's then followed for its whole lifecycle).
+- 🛠️ **Update** alert: a watchlist game publishes an update; the digest then reports what it did to players after 1, 3 and 7 days.
+- Alerts arrive as **cards** with the game's icon and a one-click link, and can **@mention you** on the biggest signals.
+- The **daily digest** gains a heat table, YouTube and Twitch sections, update results, **charts** of player curves and a **dashboard.html** file you open in your browser (sortable tables of every tracked game).
+- Every **Sunday** a **weekly opportunity report** groups games by mechanic (tycoon, anomaly, find-the, battles…) and labels each one 🟢 open gap / 🟡 crowding / 🔴 saturating, plus breakouts and how long trends last.
 
-Roblox data needs no key. YouTube needs one free key (Step 3). Discord tracking is optional (see Tuning).
+Roblox data needs no key. YouTube needs one free key (Step 3). Twitch (Step 5), @mentions (Step 6) and Discord tracking (see Tuning) are optional.
 
 It uses no AI, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day; the bot uses about 720 and stops itself at 950).
 
@@ -28,7 +32,7 @@ It uses no AI, so it costs no tokens. It stays inside RoWatcher's free API allow
 1. Create a free account at <https://github.com> if you don't have one.
 2. Click **New repository** → name it `trend-bot`.
    - **Public** = no limit on how often it runs (your keys stay secret either way).
-   - **Private** = fine too, but edit `.github/workflows/trendbot.yml` and change `*/20` to `*/30` so it stays within GitHub's free monthly minutes.
+   - **Private** = fine too, but edit `.github/workflows/trendbot.yml` and change `"7,27,47 * * * *"` to `"7,37 * * * *"` (every 30 min) so it stays within GitHub's free monthly minutes.
 3. Upload every file from this folder, **including the `.github` folder**. (On the repo page: **Add file → Upload files**, then drag the folder contents in. If the `.github` folder doesn't upload by dragging, create the file manually: **Add file → Create new file**, name it `.github/workflows/trendbot.yml`, and paste its contents.)
 4. Add your three secrets: repo **Settings → Secrets and variables → Actions → New repository secret**:
 
@@ -56,8 +60,31 @@ No card is needed. The bot uses about half of YouTube's free daily allowance and
 
 ## Step 4 — Check every source works
 
-**Actions → Roblox trend bot → Run workflow** → tick **"Test YouTube / Roblox / Discord access"** → **Run**.
+**Actions → Roblox trend bot → Run workflow** → tick **"Test YouTube / Roblox / Twitch / Discord access"** → **Run**.
 Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows ❌, screenshot it and send it over.
+
+## Step 5 — Add Twitch (optional, free, about 5 minutes)
+
+1. Twitch needs two-factor login switched on first: <https://www.twitch.tv/settings/security> → **Two-Factor Authentication**.
+2. Go to <https://dev.twitch.tv/console/apps> → **Register Your Application**.
+   - Name: anything unique, e.g. `trend-bot-yourname`
+   - OAuth Redirect URLs: `http://localhost`
+   - Category: **Analytics Tool** · Client Type: **Confidential**
+3. Click **Create**, then **Manage** on your new app. Copy the **Client ID**, then click **New Secret** and copy that too.
+4. Add two GitHub secrets: `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`.
+5. Run the source check again (Step 4): Twitch should show ✅.
+
+## Step 6 — Get @mentioned on big signals (optional)
+
+1. Discord → **User Settings → Advanced** → turn on **Developer Mode**.
+2. Right-click your own name (in any member list or message) → **Copy User ID**.
+3. In GitHub, open `config.py` → ✏️ → set `PING_USER_ID = "your number here"` → **Commit changes**.
+
+You'll be pinged only for: heat 80+ on 3+ platforms, a 5×+ surge, 1M+ YouTube views on a small game, or a copy wave of 5+ games. Change these in `config.py` (`PING_*`).
+
+## The dashboard
+
+Each daily digest has a **dashboard.html** attached. Click it in Discord → download → open it in your browser. Tabs: 🔥 hot young games (heat, 14-day curve, YouTube, Twitch, community, likes), ★ watchlist, 🧭 mechanics, 💥 breakouts and 🛠️ updates. Click any column to sort; type in the box to filter.
 
 ## Alternative — run it on your PC instead of GitHub
 
@@ -65,7 +92,8 @@ Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows �
 2. Copy `.env.example` to `.env` in the same folder and paste in your values (YouTube is optional).
 3. Open a terminal in the folder and run:
    - `python bot.py --test-webhooks` — posts a hello to both channels.
-   - `python bot.py --check-sources` — tests YouTube / Roblox / Discord access.
+   - `python bot.py --check-sources` — tests YouTube / Roblox / Twitch / Discord access.
+   - `python bot.py --digest-now` / `--weekly-now` — post the digest or weekly report straight away.
    - `python bot.py --loop 20` — runs every 20 minutes while the window stays open.
 
 ## What to expect
@@ -73,10 +101,12 @@ Your #alerts channel gets a ✅ / ❌ line for each source. If anything shows �
 - **Day 1:** the bot builds its memory. New-game alerts start after the first run; the digest starts the next morning.
 - **Day 1–2:** YouTube and Roblox data start straight away; group/Discord growth needs 2 days of counts; "rising title words" needs 2 days to compare.
 - **After about a week:** weekday-vs-last-week comparisons kick in properly, so surge alerts, the risers list and the players part of the heat score become reliable.
+- **After two weeks:** the weekly report can compare mechanics week over week, so the 🟢 / 🟡 / 🔴 labels switch on.
+- **Over the following months:** breakouts and update results pile up (kept for 6 months), so "how long trends last" and "what updates do" get more trustworthy.
 
 ## Tuning
 
-Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`).
+Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`), the **mechanic groups** (`MECHANICS` — add your own words or groups), the weekly report day, and on/off switches for cards, charts and the dashboard (`RICH_CARDS`, `DIGEST_CHARTS`, `DASHBOARD`).
 
 **Tracking a game's Discord server (optional):** Roblox hides games' Discord links from bots, so add the ones you care about to `DISCORD_INVITES` in `config.py`, e.g. `"10767380385": "https://discord.gg/abc123",` (game's universe ID, then its invite link). Find the invite on the game's Roblox page or in YouTube video descriptions. Use an invite that never expires.
 

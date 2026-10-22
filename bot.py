@@ -7,7 +7,8 @@ remembers each game's daily high, and posts to Discord when something looks
 like a trend starting. Once a day it posts a digest.
 
 It also reads YouTube, Roblox's own public game data and Discord server sizes
-(see sources.py) and combines everything into a single "heat" score per game.
+and Twitch (see sources.py) and combines everything into a single "heat" score
+per game. insights.py turns the history into a weekly opportunity report.
 
 No AI involved, so it costs no tokens. Uses only the Python standard library.
 
@@ -17,7 +18,8 @@ Usage:
   python bot.py --dry-run       # print messages instead of posting them
   python bot.py --test-webhooks # post a hello message to both channels
   python bot.py --digest-now    # force today's digest
-  python bot.py --check-sources # test YouTube / Roblox / Discord access and post the result
+  python bot.py --check-sources # test YouTube / Roblox / Twitch / Discord access and post the result
+  python bot.py --weekly-now    # post the weekly opportunity report now
 """
 import argparse
 import json
@@ -30,7 +32,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+import charts
 import config as C
+import dashboard as DB
+import discord_out as DO
+import insights as I
 import sources as S
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -146,43 +152,8 @@ def normalise_game(g):
 
 # ---------------------------------------------------------------- discord ---
 
-def post_discord(url, text, dry_run=False, label=""):
-    chunks, cur = [], ""
-    for line in text.split("\n"):
-        if len(cur) + len(line) + 1 > 1900:
-            chunks.append(cur)
-            cur = ""
-        cur += line + "\n"
-    if cur.strip():
-        chunks.append(cur)
-    for chunk in chunks:
-        if dry_run or not url:
-            print(f"----- [{label or 'discord'}] -----\n{chunk}")
-            continue
-        body = json.dumps({"content": chunk, "allowed_mentions": {"parse": []}}).encode()
-        for attempt in range(3):
-            req = urllib.request.Request(url, data=body, headers={
-                "Content-Type": "application/json", "User-Agent": "roblox-trend-bot/1.0"})
-            try:
-                urllib.request.urlopen(req, timeout=20).read()
-                break
-            except urllib.error.HTTPError as e:
-                if e.code == 429:
-                    wait = 2.0
-                    try:
-                        wait = float(json.loads(e.read().decode()).get("retry_after", 2))
-                    except Exception:
-                        pass
-                    time.sleep(min(wait, 10))
-                    continue
-                print(f"Discord error {e.code}: {e.read()[:200]}", file=sys.stderr)
-                break
-            except (urllib.error.URLError, OSError) as e:
-                print(f"Couldn't reach Discord ({e}); will try again next run.", file=sys.stderr)
-                if attempt == 2:
-                    break
-                time.sleep(2)
-        time.sleep(0.5)
+def post_discord(url, text, dry_run=False, label="", files=None):
+    DO.post_text(url, text, dry_run, label, files)
 
 
 def link(gid, state=None):
@@ -265,7 +236,7 @@ def cooled(state, key, today, days=C.ALERT_COOLDOWN_DAYS):
 
 # -------------------------------------------------------------------- run ---
 
-def run_once(dry_run=False, force_digest=False):
+def run_once(dry_run=False, force_digest=False, force_weekly=False):
     load_dotenv()
     api_key = os.environ.get("ROWATCHER_API_KEY")
     alerts_url = os.environ.get("DISCORD_ALERTS_WEBHOOK")
@@ -335,15 +306,23 @@ def run_once(dry_run=False, force_digest=False):
         rec["detail_checked"] = True
         lookups += 1
 
-    alerts = []
+    alerts = []  # each: {kind, gid, title, desc, url, fields, ping, text}
+
+    def add(kind, gid, title, desc, fields=(), ping=False, extra_text=""):
+        url = link(gid, state).strip("<>") if gid else None
+        alerts.append({"kind": kind, "gid": gid, "title": title, "desc": desc, "url": url,
+                       "fields": list(fields), "ping": ping,
+                       "text": f"**{title}** — {desc}{extra_text}" + (f" {link(gid, state)}" if gid else "")})
 
     # 3a. Brand-new games entering the top list
     for gid in new_ids:
         rec = games[gid]
         if rec["last"] >= C.MIN_PLAYERS_NEW_ENTRY and is_young(rec, today) and cooled(state, "new:" + gid, today, 9999):
             a = age_days(rec, today)
-            age = f"{a} days old" if a is not None else "age unknown"
-            alerts.append(f"🆕 **New in the top {len(top)}:** {rec['name']} — {fmt(rec['last'])} playing ({age}) {link(gid, state)}")
+            add("new", gid, f"🆕 New in the top {len(top)}: {rec['name'][:80]}",
+                f"{fmt(rec['last'])} playing right now.",
+                [("Players", fmt(rec["last"])), ("Age", f"{a} days" if a is not None else "unknown"),
+                 ("Type", ", ".join(I.mechanics_of(rec["name"])) or "—")])
             state["alerts"]["new:" + gid] = today
 
     # 3b. Weekday-to-weekday surges in young games
@@ -354,8 +333,11 @@ def run_once(dry_run=False, force_digest=False):
         high = rec["days"].get(today, 0)
         if ratio and ratio >= C.SURGE_MULTIPLIER and high >= C.SURGE_MIN_PLAYERS and cooled(state, "surge:" + gid, today):
             kind = "weekend" if is_weekend(today) else "weekday"
-            alerts.append(f"🚀 **Surging:** {rec['name']} — today's high {fmt(high)} vs {fmt(base)} on {kind}s last week "
-                          f"(**{ratio:.1f}×**) {link(gid, state)}")
+            a = age_days(rec, today)
+            add("surge", gid, f"🚀 Surging: {rec['name'][:80]}",
+                f"Today's high **{fmt(high)}** vs {fmt(base)} on {kind}s last week (**{ratio:.1f}×**).",
+                [("Today's high", fmt(high)), ("Growth", f"{ratio:.1f}×"), ("Age", f"{a} days" if a is not None else "unknown")],
+                ping=ratio >= C.PING_SURGE_MULTIPLIER)
             state["alerts"]["surge:" + gid] = today
 
     # 3c. Copy waves: 3+ games new to the list in 7 days sharing a title word
@@ -373,11 +355,16 @@ def run_once(dry_run=False, force_digest=False):
             continue  # same games as another keyword (e.g. "eat" + "everything")
         seen_sets.add(ids)
         if len(items) >= C.COPY_WAVE_MIN_GAMES and cooled(state, "copy:" + kw, today, 7):
-            names = ", ".join(f"{r['name'][:30]} ({fmt(r['last'])})" for _, r in sorted(items, key=lambda x: -x[1]["last"])[:5])
-            alerts.append(f"🧬 **Copy wave forming — \"{kw}\":** {len(items)} new games this week: {names}")
+            ranked = sorted(items, key=lambda x: -x[1]["last"])
+            names = "\n".join(f"• {r['name'][:45]} — {fmt(r['last'])}" for _, r in ranked[:6])
+            lead = ranked[0][0]
+            add("copy", lead, f"🧬 Copy wave forming: \"{kw}\"",
+                f"{len(items)} new games this week share this word:\n{names}",
+                ping=len(items) >= C.PING_COPY_WAVE_GAMES)
+            alerts[-1]["url"] = None
             state["alerts"]["copy:" + kw] = today
 
-    # 3d. Extra sources (YouTube / Roblox / Discord) and cross-platform heat
+    # 3d. Extra sources (YouTube / Roblox / Twitch / community) and cross-platform heat
     ran = S.collect_all(state, t, os.environ)
     if ran:
         print("sources checked: " + ", ".join(ran))
@@ -389,8 +376,11 @@ def run_once(dry_run=False, force_digest=False):
         h = S.heat(state, gid, today, cutoff, yts)
         if (h and len(h["signals"]) >= 2 and h["score"] >= C.HEAT_ALERT_SCORE
                 and cooled(state, "heat:" + gid, today)):
-            alerts.append(f"🔥 **Heating up on {len(h['signals'])} platforms ({', '.join(h['signals'])}):** "
-                          + S.heat_line(state, gid, h))
+            add("heat", gid, f"🔥 Heating up on {len(h['signals'])} platforms: {S.game_name(state, gid)[:70]}",
+                f"Rising on **{', '.join(h['signals'])}** · heat score **{h['score']}**/100",
+                heat_fields(state, gid, h),
+                ping=h["score"] >= C.PING_HEAT_SCORE and len(h["signals"]) >= 3,
+                extra_text=" · " + S.heat_line(state, gid, h).split(" — ", 1)[-1].rsplit(" <", 1)[0])
             state["alerts"]["heat:" + gid] = today
     for gid, y in yts.items():
         name = S.game_name(state, gid)
@@ -399,19 +389,51 @@ def run_once(dry_run=False, force_digest=False):
             continue
         if (y["n"] >= C.EARLY_WARNING_VIDEOS or y["views"] >= C.EARLY_WARNING_VIEWS) and cooled(state, "early:" + gid, today, 7):
             views, title, vid = y["top"]
-            alerts.append(f"👀 **Early warning — hot on YouTube, still small on Roblox:** {name[:40]} — "
-                          f"{y['n']} video{'s' if y['n'] != 1 else ''} / {fmt(y['views'])} views in 48h, "
-                          f"only {fmt(players)} playing {link(gid, state)}\n   ↳ top video: \"{title[:70]}\" <https://youtu.be/{vid}>")
+            add("early", gid, f"👀 Early warning: {name[:80]}",
+                f"Hot on YouTube while still small on Roblox.\nTop video: [{title[:80]}](https://youtu.be/{vid}) ({fmt(views)} views)",
+                [("Playing now", fmt(players)), ("YouTube 48h", f"{y['n']} videos"), ("Views 48h", fmt(y["views"]))],
+                ping=y["views"] >= C.PING_EARLY_VIEWS,
+                extra_text=f" · top video <https://youtu.be/{vid}>")
             state["alerts"]["early:" + gid] = today
+
+    # 3e. Insights: updates and breakouts
+    for ev in I.track_updates(state, today):
+        if ev["gid"] in C.WATCHLIST:
+            add("update", ev["gid"], f"🛠️ Watchlist game updated: {ev['name']}",
+                f"Published an update on {ev['date']}. Players before: "
+                f"{fmt(ev['before']) if ev.get('before') else 'unknown'}. Results show in the digest after 1, 3 and 7 days.")
+    already = {a["gid"] for a in alerts}
+    for gid in I.track_lifecycle(state, today):
+        if gid in already:
+            continue
+        r = I.ins_state(state)["life"][gid]
+        add("breakout", gid, f"💥 Breakout: {r['name']}",
+            f"A young game just crossed **{fmt(C.BREAKOUT_PLAYERS)}** players. Now logged in lifecycle tracking.",
+            [("Players", fmt(r["peak"])), ("Age", f"{r['age']} days" if r.get("age") is not None else "unknown"),
+             ("Type", ", ".join(r["mech"]) or "—")])
 
     if alerts:
         header = f"**Trend alert** · {t.strftime('%a %d %b %H:%M')} UTC"
-        post_discord(alerts_url, header + "\n" + "\n".join(alerts), dry_run, "alerts")
+        icons = S.game_icons([a["gid"] for a in alerts if a.get("gid")]) if (C.RICH_CARDS and not dry_run) else {}
+        DO.post_alerts(alerts_url, alerts, header, icons, dry_run)
 
-    # 4. Daily digest
+    # 4. Daily digest (+ charts and dashboard), weekly report on the chosen day
     if force_digest or (state.get("last_digest") != today and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
-        post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest")
+        files = digest_files(state, today, cutoff)
+        post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
         state["last_digest"] = today
+    if force_weekly or (state.get("last_weekly") != today and t.weekday() == C.WEEKLY_REPORT_WEEKDAY
+                        and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
+        text, table = I.weekly_report(state, today)
+        files = []
+        rows = [r for r in table if r["chg"] is not None]
+        if C.DIGEST_CHARTS and rows:
+            png = charts.bar_chart([r["mech"] for r in rows], [r["chg"] for r in rows],
+                                   "Demand change by mechanic (this week vs last)")
+            if png:
+                files.append(("mechanics.png", png, "image/png"))
+        post_discord(digest_url, text, dry_run, "weekly", files)
+        state["last_weekly"] = today
 
     # 5. Tidy up
     keep_from = parse_day(today) - timedelta(days=C.KEEP_DAYS)
@@ -426,6 +448,57 @@ def run_once(dry_run=False, force_digest=False):
     save_state(state)
     print(f"{today}: {len(top)} games, {len(new_ids)} new, {len(alerts)} alerts, "
           f"{state['requests'].get(today, 0)} API requests today")
+
+
+def heat_fields(state, gid, h):
+    p = h["parts"]
+    f = [("Playing", fmt(S.players_now(state, gid)))]
+    if "players" in p:
+        f.append(("Players vs last week", f"{p['players']:.1f}×"))
+    if "yt" in p:
+        f.append(("YouTube 48h", f"{p['yt']['n']} videos · {fmt(p['yt']['views'])} views"))
+    if "twitch" in p:
+        tv, tr, ts = p["twitch"]
+        f.append(("Twitch", f"{fmt(tv)} viewers" + (f" ({tr:.1f}×)" if tr else "")))
+    for key, label in (("group", "Roblox group"), ("discord", "Discord")):
+        if key in p:
+            m, pct = p[key]
+            f.append((label, fmt(m) + (f" ({pct:+.0f}%)" if pct is not None else "")))
+    if "likes" in p:
+        f.append(("Likes", f"{p['likes']*100:.0f}%"))
+    return f
+
+
+def digest_files(state, today, cutoff):
+    files = []
+    games = state["games"]
+    yday = day_str(parse_day(today) - timedelta(days=1))
+    if C.DIGEST_CHARTS:
+        try:
+            risers = []
+            for gid, r in games.items():
+                if is_young(r, today):
+                    ratio, _ = growth(r, yday, cutoff, state.get("baseline_day"))
+                    if ratio and ratio >= 1.5 and r["days"].get(yday, 0) >= 1000:
+                        risers.append((ratio * min(r["days"][yday], 50000), r))
+            risers.sort(key=lambda x: -x[0])
+            if risers:
+                png = charts.line_chart([(r["name"], r["days"]) for _, r in risers[:6]], "Top risers — daily peak players")
+                if png:
+                    files.append(("risers.png", png, "image/png"))
+            watch = [(label, games[gid]["days"]) for gid, label in C.WATCHLIST.items() if gid in games]
+            if watch:
+                png = charts.line_chart(watch, "Watchlist — daily peak players")
+                if png:
+                    files.append(("watchlist.png", png, "image/png"))
+        except Exception as e:
+            print(f"charts failed: {e}", file=sys.stderr)
+    if C.DASHBOARD:
+        try:
+            files.append(("dashboard.html", DB.build(state, today, cutoff).encode("utf-8"), "text/html"))
+        except Exception as e:
+            print(f"dashboard failed: {e}", file=sys.stderr)
+    return files
 
 
 def build_digest(state, today, cutoff, t=None):
@@ -523,6 +596,18 @@ def build_digest(state, today, cutoff, t=None):
     else:
         lines += ["", "📺 _YouTube not connected yet — add a YOUTUBE_API_KEY secret (see SETUP.md)._"]
 
+    # Twitch
+    tw = S.top_twitch(state, yday) or S.top_twitch(state, today)
+    if tw:
+        lines += ["", "🎮 **Most-streamed Roblox games on Twitch (peak viewers)**"]
+        for v, n, gid in tw:
+            lines.append(f"• {S.game_name(state, gid)[:40]} — {fmt(v)} viewers across {n} stream{'s' if n != 1 else ''}")
+
+    # Updates and their effect
+    ul = I.update_lines(state, today)
+    if ul:
+        lines += ["", "🛠️ **Recent updates and what they did to players**"] + ul
+
     # Watchlist
     lines += ["", "👀 **Watchlist** (yesterday's high vs same day last week)"]
     drops = []
@@ -545,6 +630,8 @@ def build_digest(state, today, cutoff, t=None):
         lines += ["", "⚠️ **Falling week over week:** " + ", ".join(drops)]
 
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
+    lines += ["", "📎 _Charts and **dashboard.html** attached — open the dashboard in your browser for sortable tables._"
+              if (C.DASHBOARD or C.DIGEST_CHARTS) else ""]
     lines += ["", f"_RoWatcher requests yesterday: {state['requests'].get(yday, 0)} / 1,000"
                   + (f" · YouTube quota: {yt_units:,} / 10,000_" if yt_units else "_")]
     return "\n".join(lines)
@@ -571,6 +658,7 @@ def main():
     ap.add_argument("--digest-now", action="store_true")
     ap.add_argument("--test-webhooks", action="store_true")
     ap.add_argument("--check-sources", action="store_true")
+    ap.add_argument("--weekly-now", action="store_true")
     a = ap.parse_args()
 
     if a.check_sources:
@@ -588,15 +676,17 @@ def main():
     if a.loop:
         while True:
             try:
-                run_once(a.dry_run, a.digest_now)
+                run_once(a.dry_run, a.digest_now, a.weekly_now)
             except Exception as e:
                 print(f"run failed: {e}", file=sys.stderr)
             time.sleep(a.loop * 60)
     else:
-        run_once(a.dry_run, a.digest_now)
+        run_once(a.dry_run, a.digest_now, a.weekly_now)
 
 
 S.HOOKS.update(is_young=is_young, growth=growth, fmt=fmt)
+I.HOOKS.update(is_young=is_young, age_days=age_days, fmt=fmt, link=lambda gid, state: link(gid, state))
+DB.HOOKS.update(is_young=is_young, age_days=age_days, fmt=fmt, growth=growth)
 
 if __name__ == "__main__":
     main()

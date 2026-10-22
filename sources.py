@@ -37,7 +37,7 @@ def get_json(url, timeout=20):
 
 def src_state(state):
     s = state.setdefault("src", {})
-    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc", "grp"):
+    for k in ("last", "yt_units", "videos", "place_map", "rbx", "social", "dc", "grp", "tw", "tw_total"):
         s.setdefault(k, {})
     return s
 
@@ -242,6 +242,83 @@ def rising_title_words(state, t):
     return keep[:8], have_prev
 
 
+# ----------------------------------------------------------------- twitch ---
+
+def twitch_token(cid, secret):
+    body = urllib.parse.urlencode({"client_id": cid, "client_secret": secret,
+                                   "grant_type": "client_credentials"}).encode()
+    req = urllib.request.Request("https://id.twitch.tv/oauth2/token", data=body, headers=UA)
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode())["access_token"]
+
+
+def twitch_get(path, cid, token, params):
+    url = "https://api.twitch.tv/helix/" + path + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers=dict(UA, **{"Client-Id": cid, "Authorization": f"Bearer {token}"}))
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.loads(r.read().decode())
+
+
+def collect_twitch(state, t, cid, secret):
+    src = src_state(state)
+    today = t.strftime("%Y-%m-%d")
+    token = twitch_token(cid, secret)
+    gid_tw = src.get("tw_game_id")
+    if not gid_tw:
+        d = twitch_get("games", cid, token, {"name": "Roblox"})
+        gid_tw = src["tw_game_id"] = d["data"][0]["id"]
+    idx = name_index(state)
+    per_game, total, streams, cursor = {}, 0, 0, None
+    for _ in range(C.TWITCH_PAGES):
+        params = {"game_id": gid_tw, "first": 100}
+        if cursor:
+            params["after"] = cursor
+        d = twitch_get("streams", cid, token, params)
+        for st in d.get("data", []):
+            v = st.get("viewer_count", 0)
+            total += v
+            streams += 1
+            for u in match_title(st.get("title", ""), idx):
+                g = per_game.setdefault(u, {"v": 0, "s": 0})
+                g["v"] += v
+                g["s"] += 1
+        cursor = (d.get("pagination") or {}).get("cursor")
+        if not cursor:
+            break
+    tw = src["tw"]
+    for u, g in per_game.items():
+        day = tw.setdefault(u, {}).setdefault(today, {"v": 0, "s": 0})
+        day["v"], day["s"] = max(day["v"], g["v"]), max(day["s"], g["s"])
+    src["tw_total"][today] = max(src["tw_total"].get(today, 0), total)
+    keep = (t - timedelta(days=C.KEEP_DAYS)).strftime("%Y-%m-%d")
+    for u in list(tw):
+        tw[u] = {d: v for d, v in tw[u].items() if d >= keep}
+        if not tw[u]:
+            del tw[u]
+    src["tw_total"] = {d: v for d, v in src["tw_total"].items() if d >= keep}
+
+
+def twitch_stats(state, gid):
+    """(peak viewers today/latest day, growth ratio vs ~2 days before or None, streams)"""
+    days = src_state(state)["tw"].get(gid) or {}
+    if not days:
+        return None, None, 0
+    latest = max(days)
+    now = days[latest]
+    ref = (datetime.strptime(latest, "%Y-%m-%d") - timedelta(days=2)).strftime("%Y-%m-%d")
+    older = [d for d in days if d <= ref]
+    ratio = None
+    if older and days[max(older)]["v"]:
+        ratio = now["v"] / days[max(older)]["v"]
+    return now["v"], ratio, now["s"]
+
+
+def top_twitch(state, today, n=5):
+    tw = src_state(state)["tw"]
+    rows = [(d[today]["v"], d[today]["s"], g) for g, d in tw.items() if today in d]
+    return sorted(rows, reverse=True)[:n]
+
+
 # ----------------------------------------------------------------- roblox ---
 
 def candidate_games(state, today, limit):
@@ -307,6 +384,20 @@ def like_ratio(state, gid):
     if up + down < 100:
         return None
     return up / (up + down)
+
+
+def game_icons(gids):
+    """universe id -> icon image URL (public thumbnails API, one call)."""
+    ids = [g for g in dict.fromkeys(gids) if g and str(g).isdigit()][:100]
+    if not ids:
+        return {}
+    try:
+        d = get_json("https://thumbnails.roblox.com/v1/games/icons?" + urllib.parse.urlencode(
+            {"universeIds": ",".join(ids), "size": "150x150", "format": "Png", "isCircular": "false"}))
+        return {str(x["targetId"]): x["imageUrl"] for x in d.get("data", []) if x.get("imageUrl")}
+    except Exception as e:
+        log(f"icon lookup failed: {e}")
+        return {}
 
 
 def roblox_link(state, gid):
@@ -454,6 +545,14 @@ def heat(state, gid, today, cutoff, yts):
         if best[1] >= C.COMMUNITY_SIGNAL_PCT and best[0] >= 500:
             signals.append("community")
 
+    # Twitch: viewers on streams featuring the game
+    tv, tratio, ts = twitch_stats(state, gid)
+    if tv:
+        parts["twitch"] = (tv, tratio, ts)
+        score += max(0, min(10, 4 * math.log10(max(tv, 1) / 10)))
+        if tv >= C.TWITCH_SIGNAL_VIEWERS and tratio is not None and tratio >= C.TWITCH_SIGNAL_GROWTH:
+            signals.append("twitch")
+
     # Favourites growth (Roblox) - a small bonus
     fg = fav_growth(state, gid)
     if fg is not None:
@@ -483,6 +582,9 @@ def heat_line(state, gid, h, name=None):
         if key in p:
             m, pct = p[key]
             bits.append(f"{label} {fmt(m)}" + (f" ({pct:+.0f}%)" if pct is not None else ""))
+    if "twitch" in p:
+        tv, tr, ts = p["twitch"]
+        bits.append(f"Twitch {fmt(tv)} viewers" + (f" ({tr:.1f}×)" if tr else ""))
     if "likes" in p:
         bits.append(f"👍 {p['likes']*100:.0f}%")
     name = name or game_name(state, gid)
@@ -508,7 +610,10 @@ def collect_all(state, t, env):
     """Run each collector that is due. Never raises."""
     src = src_state(state)
     yt_key = env.get("YOUTUBE_API_KEY")
+    tw_id, tw_secret = env.get("TWITCH_CLIENT_ID"), env.get("TWITCH_CLIENT_SECRET")
     jobs = [
+        ("twitch", C.TWITCH_EVERY_MIN,
+         (lambda: collect_twitch(state, t, tw_id, tw_secret)) if (tw_id and tw_secret) else None),
         ("youtube", C.YT_EVERY_MIN, (lambda: collect_youtube(state, t, yt_key)) if yt_key else None),
         ("roblox", C.ROBLOX_EVERY_MIN, lambda: collect_roblox(state, t)),
         ("community", C.COMMUNITY_EVERY_MIN, lambda: collect_community(state, t)),
@@ -561,11 +666,28 @@ def check_sources(env):
             out.append(f"❌ Discord member counts — invite '{code}': {e} (is the invite still valid?)")
     else:
         out.append("⚪ Discord member counts — no invites added to DISCORD_INVITES in config.py yet (optional)")
+    icons = game_icons(["10155360168"])
+    out.append("✅ Roblox game icons (for alert cards)" if icons else "❌ Roblox game icons — cards will show without pictures")
     try:
         d = get_json("https://apis.roblox.com/universes/v1/places/4924922222/universe")
         out.append(f"✅ Roblox place → game lookup — {d.get('universeId')}")
     except Exception as e:
         out.append(f"❌ Roblox place → game lookup — {e}")
+    cid, secret = env.get("TWITCH_CLIENT_ID"), env.get("TWITCH_CLIENT_SECRET")
+    if not (cid and secret):
+        out.append("⚪ Twitch — no TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET secrets yet (optional, see SETUP.md)")
+    else:
+        try:
+            tok = twitch_token(cid, secret)
+            g = twitch_get("games", cid, tok, {"name": "Roblox"})["data"][0]["id"]
+            d = twitch_get("streams", cid, tok, {"game_id": g, "first": 1})
+            top = d["data"][0] if d.get("data") else {}
+            out.append(f"✅ Twitch — top Roblox stream now: {top.get('viewer_count', 0):,} viewers, "
+                       f"\"{(top.get('title') or '')[:50]}\"")
+        except urllib.error.HTTPError as e:
+            out.append(f"❌ Twitch — HTTP {e.code}: {e.read()[:150].decode(errors='ignore')}")
+        except Exception as e:
+            out.append(f"❌ Twitch — {e}")
     key = env.get("YOUTUBE_API_KEY")
     if not key:
         out.append("⚪ YouTube — no YOUTUBE_API_KEY secret yet (see SETUP.md)")
