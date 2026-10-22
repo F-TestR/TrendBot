@@ -4,7 +4,7 @@ on:
   schedule:
     # Every 20 minutes. For a PRIVATE repo, change to "*/30 * * * *" to stay inside
     # GitHub's free monthly minutes. Public repos have no minute limit.
-    - cron: "*/20 * * * *"
+   - cron: "7,27,47 * * * *"
   workflow_dispatch:
     inputs:
       digest_now:
