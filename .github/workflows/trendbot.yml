@@ -2,9 +2,10 @@ name: Roblox trend bot
 
 on:
   schedule:
-    # Every 20 minutes. For a PRIVATE repo, change to "*/30 * * * *" to stay inside
+    # Every 20 minutes (at :07, :27, :47 — off-peak minutes start more reliably).
+    # For a PRIVATE repo, change to "7,37 * * * *" (every 30 min) to stay inside
     # GitHub's free monthly minutes. Public repos have no minute limit.
-   - cron: "7,27,47 * * * *"
+    - cron: "7,27,47 * * * *"
   workflow_dispatch:
     inputs:
       digest_now:
@@ -15,8 +16,12 @@ on:
         description: "Just post a hello to both Discord channels"
         type: boolean
         default: false
+      weekly_now:
+        description: "Post the weekly opportunity report now"
+        type: boolean
+        default: false
       check_sources:
-        description: "Test YouTube / Roblox / Discord access"
+        description: "Test YouTube / Roblox / Twitch / Discord access"
         type: boolean
         default: false
 
@@ -27,7 +32,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +40,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      # The bot's memory (daily highs per game) lives in the Actions cache,
+      # so nothing is committed to the repo on every run.
       - name: Restore bot memory
         uses: actions/cache/restore@v4
         with:
@@ -48,6 +55,8 @@ jobs:
           DISCORD_ALERTS_WEBHOOK: ${{ secrets.DISCORD_ALERTS_WEBHOOK }}
           DISCORD_DIGEST_WEBHOOK: ${{ secrets.DISCORD_DIGEST_WEBHOOK }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
           STATE_PATH: state/state.json
         run: |
           if [ "${{ inputs.test_webhooks }}" = "true" ]; then
@@ -56,6 +65,8 @@ jobs:
             python bot.py --check-sources
           elif [ "${{ inputs.digest_now }}" = "true" ]; then
             python bot.py --digest-now
+          elif [ "${{ inputs.weekly_now }}" = "true" ]; then
+            python bot.py --weekly-now
           else
             python bot.py
           fi
