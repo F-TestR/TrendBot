@@ -37,6 +37,8 @@ It also keeps its **own database** and **learns**:
 
 **Stickiness:** each week the bot also estimates every game's **session length** (from players online and daily visits), and combines weekday hold, session length, players kept vs its best recent week, favourite rate and revenue per player into a **stickiness score (0–100)**. The Sunday report tests whether the score predicts which games still have players 4 weeks later, lists the **description features** (daily rewards, codes, trading…) most common in long-term games, and attaches an **opportunity map** placing each genre by growth vs stickiness.
 
+**Forward calendar (🔮):** the bot keeps a list of things that are *coming* — games in Steam's Coming Soon list, upcoming and trending films and shows (optional free TMDB key, Step 7), and dates you add yourself in `config.py` → `FUTURE_EVENTS` (holidays are pre-filled; add Roblox events or launches you hear about). The digest shows **🔮 Coming up** with each item's Roblox status ("not on Roblox yet — first-mover chance" or "already N new Roblox games"), a 🔮 alert fires when the first Roblox copies of something upcoming appear, and the indicator league table measures whether upcoming releases really lead Roblox trends.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
@@ -101,6 +103,16 @@ Your #alerts channel gets a ✅ / ❌ line for each source (including Steam, Wik
 3. In GitHub, open `config.py` → ✏️ → set `PING_USER_ID = "your number here"` → **Commit changes**.
 
 You'll be pinged only for: heat 80+ on 3+ platforms, a 5×+ surge, 1M+ YouTube views on a small game, or a copy wave of 5+ games. Change these in `config.py` (`PING_*`).
+
+## Step 7 — Add films and shows (optional, free, about 5 minutes)
+
+1. Create a free account at <https://www.themoviedb.org/signup> and confirm your email.
+2. Go to <https://www.themoviedb.org/settings/api> → **Create** / **Request an API key** → choose **Developer**, accept the terms, and fill in the short form (personal, non-commercial project).
+3. Copy the **API Key** (the shorter one, not the long "Read Access Token").
+4. Add a GitHub secret named `TMDB_API_KEY` with that key.
+5. Run the source check: "Films & shows (TMDB)" should show ✅.
+
+Film/show data comes from TMDB; this bot uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## The dashboard
 

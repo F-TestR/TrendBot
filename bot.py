@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import future as FUT
 import engage as E
 import hold as HOLD
 import dashboard as DB
@@ -444,6 +445,14 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     except Exception as e:
         print(f"outside sources failed: {e}", file=sys.stderr)
 
+    # 2b4. Forward calendar: Steam coming soon, upcoming/trending films and shows, your dates (daily)
+    try:
+        fr = FUT.collect_all(db, state, t, os.environ)
+        if fr:
+            print("forward calendar: " + ", ".join(fr))
+    except Exception as e:
+        print(f"forward calendar failed: {e}", file=sys.stderr)
+
     # 2c. Backfill past history for young games (teaches the model faster)
     if not first_run:
         since = day_str(t - timedelta(days=C.BACKFILL_MAX_AGE_DAYS))
@@ -671,6 +680,24 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 [("New Roblox games", str(row["new7"])), ("Total players", fmt(row["ccu"]))], ping=row["new7"] >= 3)
             alerts[-1]["url"] = None
             state["alerts"]["bridge:" + w] = today
+        try:
+            for x in FUT.alerts_for(db, state, today):
+                key = "future:" + x["name"].lower()[:60]
+                if not cooled(state, key, today, 21):
+                    continue
+                rb = x["roblox"]
+                tops = T.top_games(db, ("b:" if " " in rb["word"] else "w:") + rb["word"], rw, day_str(t - timedelta(days=1)))
+                when = ("out now" if x["days"] is not None and x["days"] <= 0 else
+                        f"in {x['days']} days" if x["days"] is not None else "date tbc")
+                add("future", tops[0][2] if tops else None, f"🔮 First Roblox copies of something coming: {x['name'][:60]}",
+                    f"{x['detail']} ({when}) — and {rb['new7']} brand-new Roblox game{'s' if rb['new7'] != 1 else ''} "
+                    f"already use \"{rb['word']}\". The wave may be starting; early movers win.\n"
+                    + "\n".join(f"• {nm[:45]} — {fmt(pk)}" for pk, nm, _ in tops),
+                    [("New Roblox games", str(rb["new7"])), ("Release", x["date"] or "tbc")], ping=rb["new7"] >= 3)
+                alerts[-1]["url"] = None
+                state["alerts"][key] = today
+        except Exception as e:
+            print(f"future alerts failed: {e}", file=sys.stderr)
         for p, e in preds:
             gid = e["uid"]
             if p >= C.PREDICT_ALERT_PROB and S.players_now(state, gid) < C.PREDICT_ALERT_MAX_PLAYERS \
@@ -711,7 +738,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             print(f"weekday hold failed: {e}", file=sys.stderr)
 
     for a in alerts:
-        if a.get("gid") and a["kind"] not in ("theme", "bridge"):
+        if a.get("gid") and a["kind"] not in ("theme", "bridge", "future"):
             try:
                 W.record_alert(db, t, a["gid"], a["kind"], S.players_now(state, a["gid"]))
             except Exception as e:
@@ -1024,6 +1051,14 @@ def build_digest(state, today, cutoff, t=None):
         outside.append("🌉 **Already reaching Roblox:** " + ", ".join(f"\"{w}\" ({row['new7']} new games)" for w, _, row in brs[:6]))
     if outside:
         lines += ["", "🌍 **Outside Roblox** (things that often become Roblox trends a few weeks later)"] + ["• " + o for o in outside]
+    try:
+        _db = W.connect()
+        fl = FUT.digest_lines(_db, today, fmt)
+        _db.close()
+        if fl:
+            lines += [""] + fl
+    except Exception as e:
+        print(f"forward calendar digest failed: {e}", file=sys.stderr)
 
     # Twitch
     tw = S.top_twitch(state, yday) or S.top_twitch(state, today)
@@ -1102,7 +1137,7 @@ def main():
 
     if a.check_sources:
         load_dotenv()
-        lines = S.check_sources(os.environ) + U.check(os.environ)
+        lines = S.check_sources(os.environ) + U.check(os.environ) + FUT.check(os.environ)
         post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), "**Source check**\n" + "\n".join(lines), a.dry_run, "alerts")
         return
 

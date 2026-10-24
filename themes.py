@@ -61,6 +61,7 @@ FEATURES = [
     ("up_ytt", "rising on YouTube trending"),
     ("up_tw", "new in Twitch's top games"),
     ("season", "in season"),
+    ("up_future", "an upcoming release or event"),
 ]
 
 INDICATORS = {
@@ -76,6 +77,7 @@ INDICATORS = {
     "yt_trending": ("🔥 YouTube trending", lambda r, p: (r["up_ytt"] or 0) > 0),
     "twitch_top": ("🟣 Twitch top games", lambda r, p: (r["up_tw"] or 0) > 0),
     "season": ("🗓️ in season", lambda r, p: (r["season"] or 0) > 0),
+    "future": ("🔮 upcoming release/event", lambda r, p: (r["up_future"] or 0) > 0),
 }
 
 
@@ -90,6 +92,9 @@ def _s(dt):
 def ensure(db):
     db.executescript(SCHEMA)
     U.ensure(db)
+    cols = {r[1] for r in db.execute("PRAGMA table_info(theme_daily)")}
+    if "up_future" not in cols:
+        db.execute("ALTER TABLE theme_daily ADD COLUMN up_future REAL")
 
 
 def display(key, state=None):
@@ -198,8 +203,8 @@ def compute_days(db, days, rw_trends):
             rows.append((k, day, a["ccu"], a["games"], a["hits"], a["new7"], a["new7_prev"], a["tiny7"],
                          len(a["studios"]), rn, a["charts"], int(yt3), int(yt3p),
                          upscore(k, "steam", day), upscore(k, "wikipedia", day), upscore(k, "yt_trending", day),
-                         upscore(k, "twitch_top", day), upscore(k, "season", day)))
-        db.executemany("""INSERT OR REPLACE INTO theme_daily VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
+                         upscore(k, "twitch_top", day), upscore(k, "season", day), upscore(k, "future", day)))
+        db.executemany("""INSERT OR REPLACE INTO theme_daily VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
         written += len(rows)
     return written
 
@@ -266,6 +271,7 @@ def _features(r, hist, day):
         "up_steam": float(r["up_steam"] or 0), "up_wiki": float(r["up_wiki"] or 0),
         "up_ytt": min(3.0, math.log1p(r["up_ytt"] or 0)), "up_tw": float(r["up_tw"] or 0),
         "season": float(r["season"] or 0),
+        "up_future": float(r.get("up_future") or 0),
     }
 
 
@@ -480,7 +486,7 @@ def bridges(db, state, today):
     lo14 = _s(_d(today) - timedelta(days=14))
     up = {}
     for r in db.execute("""SELECT word, source, MAX(score) AS s, MAX(detail) AS detail FROM upstream
-                           WHERE day>=? AND source IN ('steam','wikipedia','yt_trending','twitch_top')
+                           WHERE day>=? AND source IN ('steam','wikipedia','yt_trending','twitch_top','future')
                            GROUP BY word, source""", (lo14,)):
         if len(r["word"]) >= 4 and r["word"] not in C.THEME_GENERIC:
             up.setdefault(r["word"], []).append((r["source"], r["detail"]))

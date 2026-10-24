@@ -289,3 +289,24 @@ DESCRIPTION_FEATURES = {
     "base building / decorating": ["decorate", "build your", "customize your", "customise your", "base"],
     "roleplay": ["roleplay", "rp"],
 }
+
+# =====================================================================
+# Forward calendar: things known to be coming
+# =====================================================================
+FUTURE_HORIZON_DAYS = 42         # look this far ahead (plus things released in the last 14 days)
+FUTURE_DIGEST_ITEMS = 8          # how many upcoming things the daily digest lists
+FUTURE_ALERT_NEW_GAMES = 2       # 🔮 alert when an upcoming thing appears in this many brand-new Roblox games
+TMDB_REGION = "US"               # film release dates for this country (GB for the UK)
+TMDB_MIN_POPULARITY = 40         # skip obscure upcoming films
+
+# Dates you know about: (date, name, words to look for in Roblox titles).
+# Add Roblox events, big game launches, film dates, school holidays - anything you hear about.
+FUTURE_EVENTS = [
+    ("2026-10-31", "Halloween", ["halloween", "spooky", "pumpkin", "ghost", "haunted"]),
+    ("2026-11-26", "Thanksgiving (US)", ["thanksgiving", "turkey", "feast"]),
+    ("2026-11-27", "Black Friday", ["black friday", "shopping", "sale"]),
+    ("2026-12-25", "Christmas", ["christmas", "santa", "elf", "snow", "gift", "present", "sleigh"]),
+    ("2026-12-31", "New Year's Eve", ["new year", "fireworks", "countdown"]),
+    ("2027-02-14", "Valentine's Day", ["valentine", "valentines", "love", "heart"]),
+    ("2027-03-28", "Easter", ["easter", "bunny", "egg hunt"]),
+]
