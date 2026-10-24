@@ -34,6 +34,9 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import present as PR
+import promo as P
+import badges as BD
 import future as FUT
 import engage as E
 import hold as HOLD
@@ -268,6 +271,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     T.ensure(db)
     HOLD.ensure(db)
     E.ensure(db)
+    BD.ensure(db)
+    P.ensure(db)
 
     def paced():
         """Optional calls only while we're under the day's pro-rata budget."""
@@ -452,6 +457,18 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             print("forward calendar: " + ", ".join(fr))
     except Exception as e:
         print(f"forward calendar failed: {e}", file=sys.stderr)
+
+    # 2b5. Roblox badges: players per day, playtime per player, returning share, funnels (~10 games a run)
+    if not first_run:
+        try:
+            state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
+            nb = BD.collect(db, state, t)
+            state.pop("_young_ids", None)
+            if nb:
+                print(f"badges: {nb} games read")
+        except Exception as e:
+            state.pop("_young_ids", None)
+            print(f"badges failed: {e}", file=sys.stderr)
 
     # 2c. Backfill past history for young games (teaches the model faster)
     if not first_run:
@@ -718,6 +735,18 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             ne = E.update(db, state, today)
             db.commit()
             print(f"stickiness: {ne} games scored")
+            try:
+                pst = P.train(db, today)
+                print("algorithm mirror: " + ", ".join(
+                    f"{k} {(pst.get(k) or {}).get('examples')} ex / {(pst.get(k) or {}).get('positives')} promoted, "
+                    f"trained={(pst.get(k) or {}).get('trained')}" for k in P.TARGETS))
+                ids = [g for g, r in games.items() if r.get("last_seen") == today and r.get("last", 0) >= C.PROMO_MIN_PLAYERS]
+                state["_promo"] = P.score(db, today, ids)
+                db.commit()
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"algorithm mirror failed: {e}", file=sys.stderr)
             lt = state.get("longterm") or {}
             print(f"weekday hold: typical {m.get('benchmark')}, Roblox {m.get('roblox')}, {len(state.get('hold', {}))} rated, "
                   f"{sum(1 for v in lt.values() if v['status'] == 'long-term')} long-term games")
@@ -759,8 +788,23 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             print(f"daily source write failed: {e}", file=sys.stderr)
         state["_dbstats"] = W.stats(db)
+        cards = None
+        if C.DIGEST_STYLE == "cards":
+            try:
+                cards = PR.digest_cards(db, state, today, cutoff, t, present_ctx())
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"digest cards failed, sending text instead: {e}", file=sys.stderr)
         files = digest_files(state, today, cutoff)
-        post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
+        state.pop("_head", None)
+        state.pop("_board", None)
+        posted = False
+        if cards:
+            PR.post_cards(digest_url, cards, files=files, dry_run=dry_run, label="digest")
+            posted = True
+        if not posted:
+            post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
         state["last_digest"] = today
         try:
             state["backup"] = W.backup(db)
@@ -781,6 +825,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         try:
             state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
             el, om = E.report_lines(db, state, today, fmt, lambda u: S.game_name(state, u), lambda u: link(u, state))
+            el += [""] + BD.report_lines(db, state, fmt, lambda u: S.game_name(state, u), lambda u: link(u, state))
+            el += [""] + P.report_lines(db, today)
             state.pop("_young_ids", None)
             text += "\n\n" + "\n".join(el)
             png = E.map_chart(om) if C.DIGEST_CHARTS else None
@@ -798,12 +844,26 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                                    "Demand change by mechanic (this week vs last)")
             if png:
                 files.append(("mechanics.png", png, "image/png"))
-        post_discord(digest_url, text, dry_run, "weekly", files)
+        posted = False
+        if C.DIGEST_STYLE == "cards":
+            try:
+                cards = PR.weekly_cards(db, state, today, present_ctx(), table)
+                full = ("# Weekly report — full version\n\n" + text).encode("utf-8")
+                PR.post_cards(digest_url, cards, files=files + [("weekly_report.md", full, "text/markdown")],
+                              dry_run=dry_run, label="weekly")
+                posted = True
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"weekly cards failed, sending text instead: {e}", file=sys.stderr)
+        if not posted:
+            post_discord(digest_url, text, dry_run, "weekly", files)
         state["last_weekly"] = today
 
     db.commit()
     db.close()
     state.pop("_preds", None)
+    state.pop("_promo", None)
     state.pop("_themes", None)
     state.pop("_bridges", None)
     state.pop("_dbstats", None)
@@ -881,7 +941,10 @@ def heat_fields(state, gid, h):
             m, pct = p[key]
             f.append((label, fmt(m) + (f" ({pct:+.0f}%)" if pct is not None else "")))
     if "hold" in p:
-        f.append(("Weekday hold", f"{p['hold']:.2f}× Roblox"))
+        f.append(("Weekday hold", f"{p['hold']:.2f}× typical"))
+    if "playtime" in p:
+        b = (state.get("badges") or {}).get(gid) or {}
+        f.append(("Playtime", f"~{p['playtime']:.0f} min/player/day · {fmt(b['dau'])} players/day" if b.get("dau") else f"~{p['playtime']:.0f} min/player/day"))
     if "likes" in p:
         f.append(("Likes", f"{p['likes']*100:.0f}%"))
     return f
@@ -1073,6 +1136,12 @@ def build_digest(state, today, cutoff, t=None):
     if hl:
         lines += [""] + hl
 
+    # Algorithm mirror
+    if state.get("_promo"):
+        pl = P.digest_lines(state["_promo"], lambda u: S.game_name(state, u), lambda u: link(u, state), young_ids, fmt)
+        if pl:
+            lines += [""] + pl
+
     # Updates and their effect
     ul = I.update_lines(state, today)
     if ul:
@@ -1111,6 +1180,12 @@ def build_digest(state, today, cutoff, t=None):
     return "\n".join(lines)
 
 
+def present_ctx():
+    return {"S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
+            "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
+            "is_base": is_base, "keywords": keywords}
+
+
 def extras(state, gid, today):
     bits = []
     lr = S.like_ratio(state, gid)
@@ -1137,7 +1212,7 @@ def main():
 
     if a.check_sources:
         load_dotenv()
-        lines = S.check_sources(os.environ) + U.check(os.environ) + FUT.check(os.environ)
+        lines = S.check_sources(os.environ) + U.check(os.environ) + FUT.check(os.environ) + BD.check()
         post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), "**Source check**\n" + "\n".join(lines), a.dry_run, "alerts")
         return
 

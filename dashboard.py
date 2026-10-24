@@ -9,6 +9,23 @@ import sources as S
 HOOKS = {}  # bot.py fills in: fmt, is_young, age_days, growth
 
 
+def _md(text):
+    """Discord-style markdown (bold, [name](url)) -> safe HTML."""
+    import re
+    t = html.escape(text, quote=False)
+    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
+    t = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', t)
+    return t
+
+
+def _badge_tds(state, uid):
+    b = (state.get("badges") or {}).get(uid) or {}
+    pt, dau, ret = b.get("playtime"), b.get("dau"), b.get("returning")
+    return (f'<td data-v="{pt or -1}">{(str(round(pt)) + " min") if pt else "—"}</td>'
+            f'<td data-v="{dau or -1}">{HOOKS["fmt"](dau) if dau else "—"}</td>'
+            f'<td data-v="{ret if ret is not None else -1}">{(str(round(ret * 100)) + "%") if ret is not None else "—"}</td>')
+
+
 def _e(s):
     return html.escape(str(s), quote=True)
 
@@ -191,7 +208,8 @@ def build(state, today, cutoff):
                        f'<td data-v="{v["score"]}"><span class="heat {"hot" if v["score"] >= 70 else ("warm" if v["score"] >= 50 else "")}">{v["score"]:.0f}</span></td>'
                        f'<td data-v="{v.get("session") or -1}">{(str(round(v["session"])) + " min") if v.get("session") else "—"}</td>'
                        f'<td data-v="{h.get("rel") or -1}">{(format(h["rel"], ".2f") + "×") if h.get("rel") else "—"}</td>'
-                       f'<td data-v="{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", ""))}">{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", "—"))}</td></tr>')
+                       + _badge_tds(state, uid)
+                       + f'<td data-v="{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", ""))}">{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", "—"))}</td></tr>')
     map_html = ""
     try:
         import engage as ENG, base64
@@ -202,12 +220,66 @@ def build(state, today, cutoff):
     except Exception:
         map_html = ""
 
+    # --- algorithm mirror
+    algo_rows = cand_rows = ""
+    algo_note = "Still learning — needs a couple of weeks of chart and badge history."
+    try:
+        import promo as PR, warehouse as WH
+        _db = WH.connect()
+        pst = WH.meta_get(_db, "promo_status", {}) or {}
+        rw = PR.rewarded(pst)
+        if rw:
+            mx = max(abs(w) for _, w in rw) or 1
+            algo_rows = "".join(
+                f'<tr><td><b>{_e(PR.LABEL[f])}</b></td><td data-v="{w}">{w:+.2f}</td>'
+                f'<td><div style="height:10px;width:{int(abs(w) / mx * 100)}%;background:{"#2ea043" if w > 0 else "#d1242f"};border-radius:3px"></div></td></tr>'
+                for f, w in rw)
+            accs = [f"{PR.TARGETS[t]}: accuracy {(pst.get(t) or {}).get('test_auc'):.2f}"
+                    for t in PR.TARGETS if (pst.get(t) or {}).get("test_auc") is not None]
+            algo_note = (f"Trained {pst.get('day')} on which games Roblox promoted the following week. "
+                         + (" · ".join(accs) + " (0.5 = coin flip). " if accs else "")
+                         + "Weights are per standard step, after allowing for size, momentum and age.")
+        pr = state.get("_promo") or {}
+        top = sorted(((v["p"], u, v) for u, v in pr.items() if not v.get("charted")), reverse=True)[:40]
+        cand_rows = "".join(
+            f'<tr><td data-v="{_e(S.game_name(state, u).lower())}"><b>{_e(S.game_name(state, u)[:48])}</b></td>'
+            f'<td data-v="{v["p"]}">{v["p"] * 100:.0f}%</td>'
+            f'<td data-v="{v.get("chart") or -1}">{(str(round(v["chart"] * 100)) + "%") if v.get("chart") is not None else "—"}</td>'
+            f'<td data-v="{v.get("growth") or -1}">{(str(round(v["growth"] * 100)) + "%") if v.get("growth") is not None else "—"}</td>'
+            f'<td data-v="{v["avg"]}">{fmt(v["avg"])}</td>'
+            f'<td>{_e(PR.LABEL[v["strong"][0]]) if v.get("strong") else "—"}</td>'
+            f'<td>{_e(PR.LABEL[v["weak"][0]]) if v.get("weak") else "—"}</td></tr>' for _, u, v in top)
+        _db.close()
+    except Exception as e:
+        algo_note = f"Algorithm mirror unavailable: {_e(str(e))[:120]}"
+
+    # --- overview (same picks as the Discord digest)
+    head_html = "".join(f"<li>{_md(h)}</li>" for h in (state.get("_head") or []))
+    brows = []
+    for x in state.get("_board") or []:
+        lk = (S.roblox_link(state, x["gid"]) or f"https://rowatcher.com/games/{x['gid']}").strip("<>")
+        def pc(v):
+            return (f'<td data-v="{v}">{v * 100:.0f}%</td>' if v is not None else '<td data-v="-1">—</td>')
+        brows.append(
+            f'<tr><td data-v="{_e(x["name"].lower())}"><a href="{_e(lk)}" target="_blank" rel="noopener">{_e(x["name"][:48])}</a>'
+            f'{" <span class=tag>new</span>" if x.get("new") else ""}</td>'
+            + _num(x["players"], fmt)
+            + f'<td>{spark((games.get(x["gid"]) or {}).get("days", {}), today)}</td>'
+            + f'<td data-v="{x["ratio"] or -1}">{(format(x["ratio"], ".1f") + "×") if x.get("ratio") else "—"}</td>'
+            + pc(x.get("promo"))
+            + f'<td data-v="{x["heat"]}"><span class="heat {"hot" if x["heat"] >= C.HEAT_ALERT_SCORE else ("warm" if x["heat"] >= 30 else "")}">{x["heat"]}</span></td>'
+            + pc(x.get("model"))
+            + f'<td data-v="{x.get("playtime") or -1}">{(str(round(x["playtime"])) + " min") if x.get("playtime") else "—"}</td>'
+            + f'<td data-v="{x["age"] if x.get("age") is not None else 99999}">{(str(x["age"]) + "d") if x.get("age") is not None else "—"}</td></tr>')
+
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     tw_total = S.src_state(state)["tw_total"].get(yday) or S.src_state(state)["tw_total"].get(today)
-    stats = [("Games tracked", fmt(len(games))), ("Breakouts logged", str(len(life))),
-             ("Updates measured", str(len(I.ins_state(state)["updates"]))),
-             ("Roblox on Twitch (peak)", fmt(tw_total) if tw_total else "—")]
+    rising = sum(1 for x in (state.get("_board") or []) if (x.get("ratio") or 0) >= 1.5)
+    n_lt = sum(1 for v in (state.get("longterm") or {}).values() if v.get("status") == "long-term")
+    stats = [("Games tracked", fmt(len(games))), ("Young games rising on the board", str(rising)),
+             ("Long-term games", fmt(n_lt) if n_lt else "—"), ("Breakouts logged", str(len(life))),
+             ("Games with badge data", fmt(len(state.get("badges") or {})) if state.get("badges") else "—")]
     stat_html = "".join(f'<div class="stat"><div class="sv">{_e(v)}</div><div class="sl">{_e(k)}</div></div>' for k, v in stats)
 
     return f"""<!doctype html>
@@ -234,21 +306,32 @@ td a{{color:var(--fg);text-decoration:none;font-weight:600}}td a:hover{{color:va
 .heat.hot{{background:var(--hot);color:#fff}}.heat.warm{{background:var(--warm);color:#fff}}.star{{color:#f5b700}}
 td.up{{color:var(--up);font-weight:600}}td.down{{color:var(--down);font-weight:600}}
 p.note{{color:var(--muted);font-size:12.5px;margin:8px 2px}}
+ul.head{{margin:0;padding-left:0;list-style:none}}ul.head li{{padding:5px 0;border-bottom:1px solid var(--line);font-size:15px}}ul.head li:last-child{{border:0}}
+ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 </style></head><body>
 <header><h1>Roblox Trend Dashboard</h1><div class="muted">Updated {_e(datetime.strptime(today, "%Y-%m-%d").strftime("%A %d %B %Y"))} · open fresh copies from each day's digest</div>
 <div class="stats">{stat_html}</div></header>
 <main>
-<nav><button class="on" data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
-<button data-s="longterm">🏛️ Long-term</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
-<section id="hot" class="on"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
+<nav><button class="on" data-s="overview">⭐ Overview</button><button data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
+<button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
+<section id="overview" class="on">
+<div class="card" style="padding:14px 18px"><div class="sl" style="margin-bottom:6px">TODAY IN 30 SECONDS</div><ul class="head">{head_html or '<li class=muted>Quiet day — nothing crossed the thresholds.</li>'}</ul></div>
+<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Games to watch</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th><th>Promotion chance</th><th>Heat</th><th>Breakout chance</th><th>Playtime / player / day</th><th>Age</th></tr></thead><tbody>{"".join(brows) or '<tr><td colspan=9 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
+<p class="note">One ranked list merging growth vs the same day last week, the algorithm mirror's promotion chance, cross-platform heat, the breakout model and badge playtime. Every other tab has the full detail.</p></section>
+<section id="hot"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
 <div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
 <section id="watch"><div class="card">{table(watch, "t-watch")}</div></section>
 <section id="longterm"><p class="note">Long-term = keeps its weekend crowd on Tue–Wed at least as well as a typical game, in most weeks ({hm.get("weeks", 0)} weeks of data so far; the typical game last week kept {f"{hm['benchmark']*100:.0f}%" if hm.get("benchmark") else "—"}).</p>
 <div class="card"><table class="sortable"><thead><tr><th data-t="s">Genre</th><th>Long-term share</th><th>Long-term games</th><th>Games rated</th><th>Median hold vs typical</th><th class="nosort">Best long-term games</th></tr></thead><tbody>{genre_rows or '<tr><td colspan=6 class=muted>Builds up over the first couple of weeks.</td></tr>'}</tbody></table></div>
 <p></p><input type="search" placeholder="Filter games or genres…" data-for="t-lt">
 <div class="card"><table id="t-lt" class="sortable"><thead><tr><th data-t="s">Game</th><th class="nosort">Status</th><th data-t="s">Genre</th><th>Median hold vs typical</th><th>Weeks above typical</th><th>Weekend players</th><th>Age</th></tr></thead><tbody>{"".join(lt_rows) or '<tr><td colspan=7 class=muted>No long-term games rated yet.</td></tr>'}</tbody></table></div>
-<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Stickiest games this week</th><th>Stickiness</th><th>Session (est.)</th><th>Weekday hold</th><th data-t="s">Status</th></tr></thead><tbody>{"".join(st_rows) or '<tr><td colspan=5 class=muted>No stickiness scores yet.</td></tr>'}</tbody></table></div>
-<p class="note">Stickiness = weekday hold 35% · estimated session length 25% · players kept vs best recent week 20% · favourite rate 10% · revenue per player 10%, ranked against all games that week.</p>{map_html}</section>
+<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Stickiest games this week</th><th>Stickiness</th><th>Session (est.)</th><th>Weekday hold</th><th>Playtime / player / day</th><th>Players / day</th><th>Returning</th><th data-t="s">Status</th></tr></thead><tbody>{"".join(st_rows) or '<tr><td colspan=8 class=muted>No stickiness scores yet.</td></tr>'}</tbody></table></div>
+<p class="note">Stickiness = weekday hold 25% · playtime per player per day (badges) 20% · players kept vs best recent week 15% · session length 10% · returning-player share (badges) 10% · favourite rate 10% · revenue per player 10%, ranked against all games that week.</p>{map_html}</section>
+<section id="algo"><p class="note">{algo_note}</p>
+<div class="card"><table class="sortable"><thead><tr><th data-t="s">Signal</th><th>Weight</th><th class="nosort">What Roblox is rewarding</th></tr></thead><tbody>{algo_rows or '<tr><td colspan=3 class=muted>No weights yet.</td></tr>'}</tbody></table></div>
+<p></p><input type="search" placeholder="Filter games…" data-for="t-algo">
+<div class="card"><table id="t-algo" class="sortable"><thead><tr><th data-t="s">Most likely to be promoted next</th><th>Promotion score</th><th>Chart entry</th><th>50%+ growth</th><th>Players</th><th class="nosort">Strongest signal</th><th class="nosort">Weak spot</th></tr></thead><tbody>{cand_rows or '<tr><td colspan=7 class=muted>No scores yet.</td></tr>'}</tbody></table></div>
+<p class="note">A mirror of Roblox's algorithm built from public data: it learns which signals came before promotions, not Roblox's actual model.</p></section>
 <section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
 <div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
 <p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>

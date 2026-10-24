@@ -310,3 +310,39 @@ FUTURE_EVENTS = [
     ("2027-02-14", "Valentine's Day", ["valentine", "valentines", "love", "heart"]),
     ("2027-03-28", "Easter", ["easter", "bunny", "egg hunt"]),
 ]
+
+# =====================================================================
+# Badges: players per day, playtime per player, returning share, funnels (free, no key)
+# =====================================================================
+BADGE_GAMES_PER_DAY = 400        # games whose badges are read each day (watchlist and young games first)
+BADGE_GAMES_PER_RUN = 10         # per 20-minute run (72 runs a day)
+BADGE_MIN_PLAYERS = 500          # only read badges for games with at least this many players
+BADGE_MAX_PAGES = 3              # up to 300 badges per game
+BADGE_PAUSE_SECONDS = 0.6        # pause between games, to be polite to Roblox
+BADGE_MIN_WIN_RATE = 0.01        # badges earned by fewer than 1% of daily players are too imprecise for the player count
+BADGE_KEEP_DAYS = 21             # raw badge stats kept this long
+BADGE_PLAYTIME_REFERENCE = 25    # minutes/day used as "typical" until enough games are measured
+
+# =====================================================================
+# Algorithm mirror: learns what Roblox's recommendation algorithm rewards right now
+# =====================================================================
+PROMO_MIN_PLAYERS = 200          # game-days with fewer average players are ignored
+PROMO_GROWTH_RATIO = 1.5         # "growth" outcome = next 7 days' average players >= 1.5x the last 7 days'
+PROMO_HISTORY_WEEKS = 5          # train on the last 5 weeks (recent enough to notice algorithm changes)
+PROMO_DAY_STEP = 1               # use every day
+PROMO_GAMES_PER_DAY = 250        # sample this many games per training day
+PROMO_MIN_EXAMPLES = 300
+PROMO_MIN_POSITIVES = 25
+PROMO_ITERS = 300
+PROMO_L2 = 0.02
+PROMO_KEEP_HISTORY = 60          # days of learned weights kept, for the change watch
+PROMO_SHIFT_DAYS = 21            # compare this week's weights with ~3 weeks ago
+PROMO_SHIFT_MIN = 0.25           # a weight moving this much (in standard steps) counts as a change
+
+# =====================================================================
+# Presentation (Discord cards)
+# =====================================================================
+DIGEST_STYLE = "cards"           # "cards" = short Discord cards (recommended) · "text" = the old long text digest
+BOARD_ROWS = 8                   # games on the daily "Games to watch" card
+BOARD_MIN_PLAYERS = 300          # young games below this are left off the board
+BOARD_PLAYTIME_HEADLINE = 30     # minutes/player/day needed for the playtime headline
