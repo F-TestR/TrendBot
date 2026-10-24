@@ -12,7 +12,8 @@ UA = "roblox-trend-bot/1.2"
 
 COLORS = {"new": 0x3BA55D, "surge": 0xFAA61A, "copy": 0x9B59B6, "heat": 0xED4245,
           "early": 0x5865F2, "update": 0x95A5A6, "breakout": 0xE67E22,
-          "chart": 0x1ABC9C, "predict": 0xF1C40F, "theme": 0x2ECC71, "bridge": 0x00B0F4}
+          "chart": 0x1ABC9C, "predict": 0xF1C40F, "theme": 0x2ECC71, "bridge": 0x00B0F4,
+          "longterm": 0x8E7CC3}
 
 
 def _multipart(payload, files):

@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import hold as HOLD
 import dashboard as DB
 import discord_out as DO
 import insights as I
@@ -263,6 +264,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         print(restored)
     db = W.connect()
     T.ensure(db)
+    HOLD.ensure(db)
 
     def paced():
         """Optional calls only while we're under the day's pro-rata budget."""
@@ -401,6 +403,17 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             print(f"charts failed: {e}", file=sys.stderr)
 
+    # 2b1. Roblox-wide player counts (for the weekday-hold comparison), every 6 hours
+    if (not state.get("platform_at") or (t - datetime.fromisoformat(state["platform_at"])) >= timedelta(hours=C.PLATFORM_EVERY_HOURS - 0.1)) \
+            and (first_run or paced()):
+        try:
+            HOLD.record_platform(state, (api.get("/platform/ccu", {"range": "24h"}) or {}).get("data"))
+            state["platform_at"] = t.isoformat()
+        except BudgetExceeded:
+            pass
+        except Exception as e:
+            print(f"platform ccu failed: {e}", file=sys.stderr)
+
     # 2b2. RoWatcher's curated trend list (weekly, 1 request) - extra ready-made themes
     if (not state.get("rw_trends_at") or (t - datetime.fromisoformat(state["rw_trends_at"])).days >= C.RW_TRENDS_EVERY_DAYS) \
             and paced():
@@ -447,6 +460,26 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 n = W.record_history(db, c["uid"], (h or {}).get("data") or [], c["created"])
                 db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
                            (c["uid"], t.isoformat(), n, "ok"))
+            except BudgetExceeded:
+                break
+            except Exception as e:
+                print(f"backfill failed for {c['uid']}: {e}", file=sys.stderr)
+                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
+                           (c["uid"], t.isoformat(), 0, "error"))
+        # older games: about 8 weeks of history each, so long-term ratings start straight away
+        olds = db.execute("""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
+                             WHERE (g.created IS NULL OR g.created < ?) AND g.uid NOT IN (SELECT uid FROM backfill)
+                             GROUP BY g.uid HAVING MAX(d.peak) >= ? ORDER BY MAX(d.peak) DESC LIMIT ?""",
+                          (since, C.BACKFILL_ESTABLISHED_MIN_PLAYERS, C.BACKFILL_ESTABLISHED_PER_RUN)).fetchall()
+        for c in olds:
+            if not paced():
+                break
+            try:
+                frm = day_str(t - timedelta(days=7 * C.HOLD_HISTORY_WEEKS + 7)) + "T00:00:00Z"
+                h = api.get(f"/games/{c['uid']}/history", {"from": frm})
+                n = W.record_history(db, c["uid"], (h or {}).get("data") or [], c["created"] or "2000-01-01")
+                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
+                           (c["uid"], t.isoformat(), n, "ok-old"))
             except BudgetExceeded:
                 break
             except Exception as e:
@@ -646,6 +679,31 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                     + studio_field(db, gid), ping=p >= 0.7)
                 state["alerts"]["predict:" + gid] = today
 
+    # 3g. Weekday hold + long-term games (once a day, with the digest)
+    if digest_due or force_weekly:
+        try:
+            before = dict(state.get("longterm") or {})
+            m = HOLD.update(db, state, today)
+            db.commit()
+            lt = state.get("longterm") or {}
+            print(f"weekday hold: typical {m.get('benchmark')}, Roblox {m.get('roblox')}, {len(state.get('hold', {}))} rated, "
+                  f"{sum(1 for v in lt.values() if v['status'] == 'long-term')} long-term games")
+            if before:  # not on the very first rating, or every long-term game would alert at once
+                for gid in HOLD.newly_longterm(state, before):
+                    rec = games.get(gid)
+                    if rec and is_young(rec, today) and cooled(state, "longterm:" + gid, today, 60):
+                        v = lt[gid]
+                        add("longterm", gid, f"🏛️ New long-term game: {rec['name'][:70]}",
+                            f"Kept its weekend crowd better than a typical game in {v['good']} of {v['weeks']} weeks "
+                            f"(median **{v['med']:.2f}×**). Young games that do this tend to last.",
+                            [("Weekend players", fmt(v["players"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
+                            + studio_field(db, gid))
+                        state["alerts"]["longterm:" + gid] = today
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"weekday hold failed: {e}", file=sys.stderr)
+
     for a in alerts:
         if a.get("gid") and a["kind"] not in ("theme", "bridge"):
             try:
@@ -680,6 +738,12 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                         and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
         text, table = I.weekly_report(state, today)
         text += "\n\n" + "\n".join(L.report_lines(db, today, fmt))
+        try:
+            state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
+            text += "\n\n" + "\n".join(HOLD.report_lines(db, state, fmt, lambda u: S.game_name(state, u), lambda u: link(u, state)))
+            state.pop("_young_ids", None)
+        except Exception as e:
+            print(f"long-term report failed: {e}", file=sys.stderr)
         try:
             text += "\n\n" + "\n".join(T.report_lines(db, today, fmt))
         except Exception as e:
@@ -773,6 +837,8 @@ def heat_fields(state, gid, h):
         if key in p:
             m, pct = p[key]
             f.append((label, fmt(m) + (f" ({pct:+.0f}%)" if pct is not None else "")))
+    if "hold" in p:
+        f.append(("Weekday hold", f"{p['hold']:.2f}× Roblox"))
     if "likes" in p:
         f.append(("Likes", f"{p['likes']*100:.0f}%"))
     return f
@@ -949,6 +1015,12 @@ def build_digest(state, today, cutoff, t=None):
         lines += ["", "🎮 **Most-streamed Roblox games on Twitch (peak viewers)**"]
         for v, n, gid in tw:
             lines.append(f"• {S.game_name(state, gid)[:40]} — {fmt(v)} viewers across {n} stream{'s' if n != 1 else ''}")
+
+    # Weekday hold
+    young_ids = {gid for gid, r in games.items() if is_young(r, today)} | set(C.WATCHLIST)
+    hl = HOLD.digest_lines(state, fmt, lambda u: S.game_name(state, u), young_ids, lambda u: link(u, state))
+    if hl:
+        lines += [""] + hl
 
     # Updates and their effect
     ul = I.update_lines(state, today)

@@ -72,6 +72,7 @@ def build(state, today, cutoff):
             "comm": comm[1] if comm and comm[1] is not None else None,
             "likes": p.get("likes"), "age": age_days(r, today) if r else None,
             "model": (state.get("_preds") or {}).get(gid),
+            "hold": ((state.get("hold") or {}).get(gid) or {}),
             "mech": ", ".join(I.mechanics_of(name)) or "",
             "link": (S.roblox_link(state, gid) or f"<https://rowatcher.com/games/{gid}>").strip("<>"),
         })
@@ -82,13 +83,16 @@ def build(state, today, cutoff):
     def table(rs, tid):
         out = [f'<table id="{tid}" class="sortable"><thead><tr>'
                '<th data-t="s">Game</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th>'
-               '<th>Heat</th><th>Model</th><th>YouTube 48h</th><th>Twitch</th><th>Community</th><th>👍</th><th>Age</th>'
+               '<th>Heat</th><th>Model</th><th>YouTube 48h</th><th>Twitch</th><th>Community</th><th>Weekday hold</th><th>👍</th><th>Age</th>'
                '<th data-t="s">Type</th></tr></thead><tbody>']
         for x in rs:
             ratio_s = f"{x['ratio']:.1f}×" if x["ratio"] else "—"
             comm_s = f"{x['comm']:+.1f}%" if x["comm"] is not None else "—"
             likes_s = f"{x['likes'] * 100:.0f}%" if x["likes"] else "—"
             model_s = f"{x['model'] * 100:.0f}%" if x["model"] is not None else "—"
+            hd = x["hold"]
+            hold_s = (f"{hd['rel']:.2f}× Roblox" if hd.get("rel") else ("still growing" if hd.get("flag") == "growing" else "—"))
+            hold_v = hd.get("rel") or -1
             sig = "".join(f'<span class="tag">{_e(s)}</span>' for s in x["signals"])
             heat_cls = "hot" if x["heat"] >= C.HEAT_ALERT_SCORE else ("warm" if x["heat"] >= 30 else "")
             out.append(
@@ -102,6 +106,7 @@ def build(state, today, cutoff):
                 + f'<td data-v="{x["yt_v"] or -1}">{(str(x["yt_n"]) + " · " + fmt(x["yt_v"]) + " views") if x["yt_n"] else "—"}</td>'
                 + _num(x["tw"], fmt)
                 + f'<td data-v="{x["comm"] if x["comm"] is not None else -999}">{comm_s}</td>'
+                + f'<td data-v="{hold_v}">{hold_s}</td>'
                 + f'<td data-v="{x["likes"] or -1}">{likes_s}</td>'
                 + f'<td data-v="{x["age"] if x["age"] is not None else 99999}">{(str(x["age"]) + "d") if x["age"] is not None else "—"}</td>'
                 + f'<td data-v="{_e(x["mech"])}">{_e(x["mech"]) or "—"}</td></tr>')
@@ -154,6 +159,30 @@ def build(state, today, cutoff):
         bridge_html = '<p class="note"><b>🌉 Outside trends already reaching Roblox:</b> ' + ", ".join(
             f'"{_e(w)}" ({row["new7"]} new games)' for w, _, row in brs[:10]) + "</p>"
 
+    # --- long-term games
+    import hold as HOLD
+    lt = state.get("longterm") or {}
+    gmeta = {r["uid"]: (r["name"] or r["uid"], r["genre"] or "—", r["created"]) for r in
+             __import__("warehouse").connect().execute("SELECT uid, name, genre, created FROM games")} if lt else {}
+    lt_rows = []
+    for uid, v in sorted(lt.items(), key=lambda kv: (kv[1]["status"] != "long-term", -kv[1]["med"])):
+        name, genre, created = gmeta.get(uid, (uid, "—", None))
+        age = (datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(created, "%Y-%m-%d")).days if created else None
+        tag = "🏛️ long-term" if v["status"] == "long-term" else "promising"
+        lt_rows.append(f'<tr><td data-v="{_e(name.lower())}"><b>{_e(name[:48])}</b></td><td>{_e(tag)}</td>'
+                       f'<td data-v="{_e(genre)}">{_e(genre)}</td><td data-v="{v["med"]}">{v["med"]:.2f}×</td>'
+                       f'<td data-v="{v["good"]}">{v["good"]}/{v["weeks"]}</td><td data-v="{v["players"]}">{fmt(v["players"])}</td>'
+                       f'<td data-v="{age if age is not None else 99999}">{(str(age) + "d") if age is not None else "—"}</td></tr>')
+    try:
+        gt = HOLD.genre_table(__import__("warehouse").connect(), state) if lt else []
+    except Exception:
+        gt = []
+    genre_rows = "".join(
+        f'<tr><td data-v="{_e(r["genre"])}"><b>{_e(r["genre"])}</b></td><td data-v="{r["share"]}">{r["share"]*100:.0f}%</td>'
+        f'<td data-v="{r["lt"]}">{r["lt"]}</td><td data-v="{r["games"]}">{r["games"]}</td><td data-v="{r["median"]}">{r["median"]:.2f}×</td>'
+        f'<td>{_e(", ".join(n[:22] for _, n, _, _ in r["top"]) or "—")}</td></tr>' for r in gt)
+    hm = state.get("hold_meta") or {}
+
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     tw_total = S.src_state(state)["tw_total"].get(yday) or S.src_state(state)["tw_total"].get(today)
@@ -191,10 +220,14 @@ p.note{{color:var(--muted);font-size:12.5px;margin:8px 2px}}
 <div class="stats">{stat_html}</div></header>
 <main>
 <nav><button class="on" data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
-<button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
+<button data-s="longterm">🏛️ Long-term</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="hot" class="on"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
 <div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
 <section id="watch"><div class="card">{table(watch, "t-watch")}</div></section>
+<section id="longterm"><p class="note">Long-term = keeps its weekend crowd on Tue–Wed at least as well as a typical game, in most weeks ({hm.get("weeks", 0)} weeks of data so far; the typical game last week kept {f"{hm['benchmark']*100:.0f}%" if hm.get("benchmark") else "—"}).</p>
+<div class="card"><table class="sortable"><thead><tr><th data-t="s">Genre</th><th>Long-term share</th><th>Long-term games</th><th>Games rated</th><th>Median hold vs typical</th><th class="nosort">Best long-term games</th></tr></thead><tbody>{genre_rows or '<tr><td colspan=6 class=muted>Builds up over the first couple of weeks.</td></tr>'}</tbody></table></div>
+<p></p><input type="search" placeholder="Filter games or genres…" data-for="t-lt">
+<div class="card"><table id="t-lt" class="sortable"><thead><tr><th data-t="s">Game</th><th class="nosort">Status</th><th data-t="s">Genre</th><th>Median hold vs typical</th><th>Weeks above typical</th><th>Weekend players</th><th>Age</th></tr></thead><tbody>{"".join(lt_rows) or '<tr><td colspan=7 class=muted>No long-term games rated yet.</td></tr>'}</tbody></table></div></section>
 <section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
 <div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
 <p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>

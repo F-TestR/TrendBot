@@ -239,3 +239,23 @@ THEME_GENERIC = set("""
 game games world life city time super best mega ultra simulator tycoon roblox legends legend
 battle battles war wars fight hero heroes story adventure online season update official
 """.split())
+
+# =====================================================================
+# Weekday hold (Tue-Wed players vs the weekend before, relative to Roblox overall)
+# =====================================================================
+HOLD_MIN_PLAYERS = 1000          # only judge games with at least this many weekend players
+HOLD_SPIKE_RATIO = 1.8           # Saturday > 1.8x Sunday = an event spike: use Sunday as the weekend
+HOLD_GROWING_RATIO = 1.5         # weekdays 1.5x+ last week's = still growing: not judged
+HOLD_MIN_BENCHMARK_GAMES = 30    # need this many rated games in a week to set the "typical" hold
+HOLD_HISTORY_WEEKS = 8           # weeks rebuilt from the database (history downloads go back ~8 weeks)
+
+# ---- Long-term games ----
+LONGTERM_REL = 1.0               # long-term = holds at least as well as the typical game...
+LONGTERM_SHARE = 0.75            # ...in at least 75% of its rated weeks...
+LONGTERM_MIN_WEEKS = 2           # ...with at least this many weeks rated...
+LONGTERM_WINDOW_WEEKS = 6        # ...looking back this many weeks
+LONGTERM_PROMISING_REL = 1.15    # one strong week at this level = "promising"
+GENRE_MIN_GAMES = 5              # genres with fewer rated games are left out of the genre table
+BACKFILL_ESTABLISHED_PER_RUN = 1 # past-history downloads per run for older games (for long-term ratings)
+BACKFILL_ESTABLISHED_MIN_PLAYERS = 1500
+PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 request each)

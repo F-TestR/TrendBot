@@ -33,6 +33,8 @@ It also keeps its **own database** and **learns**:
 - The Sunday report gets **🔬 Which indicators actually work**: for every signal, how often it was followed by a breakout, how much better than chance, and how many days' warning it gave. The theme model weights signals by what actually worked.
 - Seasonal themes (Halloween, Christmas, summer…) are in `config.py` → `SEASONS`; add your own.
 
+**Long-term games:** every week the bot measures how well each game keeps its weekend crowd on Tuesday–Wednesday compared with a typical game. Games that hold at least as well in most weeks are labelled 🏛️ **long-term** (habit games, not hype). The Sunday report ranks genres by how many of their games are long-term, a 🏛️ alert fires when a young game earns the label, the heat score rewards good hold, and the dashboard has a **Long-term** tab. It downloads ~8 weeks of history for established games in the background, so ratings appear within days.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
