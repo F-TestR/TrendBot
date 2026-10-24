@@ -259,3 +259,33 @@ GENRE_MIN_GAMES = 5              # genres with fewer rated games are left out of
 BACKFILL_ESTABLISHED_PER_RUN = 1 # past-history downloads per run for older games (for long-term ratings)
 BACKFILL_ESTABLISHED_MIN_PLAYERS = 1500
 PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 request each)
+
+# =====================================================================
+# Engagement: session length, stickiness score, backtest, features, opportunity map
+# =====================================================================
+SESSION_MIN_MIN = 0.5            # estimated sessions outside this range (minutes) are treated as noise
+SESSION_MAX_MIN = 240
+ENGAGE_MIN_AVG_CCU = 300         # games averaging fewer players in a week aren't scored
+BACKTEST_MIN_PAIRS = 40          # game-weeks needed before the survival backtest is reported
+FEATURE_MIN_GAMES = 8            # a description feature needs this many games to be compared
+MAP_GROWTH_PCT = 10              # "growing" on the opportunity map = players up 10%+ vs 3 weeks ago
+
+# Features looked for in game descriptions (any of the phrases counts). Add your own.
+DESCRIPTION_FEATURES = {
+    "daily rewards / streaks": ["daily reward", "daily rewards", "daily login", "login reward", "login rewards", "streak", "streaks", "daily spin", "daily chest"],
+    "weekly update schedule": ["every saturday", "every friday", "every week", "weekly update", "weekly updates", "updates every", "new update every"],
+    "codes": ["code", "codes"],
+    "group rewards": ["join the group", "join our group", "group rewards", "group reward", "group members"],
+    "friend bonus": ["friend boost", "friends boost", "per friend", "for every friend", "invite friends", "play with friends"],
+    "trading": ["trade", "trading", "trades"],
+    "pets / collecting": ["pet", "pets", "collect", "collection", "index"],
+    "rebirth / prestige": ["rebirth", "rebirths", "prestige"],
+    "limited events": ["event", "events", "limited time", "limited-time", "admin abuse"],
+    "quests / missions": ["quest", "quests", "mission", "missions", "challenges"],
+    "leaderboards": ["leaderboard", "leaderboards", "global leaderboard"],
+    "offline / idle earnings": ["offline", "idle", "afk"],
+    "co-op / teams": ["co-op", "coop", "team up", "squad", "party"],
+    "PvP": ["pvp", "1v1", "duel", "duels"],
+    "base building / decorating": ["decorate", "build your", "customize your", "customise your", "base"],
+    "roleplay": ["roleplay", "rp"],
+}

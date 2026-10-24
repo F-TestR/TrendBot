@@ -182,6 +182,25 @@ def build(state, today, cutoff):
         f'<td data-v="{r["lt"]}">{r["lt"]}</td><td data-v="{r["games"]}">{r["games"]}</td><td data-v="{r["median"]}">{r["median"]:.2f}×</td>'
         f'<td>{_e(", ".join(n[:22] for _, n, _, _ in r["top"]) or "—")}</td></tr>' for r in gt)
     hm = state.get("hold_meta") or {}
+    st_rows = []
+    for uid, v in sorted((state.get("stick") or {}).items(), key=lambda kv: -(kv[1].get("score") or -1))[:60]:
+        if v.get("score") is None:
+            continue
+        h = (state.get("hold") or {}).get(uid) or {}
+        st_rows.append(f'<tr><td data-v="{_e(S.game_name(state, uid).lower())}"><b>{_e(S.game_name(state, uid)[:48])}</b></td>'
+                       f'<td data-v="{v["score"]}"><span class="heat {"hot" if v["score"] >= 70 else ("warm" if v["score"] >= 50 else "")}">{v["score"]:.0f}</span></td>'
+                       f'<td data-v="{v.get("session") or -1}">{(str(round(v["session"])) + " min") if v.get("session") else "—"}</td>'
+                       f'<td data-v="{h.get("rel") or -1}">{(format(h["rel"], ".2f") + "×") if h.get("rel") else "—"}</td>'
+                       f'<td data-v="{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", ""))}">{_e(((state.get("longterm") or {}).get(uid) or {}).get("status", "—"))}</td></tr>')
+    map_html = ""
+    try:
+        import engage as ENG, base64
+        om = ENG.opportunity_map(__import__("warehouse").connect(), state, today)
+        png = ENG.map_chart(om) if om else None
+        if png:
+            map_html = f'<p></p><div class="card" style="padding:8px"><img alt="Opportunity map by genre" style="width:100%;height:auto" src="data:image/png;base64,{base64.b64encode(png).decode()}"/></div>'
+    except Exception:
+        map_html = ""
 
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
@@ -227,7 +246,9 @@ p.note{{color:var(--muted);font-size:12.5px;margin:8px 2px}}
 <section id="longterm"><p class="note">Long-term = keeps its weekend crowd on Tue–Wed at least as well as a typical game, in most weeks ({hm.get("weeks", 0)} weeks of data so far; the typical game last week kept {f"{hm['benchmark']*100:.0f}%" if hm.get("benchmark") else "—"}).</p>
 <div class="card"><table class="sortable"><thead><tr><th data-t="s">Genre</th><th>Long-term share</th><th>Long-term games</th><th>Games rated</th><th>Median hold vs typical</th><th class="nosort">Best long-term games</th></tr></thead><tbody>{genre_rows or '<tr><td colspan=6 class=muted>Builds up over the first couple of weeks.</td></tr>'}</tbody></table></div>
 <p></p><input type="search" placeholder="Filter games or genres…" data-for="t-lt">
-<div class="card"><table id="t-lt" class="sortable"><thead><tr><th data-t="s">Game</th><th class="nosort">Status</th><th data-t="s">Genre</th><th>Median hold vs typical</th><th>Weeks above typical</th><th>Weekend players</th><th>Age</th></tr></thead><tbody>{"".join(lt_rows) or '<tr><td colspan=7 class=muted>No long-term games rated yet.</td></tr>'}</tbody></table></div></section>
+<div class="card"><table id="t-lt" class="sortable"><thead><tr><th data-t="s">Game</th><th class="nosort">Status</th><th data-t="s">Genre</th><th>Median hold vs typical</th><th>Weeks above typical</th><th>Weekend players</th><th>Age</th></tr></thead><tbody>{"".join(lt_rows) or '<tr><td colspan=7 class=muted>No long-term games rated yet.</td></tr>'}</tbody></table></div>
+<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Stickiest games this week</th><th>Stickiness</th><th>Session (est.)</th><th>Weekday hold</th><th data-t="s">Status</th></tr></thead><tbody>{"".join(st_rows) or '<tr><td colspan=5 class=muted>No stickiness scores yet.</td></tr>'}</tbody></table></div>
+<p class="note">Stickiness = weekday hold 35% · estimated session length 25% · players kept vs best recent week 20% · favourite rate 10% · revenue per player 10%, ranked against all games that week.</p>{map_html}</section>
 <section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
 <div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
 <p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>

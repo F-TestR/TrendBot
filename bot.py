@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import engage as E
 import hold as HOLD
 import dashboard as DB
 import discord_out as DO
@@ -265,6 +266,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     db = W.connect()
     T.ensure(db)
     HOLD.ensure(db)
+    E.ensure(db)
 
     def paced():
         """Optional calls only while we're under the day's pro-rata budget."""
@@ -362,6 +364,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 crossed.append(g["id"])
         try:
             W.record_snapshot(db, g["raw"], t, ", ".join(I.mechanics_of(g["name"])))
+            E.record_description(db, g["id"], g["raw"].get("description"))
         except Exception as e:
             print(f"db write failed for {g['id']}: {e}", file=sys.stderr)
 
@@ -685,6 +688,9 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             before = dict(state.get("longterm") or {})
             m = HOLD.update(db, state, today)
             db.commit()
+            ne = E.update(db, state, today)
+            db.commit()
+            print(f"stickiness: {ne} games scored")
             lt = state.get("longterm") or {}
             print(f"weekday hold: typical {m.get('benchmark')}, Roblox {m.get('roblox')}, {len(state.get('hold', {}))} rated, "
                   f"{sum(1 for v in lt.values() if v['status'] == 'long-term')} long-term games")
@@ -737,6 +743,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if force_weekly or (state.get("last_weekly") != today and t.weekday() == C.WEEKLY_REPORT_WEEKDAY
                         and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
         text, table = I.weekly_report(state, today)
+        files = []
         text += "\n\n" + "\n".join(L.report_lines(db, today, fmt))
         try:
             state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
@@ -745,10 +752,19 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             print(f"long-term report failed: {e}", file=sys.stderr)
         try:
+            state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
+            el, om = E.report_lines(db, state, today, fmt, lambda u: S.game_name(state, u), lambda u: link(u, state))
+            state.pop("_young_ids", None)
+            text += "\n\n" + "\n".join(el)
+            png = E.map_chart(om) if C.DIGEST_CHARTS else None
+            if png:
+                files.append(("opportunity_map.png", png, "image/png"))
+        except Exception as e:
+            print(f"stickiness report failed: {e}", file=sys.stderr)
+        try:
             text += "\n\n" + "\n".join(T.report_lines(db, today, fmt))
         except Exception as e:
             print(f"theme report failed: {e}", file=sys.stderr)
-        files = []
         rows = [r for r in table if r["chg"] is not None]
         if C.DIGEST_CHARTS and rows:
             png = charts.bar_chart([r["mech"] for r in rows], [r["chg"] for r in rows],

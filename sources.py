@@ -584,6 +584,18 @@ def heat(state, gid, today, cutoff, yts):
         parts["fav"] = fg
         score += max(0, min(10, fg))
 
+    # Weekday hold: keeps its weekend crowd better or worse than Roblox overall
+    import hold as HOLD
+    pts, rel = HOLD.heat_points(state, gid)
+    if rel is not None:
+        parts["hold"] = rel
+        score += pts
+    import engage as ENG
+    spts, stick = ENG.heat_points(state, gid)
+    if stick is not None:
+        parts["stick"] = stick
+        score += spts
+
     # Quality: like ratio
     lr = like_ratio(state, gid)
     if lr is not None:
@@ -611,6 +623,10 @@ def heat_line(state, gid, h, name=None):
     if "twitch" in p:
         tv, tr, ts = p["twitch"]
         bits.append(f"Twitch {fmt(tv)} viewers" + (f" ({tr:.1f}×)" if tr else ""))
+    if "hold" in p:
+        bits.append(f"weekday hold {p['hold']:.2f}×")
+    if "stick" in p:
+        bits.append(f"sticky {p['stick']:.0f}/100")
     if "likes" in p:
         bits.append(f"👍 {p['likes']*100:.0f}%")
     name = name or game_name(state, gid)

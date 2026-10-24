@@ -35,6 +35,8 @@ It also keeps its **own database** and **learns**:
 
 **Long-term games:** every week the bot measures how well each game keeps its weekend crowd on Tuesday–Wednesday compared with a typical game. Games that hold at least as well in most weeks are labelled 🏛️ **long-term** (habit games, not hype). The Sunday report ranks genres by how many of their games are long-term, a 🏛️ alert fires when a young game earns the label, the heat score rewards good hold, and the dashboard has a **Long-term** tab. It downloads ~8 weeks of history for established games in the background, so ratings appear within days.
 
+**Stickiness:** each week the bot also estimates every game's **session length** (from players online and daily visits), and combines weekday hold, session length, players kept vs its best recent week, favourite rate and revenue per player into a **stickiness score (0–100)**. The Sunday report tests whether the score predicts which games still have players 4 weeks later, lists the **description features** (daily rewards, codes, trading…) most common in long-term games, and attaches an **opportunity map** placing each genre by growth vs stickiness.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
