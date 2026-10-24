@@ -595,6 +595,11 @@ def heat(state, gid, today, cutoff, yts):
     if stick is not None:
         parts["stick"] = stick
         score += spts
+    import badges as BDG
+    bpts, ptime = BDG.heat_points(state, gid)
+    if ptime is not None:
+        parts["playtime"] = ptime
+        score += bpts
 
     # Quality: like ratio
     lr = like_ratio(state, gid)
@@ -627,6 +632,8 @@ def heat_line(state, gid, h, name=None):
         bits.append(f"weekday hold {p['hold']:.2f}×")
     if "stick" in p:
         bits.append(f"sticky {p['stick']:.0f}/100")
+    if "playtime" in p:
+        bits.append(f"~{p['playtime']:.0f} min/player/day")
     if "likes" in p:
         bits.append(f"👍 {p['likes']*100:.0f}%")
     name = name or game_name(state, gid)

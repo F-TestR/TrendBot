@@ -35,8 +35,10 @@ CREATE TABLE IF NOT EXISTS engage_weekly (uid TEXT, week TEXT, avg_ccu REAL, ses
 CREATE INDEX IF NOT EXISTS engage_weekly_week ON engage_weekly(week);
 """
 
-WEIGHTS = {"hold_rel": 0.35, "session_min": 0.25, "level_kept": 0.20, "fav_conv": 0.10, "rev_per_ccu": 0.10}
-LABELS = {"hold_rel": "weekday hold", "session_min": "session length", "level_kept": "players kept vs best week",
+WEIGHTS = {"hold_rel": 0.25, "playtime": 0.20, "session_min": 0.10, "level_kept": 0.15, "returning": 0.10,
+           "fav_conv": 0.10, "rev_per_ccu": 0.10}
+LABELS = {"hold_rel": "weekday hold", "playtime": "playtime per player per day (badges)", "session_min": "session length",
+          "level_kept": "players kept vs best week", "returning": "returning-player share (badges)",
           "fav_conv": "favourite rate", "rev_per_ccu": "revenue per player"}
 
 
@@ -53,6 +55,10 @@ def ensure(db):
     cols = {r[1] for r in db.execute("PRAGMA table_info(games)")}
     if "description" not in cols:
         db.execute("ALTER TABLE games ADD COLUMN description TEXT")
+    ecols = {r[1] for r in db.execute("PRAGMA table_info(engage_weekly)")}
+    for c in ("playtime", "ret_share"):
+        if c not in ecols:
+            db.execute(f"ALTER TABLE engage_weekly ADD COLUMN {c} REAL")
 
 
 def record_description(db, uid, desc):
@@ -76,6 +82,12 @@ def build_week(db, wed):
                            WHERE day>=? AND day<=? AND peak IS NOT NULL""", (lo, wed)):
         data.setdefault(r["uid"], {})[r["day"]] = dict(r)
     holds = {r["uid"]: r["rel"] for r in db.execute("SELECT uid, rel FROM hold_weekly WHERE week=?", (wed,))}
+    try:
+        import badges as BD
+        BD.ensure(db)
+        bw = BD.week_medians(db, wed)
+    except Exception:
+        bw = {}
     out = {}
     for uid, ds in data.items():
         avgs, sessions = [], []
@@ -100,7 +112,8 @@ def build_week(db, wed):
         rev = [ds[d]["rev_usd"] for d in days if d in ds and ds[d]["rev_usd"] is not None]
         out[uid] = {"avg_ccu": a, "session_min": median(sessions) if len(sessions) >= 3 else None,
                     "fav_conv": fav[-1] if fav else None,
-                    "rev_per_ccu": (rev[-1] / a) if rev and a else None, "hold_rel": holds.get(uid)}
+                    "rev_per_ccu": (rev[-1] / a) if rev and a else None, "hold_rel": holds.get(uid),
+                    "playtime": (bw.get(uid) or {}).get("playtime"), "returning": (bw.get(uid) or {}).get("returning")}
     return out
 
 
@@ -140,11 +153,12 @@ def update(db, state, today):
                 if uid in ranks[k]:
                     tot += wt * ranks[k][uid]
                     wsum += wt
-            have_core = x.get("hold_rel") is not None or x.get("session_min") is not None
+            have_core = any(x.get(k) is not None for k in ("hold_rel", "session_min", "playtime"))
             x["score"] = round(100 * tot / wsum, 1) if (wsum >= 0.45 and have_core) else None
             rows.append((uid, w, x["avg_ccu"], x["session_min"], x.get("level_kept"), x["fav_conv"],
-                         x["rev_per_ccu"], x["hold_rel"], x["score"]))
-        db.executemany("INSERT OR REPLACE INTO engage_weekly VALUES(?,?,?,?,?,?,?,?,?)", rows)
+                         x["rev_per_ccu"], x["hold_rel"], x["score"], x.get("playtime"), x.get("returning")))
+        db.executemany("""INSERT OR REPLACE INTO engage_weekly(uid, week, avg_ccu, session_min, level_kept, fav_conv,
+                          rev_per_ccu, hold_rel, score, playtime, ret_share) VALUES(?,?,?,?,?,?,?,?,?,?,?)""", rows)
     latest = history.get(wed0) or (history[max(history)] if history else {})
     state["stick"] = {u: {"score": x["score"], "session": round(x["session_min"], 1) if x["session_min"] else None}
                       for u, x in latest.items() if x.get("score") is not None or x.get("session_min")}
@@ -301,8 +315,8 @@ def heat_points(state, gid):
 
 
 def report_lines(db, state, today, fmt, name_of, link):
-    lines = ["📏 **Stickiness** (weekday hold 35% · session length 25% · players kept vs best week 20% · "
-             "favourite rate 10% · revenue per player 10%)"]
+    lines = ["📏 **Stickiness** (weekday hold 25% · playtime per player 20% · players kept vs best week 15% · "
+             "session length 10% · returning players 10% · favourite rate 10% · revenue per player 10%)"]
     st = state.get("stick") or {}
     sess = [v["session"] for v in st.values() if v.get("session")]
     if sess:
