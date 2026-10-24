@@ -346,3 +346,6 @@ DIGEST_STYLE = "cards"           # "cards" = short Discord cards (recommended) Â
 BOARD_ROWS = 8                   # games on the daily "Games to watch" card
 BOARD_MIN_PLAYERS = 300          # young games below this are left off the board
 BOARD_PLAYTIME_HEADLINE = 30     # minutes/player/day needed for the playtime headline
+
+# A model's % is only shown (and only triggers alerts) once it scores at least this on data it never saw (0.5 = coin flip)
+MODEL_TRUST_AUC = 0.6

@@ -669,6 +669,9 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         state["_bridges"] = [(w, srcs, row) for w, srcs, row in brs]
         rw = state.get("rw_trends", [])
         for p, sc, k, r, fired in tpreds[:30]:
+            trusted = (tst.get("test_auc") or 0) >= C.MODEL_TRUST_AUC if isinstance(tst, dict) else False
+            if not trusted:
+                p = None  # the model hasn't proven itself on unseen data yet: use the simple signal rule
             strong = (p is not None and p >= C.THEME_ALERT_PROB) or (p is None and sc >= 3 and r["new7"] >= 3)
             if not strong or r["hits"] > C.THEME_ALERT_MAX_HITS or not cooled(state, "theme:" + k, today, 14):
                 continue

@@ -172,6 +172,12 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     if x and x["playtime"] >= C.BOARD_PLAYTIME_HEADLINE:
         head.append(f"⏱ **Most playtime per player:** {name_link(x['name'], lk(x['gid']))} — {x['playtime']:.0f} min/day")
     th = state.get("_themes") or []
+    # only show the theme model's % once it has passed its test on unseen data; until then show signal counts
+    ts = ctx["W"].meta_get(db, "theme_model_status", {}) or {}
+    if not (ts.get("test_auc") or 0) >= C.MODEL_TRUST_AUC:
+        th = [(None, sc, k, r, f) for p, sc, k, r, f in th]
+        th.sort(key=lambda x: (-x[1], -x[3]["new7"]))
+    th = [(min(p, 0.95) if p is not None else None, sc, k, r, f) for p, sc, k, r, f in th]
     if th:
         p, sc, k, r, fired = th[0]
         pct = _pct(p) if p is not None else f"{sc} signal{'s' if sc != 1 else ''}"
