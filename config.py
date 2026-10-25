@@ -366,3 +366,23 @@ RBX_SEARCH_PAGES = 3             # result pages per word (~30-60 games)
 RBX_MIN_PLAYERS = 20             # ignore discovered games smaller than this
 RBX_TRACK_DAYS = 14              # keep following a discovered or young game this many days after last seen
 RBX_TRACK_MAX = 1500             # most games tracked directly per run (50 per request)
+
+# =====================================================================
+# Forecasting: S-curve peak forecasts, breakout-start detection, lifespans
+# =====================================================================
+FC_HISTORY_DAYS = 90             # history used
+FC_WINDOW_DAYS = 21              # a game's last 21 days are used for its curve
+FC_MIN_DAYS = 4                  # a game needs this many days of data before its peak is forecast
+FC_MIN_PLAYERS = 300             # ...and at least this many average players
+FC_BACKTEST_DAYS = 5             # back-test: forecast made from the first 5 days of a rise
+FC_BACKTEST_MIN = 10             # games needed before the back-test is reported
+CP_WINDOW_DAYS = 30              # days of growth history the change-point detector looks at
+CP_EXPECTED_RUN = 20             # prior: growth regimes last ~20 days on average
+CP_RECENT = 3                    # "just started" = within the last 3 days
+CP_MIN_PROB = 0.5                # fire when that is at least 50% likely...
+CP_MIN_GROWTH = 0.12             # ...the new regime grows 12%+ a day...
+CP_MIN_JUMP = 0.10               # ...and is 10+ points/day faster than before
+CP_MIN_PLAYERS = 200             # ignore tiny games
+CP_BACKTEST_GAMES = 400          # games sampled for the back-test
+SURV_MIN_PEAK = 1000             # lifespans are measured for games that peaked above this
+SURV_MIN_GROUP = 8               # groups smaller than this aren't reported

@@ -9,6 +9,7 @@ Rules: one line per item, the name is the link, numbers before words, at most 4 
 line, a legend in the footer. Detail lives in the dashboard and the attached full report.
 """
 import json
+import math
 from datetime import datetime, timedelta
 from statistics import median
 
@@ -16,7 +17,8 @@ import config as C
 import discord_out as DO
 
 BLUE, RED, GREEN, PINK, AMBER, PURPLE, TEAL = 0x5865F2, 0xED4245, 0x2ECC71, 0xE91E63, 0xFAA61A, 0x8E7CC3, 0x1ABC9C
-LEGEND = "×N growth vs same day last week · 🧠 promotion chance · 🔥 heat · 🎯 breakout chance · ⏱ playtime/player/day"
+LEGEND = ("×N growth vs same day last week · 🧭 breakout just started · 📈 forecast peak · 🧠 promotion chance · "
+          "🔥 heat · 🎯 breakout chance · ⏱ playtime/player/day")
 
 
 def _d(s):
@@ -108,26 +110,34 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
         h = S.heat(state, gid, today, cutoff, yts) or {"score": 0}
         pm, pr = preds.get(gid), (promo.get(gid) or {}).get("p")
         pt = (badges.get(gid) or {}).get("playtime")
+        fc = (state.get("_fc") or {}).get(gid) or {}
+        cpf = ((state.get("_cp") or {}).get(gid) or {}).get("fire")
+        fpeak = fc.get("peak") if fc.get("status") in ("rising", "early") and fc.get("peak", 0) >= 1.5 * max(players, 1) else None
         new = r["first_seen"] in (today, yday) and not ctx["is_base"](state, r)
         y = yts.get(gid) or {}
         score = (h["score"] + 35 * (pr or 0) + 35 * (pm or 0) + (min(ratio, 5) * 6 if ratio and ratio >= 1.3 else 0)
-                 + (8 if new else 0))
+                 + (8 if new else 0) + (12 if cpf else 0) + (min(10, 4 * math.log2(fpeak / max(players, 1))) if fpeak else 0))
         tags = []
         if ratio and ratio >= 1.3:
             tags.append(f"**×{ratio:.1f}**")
+        if cpf:
+            tags.append("🧭")
+        if fpeak:
+            tags.append(f"📈{ctx['fmt'](fpeak)}")
         if pr is not None and pr >= 0.15:
             tags.append(f"🧠{pr * 100:.0f}%")
         if h["score"] >= 25:
             tags.append(f"🔥{h['score']}")
         if pm is not None and pm >= 0.1:
-            tags.append(f"🎯{pm * 100:.0f}%")
+            tags.append(f"🎯{min(pm, 0.95) * 100:.0f}%")
         if pt:
             tags.append(f"⏱{pt:.0f}m")
         if y.get("views", 0) >= 100_000:
             tags.append(f"📺{ctx['fmt'](y['views'])}")
         if new:
             tags.append("🆕")
-        rows.append({"gid": gid, "name": r["name"], "players": players, "score": score, "tags": tags[:4],
+        rows.append({"gid": gid, "name": r["name"], "players": players, "score": score, "tags": tags[:5],
+                     "fc": fc or None, "cp": bool(cpf), "life": ((state.get("_life") or {}).get(gid) or {}).get("days"),
                      "ratio": ratio, "heat": h["score"], "promo": pr, "model": pm, "playtime": pt, "new": new,
                      "age": ctx["age_days"](r, today)})
     rows.sort(key=lambda x: -x["score"])
@@ -165,6 +175,14 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     x = pick(allb, "promo", 0.2)
     if x:
         head.append(f"🧠 **Roblox likely to push next:** {name_link(x['name'], lk(x['gid']))} — {_pct(x['promo'])}")
+    fcs = [x for x in allb if x.get("fc") and x["fc"].get("status") == "rising" and x["fc"]["peak"] >= 2 * max(x["players"], 1)]
+    if fcs:
+        x = max(fcs, key=lambda x: x["fc"]["peak"])
+        if x["gid"] not in used:
+            used.add(x["gid"])
+            when = f" by {_d(x['fc']['peak_day']).strftime('%a')}" if x["fc"].get("peak_day") else ""
+            head.append(f"📈 **Biggest forecast:** {name_link(x['name'], lk(x['gid']))} — {fmt(x['players'])} now, "
+                        f"on track for ~{fmt(x['fc']['peak'])}{when}")
     x = pick(allb, "heat", 30)
     if x:
         head.append(f"🔥 **Hottest across platforms:** {name_link(x['name'], lk(x['gid']))} — heat {x['heat']}")
@@ -466,8 +484,12 @@ def weekly_cards(db, state, today, ctx, table):
         ck.append("_Models are still collecting examples — accuracy appears once they've been tested on unseen data._")
     c_ck = card("🔬 Are the predictions working?", ck, RED, footer="accuracy = AUC on data the model never saw · 0.5 coin flip, 1.0 perfect")
 
+    fl = ctx["FC"].weekly_lines(state, fmt)
+    c_fc = card("📈 Forecasts & how long hits last", fl, TEAL, optional=True,
+                footer="peak = S-curve fitted to each game's rise · start signal = Bayesian change-point detection · "
+                       "lifespan = Kaplan-Meier half-life (days until below half the peak)")
     if not head:
         head.append("Still building history — most sections fill in over the first 2–3 weeks.")
     c0 = card(f"🗓️ Weekly report · week to {_d(today).strftime('%a %d %b')}", head[:7], BLUE,
               footer="full-length report attached (weekly_report.md) · tables in the dashboard")
-    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_ck]
+    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_fc, c_ck]

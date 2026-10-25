@@ -22,6 +22,7 @@ Usage:
   python bot.py --weekly-now    # post the weekly opportunity report now
 """
 import argparse
+import math
 import json
 import os
 import re
@@ -34,6 +35,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import forecast as FC
 import roblox_direct as RD
 import present as PR
 import promo as P
@@ -800,6 +802,30 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             db.commit()
             print(f"stickiness: {ne} games scored")
             try:
+                fy = {gid for gid, r in games.items() if is_young(r, today)} | set(C.WATCHLIST)
+                nf, ncp = FC.update(db, state, today, fy, I.mechanics_of)
+                db.commit()
+                print(f"forecasts: {nf} peak forecasts, {ncp} breakout starts")
+                for gid, c in (state.get("_cp") or {}).items():
+                    rec = games.get(gid)
+                    if not c["fire"] or not rec or not is_young(rec, today) or not cooled(state, "cp:" + gid, today, 14):
+                        continue
+                    f = (state.get("_fc") or {}).get(gid)
+                    lf = (state.get("_life") or {}).get(gid)
+                    pt = FC.peak_text(f, fmt)
+                    add("cp", gid, f"🧭 Breakout starting: {rec['name'][:70]}",
+                        f"Growth just switched to about **{(math.exp(c['growth']) - 1) * 100:.0f}% a day** "
+                        f"(was {(math.exp(c['old']) - 1) * 100:+.0f}%) · {c['prob'] * 100:.0f}% sure the change is real."
+                        + (f"\nForecast: {pt}." if pt else "")
+                        + (f"\nGames like this usually keep half their peak players ~{lf['days']} days." if lf else ""),
+                        [("Players", fmt(c["players"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
+                        + studio_field(db, gid))
+                    state["alerts"]["cp:" + gid] = today
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"forecasts failed: {e}", file=sys.stderr)
+            try:
                 pst = P.train(db, today)
                 print("algorithm mirror: " + ", ".join(
                     f"{k} {(pst.get(k) or {}).get('examples')} ex / {(pst.get(k) or {}).get('positives')} promoted, "
@@ -831,7 +857,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             print(f"weekday hold failed: {e}", file=sys.stderr)
 
     for a in alerts:
-        if a.get("gid") and a["kind"] not in ("theme", "bridge", "future"):
+        if a.get("gid") and a["kind"] not in ("theme", "bridge", "future", "cp"):
             try:
                 W.record_alert(db, t, a["gid"], a["kind"], S.players_now(state, a["gid"]))
             except Exception as e:
@@ -928,6 +954,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     db.close()
     state.pop("_preds", None)
     state.pop("_promo", None)
+    for k in ("_fc", "_cp", "_life"):
+        state.pop(k, None)
     state.pop("_themes", None)
     state.pop("_bridges", None)
     state.pop("_dbstats", None)
@@ -1245,7 +1273,7 @@ def build_digest(state, today, cutoff, t=None):
 
 
 def present_ctx():
-    return {"S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
+    return {"FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
             "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
             "is_base": is_base, "keywords": keywords}
 

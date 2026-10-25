@@ -47,6 +47,8 @@ It also keeps its **own database** and **learns**:
 
 **Roblox direct (free, no key):** RoWatcher only serves its top 2,000 games, so the bot also reads Roblox itself: Roblox's home-page sorts every hour (Top Trending, Up-and-Coming, Fun with Friends, Top Revisited, every "Trending in…" genre, on computer and phone — the games Roblox's algorithm is pushing), Roblox search once a day for the words that matter (rising themes, copy-wave words and `RBX_SEARCH_WORDS` in `config.py`) to find tiny new copies, and live player counts for every young or watchlisted game outside RoWatcher's list (50 games per request). The source check shows three Roblox lines for these.
 
+**Forecasts (📈 🧭 ⏳):** once a day the bot fits an **S-curve** to every rising young game to forecast its likely peak and when it gets there (a range while it's early), runs **Bayesian change-point detection** on each game's growth to spot the moment a breakout *starts* (🧭 alert), and uses **survival analysis** to measure how long hits keep half their peak players, by genre, mechanic and weekday hold. Each is back-tested on the bot's own history and reported in the Sunday "📈 Forecasts & how long hits last" card; forecasts also show on the Games to watch board and the dashboard.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---

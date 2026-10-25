@@ -18,6 +18,20 @@ def _md(text):
     return t
 
 
+def _fc_tds(x, fmt):
+    f = x.get("fc") or {}
+    if f.get("status") in ("rising", "early"):
+        when = datetime.strptime(f["peak_day"], "%Y-%m-%d").strftime(" by %a %d") if f.get("peak_day") else ""
+        rng = f" ({fmt(f['lo'])}–{fmt(f['hi'])})" if f["status"] == "early" else ""
+        peak = f'<td data-v="{f["peak"]}">{"🧭 " if x.get("cp") else ""}~{fmt(f["peak"])}{when}{rng}</td>'
+    elif f.get("status"):
+        peak = f'<td data-v="-1">{f["status"]}</td>'
+    else:
+        peak = '<td data-v="-1">—</td>'
+    life = x.get("life")
+    return peak + f'<td data-v="{life if life is not None else -1}">{(str(life) + " days") if life is not None else "—"}</td>'
+
+
 def _badge_tds(state, uid):
     b = (state.get("badges") or {}).get(uid) or {}
     pt, dau, ret = b.get("playtime"), b.get("dau"), b.get("returning")
@@ -269,6 +283,7 @@ def build(state, today, cutoff):
             + pc(x.get("promo"))
             + f'<td data-v="{x["heat"]}"><span class="heat {"hot" if x["heat"] >= C.HEAT_ALERT_SCORE else ("warm" if x["heat"] >= 30 else "")}">{x["heat"]}</span></td>'
             + pc(x.get("model"))
+            + _fc_tds(x, fmt)
             + f'<td data-v="{x.get("playtime") or -1}">{(str(round(x["playtime"])) + " min") if x.get("playtime") else "—"}</td>'
             + f'<td data-v="{x["age"] if x.get("age") is not None else 99999}">{(str(x["age"]) + "d") if x.get("age") is not None else "—"}</td></tr>')
 
@@ -316,7 +331,7 @@ ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 <button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="overview" class="on">
 <div class="card" style="padding:14px 18px"><div class="sl" style="margin-bottom:6px">TODAY IN 30 SECONDS</div><ul class="head">{head_html or '<li class=muted>Quiet day — nothing crossed the thresholds.</li>'}</ul></div>
-<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Games to watch</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th><th>Promotion chance</th><th>Heat</th><th>Breakout chance</th><th>Playtime / player / day</th><th>Age</th></tr></thead><tbody>{"".join(brows) or '<tr><td colspan=9 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
+<p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Games to watch</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th><th>Promotion chance</th><th>Heat</th><th>Breakout chance</th><th>Forecast peak</th><th>Half-life</th><th>Playtime / player / day</th><th>Age</th></tr></thead><tbody>{"".join(brows) or '<tr><td colspan=11 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
 <p class="note">One ranked list merging growth vs the same day last week, the algorithm mirror's promotion chance, cross-platform heat, the breakout model and badge playtime. Every other tab has the full detail.</p></section>
 <section id="hot"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
 <div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
