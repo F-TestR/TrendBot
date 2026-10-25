@@ -34,6 +34,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import roblox_direct as RD
 import present as PR
 import promo as P
 import badges as BD
@@ -359,6 +360,31 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                        f"(page {e.page} was refused). The bot has adjusted and keeps running; it re-checks once a day.")
     except (urllib.error.URLError, OSError, ValueError) as e:
         print(f"RoWatcher list fetch failed, continuing with what we have: {e}", file=sys.stderr)
+    # 1b. Roblox direct: Roblox's own sorts + search to discover games, and live numbers for every game
+    #     the bot follows that RoWatcher didn't return (it only serves the top 2,000)
+    if not first_run:
+        try:
+            have = {g["id"] for g in top}
+            raws, rchart, summ = RD.collect(state, t, have, is_young)
+            rbx_base = "rbx_started" not in state  # first time: don't announce hundreds of "new" games
+            added = 0
+            for raw in raws:
+                gid = str(raw["universeId"])
+                if gid in have or (raw["playing"] < C.RBX_MIN_PLAYERS and gid not in state["games"]):
+                    continue
+                ng = normalise_game(raw)
+                ng["raw"] = raw
+                ng["rbx_base"] = rbx_base
+                top.append(ng)
+                have.add(gid)
+                added += 1
+            state["rbx_started"] = state.get("rbx_started") or today
+            if rchart:
+                W.record_chart(db, rchart, t)
+            print(f"roblox direct: {summ}, {added} added to this run")
+        except Exception as e:
+            print(f"roblox direct failed: {e}", file=sys.stderr)
+
     if not top:
         print("No games fetched this run.")
         save_state(state)
@@ -379,7 +405,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         if is_new:
             rec = games[g["id"]] = {"name": g["name"], "first_seen": today,
                                     "created": g["created"], "days": {}}
-            if first_run or upgrading:
+            if first_run or upgrading or g.get("rbx_base"):
                 # already there when the bot started (or first deep run): not "new",
                 # so it can't trigger new-game, copy-wave or riser alerts
                 rec["base"] = True
@@ -1283,7 +1309,7 @@ def main():
 
     if a.check_sources:
         load_dotenv()
-        lines = S.check_sources(os.environ) + U.check(os.environ) + FUT.check(os.environ) + BD.check()
+        lines = S.check_sources(os.environ) + RD.check() + U.check(os.environ) + FUT.check(os.environ) + BD.check()
         post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), "**Source check**\n" + "\n".join(lines), a.dry_run, "alerts")
         return
 

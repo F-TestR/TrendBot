@@ -350,3 +350,19 @@ BOARD_PLAYTIME_HEADLINE = 30     # minutes/player/day needed for the playtime he
 
 # A model's % is only shown (and only triggers alerts) once it scores at least this on data it never saw (0.5 = coin flip)
 MODEL_TRUST_AUC = 0.6
+
+# =====================================================================
+# Roblox direct (free, no key): Roblox's own home-page sorts, Roblox search, and live numbers
+# for games below RoWatcher's 2,000-game cap
+# =====================================================================
+RBX_SORTS_EVERY_MIN = 60         # read Roblox's home-page sorts this often
+RBX_DEVICES = ["computer", "phone"]   # sorts differ a little by device
+RBX_SKIP_SORTS = {"filters_v5", "top-paid-access", "music-top-100", "trending-music-experiences",
+                  "more-when-you-subscribe", "learning-and-explore"}
+RBX_CHART_SORTS = {"top-trending", "up-and-coming", "fun-with-friends", "top-revisited"}  # count as "Roblox is pushing it"
+RBX_SEARCH_WORDS = ["simulator", "tycoon", "obby", "steal", "anomaly", "clean", "wash", "pirate", "disaster", "brainrot"]
+RBX_SEARCH_WORDS_PER_RUN = 2     # words searched per run (each once a day) - finds tiny new copies
+RBX_SEARCH_PAGES = 3             # result pages per word (~30-60 games)
+RBX_MIN_PLAYERS = 20             # ignore discovered games smaller than this
+RBX_TRACK_DAYS = 14              # keep following a discovered or young game this many days after last seen
+RBX_TRACK_MAX = 1500             # most games tracked directly per run (50 per request)

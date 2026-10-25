@@ -45,6 +45,8 @@ It also keeps its **own database** and **learns**:
 
 **How it reads in Discord:** the daily digest is five short cards — **📊 Today in 30 seconds** (one headline per category: biggest riser, most likely to be pushed by Roblox, hottest across platforms, most playtime, theme to watch, what's coming, watchlist warnings), **🎮 Games to watch** (one ranked list merging growth, promotion chance, heat, breakout chance and playtime, with a legend underneath), **🌱 Trends**, **🔮 Coming up** and **👀 Watchlist**. The Sunday report opens with **the week in 6 lines**, then one card each for mechanics, the algorithm, long-term games, engagement, what lasting games share, and whether the predictions are working; the full-length version is attached as `weekly_report.md`. The dashboard opens on an **⭐ Overview** tab with the same picks. Set `DIGEST_STYLE = "text"` in `config.py` to go back to the old long text digest.
 
+**Roblox direct (free, no key):** RoWatcher only serves its top 2,000 games, so the bot also reads Roblox itself: Roblox's home-page sorts every hour (Top Trending, Up-and-Coming, Fun with Friends, Top Revisited, every "Trending in…" genre, on computer and phone — the games Roblox's algorithm is pushing), Roblox search once a day for the words that matter (rising themes, copy-wave words and `RBX_SEARCH_WORDS` in `config.py`) to find tiny new copies, and live player counts for every young or watchlisted game outside RoWatcher's list (50 games per request). The source check shows three Roblox lines for these.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---
