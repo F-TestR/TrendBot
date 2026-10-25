@@ -108,6 +108,13 @@ def save_state(state):
 
 # -------------------------------------------------------------------- api ---
 
+class PageLimit(Exception):
+    """RoWatcher refused a page past its result cap (403 on deep pages)."""
+    def __init__(self, page, detail=""):
+        super().__init__(f"page {page}: {detail}")
+        self.page = page
+
+
 class BudgetExceeded(Exception):
     pass
 
@@ -279,9 +286,12 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         mins = t.hour * 60 + t.minute + 20
         return state["requests"].get(today, 0) < C.DAILY_REQUEST_CAP * min(1.0, mins / 1440)
 
-    # 1. Pull the game lists: top 300 every run, deeper pages in rotation, very deep once a day
-    pages = list(range(1, C.CORE_PAGES + 1))
-    deep = list(range(C.CORE_PAGES + 1, C.DEEP_LAST_PAGE + 1))
+    # 1. Pull the game lists: top 300 every run, deeper pages in rotation, very deep once a day.
+    # RoWatcher may cap how deep the list goes (Oct 2026: first 2,000 results). The bot learns the cap
+    # from a 403, stays inside it, and re-tests one page deeper once a day in case it's lifted.
+    limit = state.get("page_limit") or 9999
+    pages = list(range(1, min(C.CORE_PAGES, limit) + 1))
+    deep = list(range(C.CORE_PAGES + 1, min(C.DEEP_LAST_PAGE, limit) + 1)) or [C.CORE_PAGES]
     ptr = state.get("deep_ptr", 0) % max(len(deep), 1)
     rotation = [deep[(ptr + i) % len(deep)] for i in range(min(C.DEEP_PAGES_PER_RUN, len(deep)))]
     first_run = not state["games"]
@@ -290,19 +300,34 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         rotation = deep  # build the full picture on the very first (deep) run
     discovery = []
     if state.get("last_discovery") != today and t.hour >= 2 and not first_run:
-        discovery = list(range(C.DISCOVERY_FIRST_PAGE, C.DISCOVERY_LAST_PAGE + 1))
+        discovery = [p for p in range(C.DISCOVERY_FIRST_PAGE, C.DISCOVERY_LAST_PAGE + 1) if p <= limit]
+        if limit < 9999 and limit + 1 not in rotation:
+            discovery.append(limit + 1)  # daily probe: has the cap been lifted?
 
     top, raw_seen = [], 0
     fetched_deepest = None
     def fetch(page):
         nonlocal raw_seen, fetched_deepest
-        resp = api.get("/games", {"sort": "playing", "page": page, "pageSize": C.PAGE_SIZE})
+        try:
+            resp = api.get("/games", {"sort": "playing", "page": page, "pageSize": C.PAGE_SIZE})
+        except urllib.error.HTTPError as e:
+            if e.code == 403 and page > 1:
+                body = ""
+                try:
+                    body = e.read().decode("utf-8", "replace")[:200]
+                except Exception:
+                    pass
+                raise PageLimit(page, body)
+            raise
         data = resp.get("data") or []
         for g in data:
             ng = normalise_game(g)
             ng["raw"] = g
             top.append(ng)
         raw_seen += len(data)
+        if state.get("page_limit") and page > state["page_limit"]:
+            print(f"page {page} worked again — RoWatcher's cap looks lifted")
+            state.pop("page_limit", None)
         if page == C.DEEP_LAST_PAGE and data:
             fetched_deepest = min(normalise_game(g)["playing"] for g in data)
         return len(data)
@@ -318,12 +343,22 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             done += 1
         state["deep_ptr"] = ptr + done
         if discovery and paced():
+            state["last_discovery"] = today  # once a day, even if the probe page is refused
             for page in discovery:
                 if fetch(page) < C.PAGE_SIZE:
                     break
             state["last_discovery"] = today
     except BudgetExceeded as e:
         print(f"Stopping fetch: {e}")
+    except PageLimit as e:
+        old = state.get("page_limit")
+        state["page_limit"] = e.page - 1
+        print(f"RoWatcher refused {e} — scanning pages 1-{e.page - 1} only from now on")
+        if old != e.page - 1:
+            ops_notice(state, "page_limit", f"ℹ️ RoWatcher now only serves the first {(e.page - 1) * C.PAGE_SIZE:,} games "
+                       f"(page {e.page} was refused). The bot has adjusted and keeps running; it re-checks once a day.")
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        print(f"RoWatcher list fetch failed, continuing with what we have: {e}", file=sys.stderr)
     if not top:
         print("No games fetched this run.")
         save_state(state)
@@ -1189,6 +1224,39 @@ def present_ctx():
             "is_base": is_base, "keywords": keywords}
 
 
+def ops_notice(state, key, text, every_days=1):
+    """One short operational message to the alerts channel, at most once a day per key."""
+    ops = state.setdefault("ops", {})
+    today = day_str(now_utc())
+    last = ops.get(key)
+    if last and (parse_day(today) - parse_day(last)).days < every_days:
+        return
+    ops[key] = today
+    post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), text, False, "ops")
+
+
+def _crash_notice(err):
+    """If a run crashes, tell Discord (once a day) so failures aren't silent."""
+    try:
+        path = os.path.join(os.path.dirname(STATE_PATH), "ops_crash.json")
+        today = day_str(now_utc())
+        seen = {}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                seen = json.load(f)
+        msg = f"{type(err).__name__}: {err}"[:300]
+        if seen.get("day") == today and seen.get("msg") == msg:
+            return
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"day": today, "msg": msg}, f)
+        post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"),
+                     f"⚠️ **Trend bot run failed** — `{msg}`\nIt will keep retrying every 20 minutes. "
+                     f"Details: GitHub → Actions → the red run → Run step.", False, "ops")
+    except Exception:
+        pass
+
+
 def extras(state, gid, today):
     bits = []
     lr = S.like_ratio(state, gid)
@@ -1233,7 +1301,16 @@ def main():
                 print(f"run failed: {e}", file=sys.stderr)
             time.sleep(a.loop * 60)
     else:
-        run_once(a.dry_run, a.digest_now, a.weekly_now)
+        try:
+            run_once(a.dry_run, a.digest_now, a.weekly_now)
+        except SystemExit:
+            raise
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            load_dotenv()
+            _crash_notice(e)
+            sys.exit(1)
 
 
 S.HOOKS.update(is_young=is_young, growth=growth, fmt=fmt)

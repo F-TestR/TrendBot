@@ -163,7 +163,8 @@ DASHBOARD = True                 # attach a dashboard.html file to the daily dig
 # RoWatcher budget is paced across the day (DAILY_REQUEST_CAP above). Roughly per day:
 #   core pages 216 · deep rotation 360 · charts 24 · discovery 30 · backfill ~140  =  ~770
 CORE_PAGES = 3                   # pages 1-3 (top 300) every run
-DEEP_LAST_PAGE = 30              # pages 4-30 (down to ~350 players) in rotation...
+DEEP_LAST_PAGE = 20              # pages 4-20 in rotation (RoWatcher serves only the first 2,000 results since Oct 2026;
+                                 # the bot also detects the cap by itself and re-checks daily)
 DEEP_PAGES_PER_RUN = 5           # ...5 per run, so each is refreshed about every 1.8 hours
 DISCOVERY_FIRST_PAGE = 31        # once a day, pages 31-60 (~350 down to ~150 players)
 DISCOVERY_LAST_PAGE = 60         # to find tiny young games for the model
@@ -182,7 +183,7 @@ BACKUP_TAG = "trendbot-db"
 # ---- Learning ----
 EXPLODE_CCU = 25000              # "exploded" = reached this many players...
 LABEL_DAYS = 21                  # ...within this many days of first being noticed
-LEARN_ENTRY_CCU = 300            # a game is "noticed" the first day it reaches this many players
+LEARN_ENTRY_CCU = 600            # a game is "noticed" the first day it reaches this many players (inside the top 2,000)
 LEARN_MAX_AGE_DAYS = 60          # only learn from games noticed within 60 days of creation
 LEARN_MIN_EXAMPLES = 60          # don't train until there are this many finished examples...
 LEARN_MIN_POSITIVES = 8          # ...including this many explosions
