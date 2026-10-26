@@ -72,7 +72,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Group | Games | Typical $/month | Top-quartile $/month | $ per player/month | Total $/month | Top games |
 |---|---|---|---|---|---|---|
 | Simulation | 1119 | $10K | $30K | $8.83 | $60.2M | Steal An Egg, Break and Steal an Egg, [💫] Ride A Pet |
-| Strategy | 71 | $14K | $44K | $8.47 | $2.6M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [💰X2] Cameraman Tower De |
+| Strategy | 71 | $14K | $44K | $8.47 | $2.6M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram |
 | Social | 52 | $7.6K | $16K | $8.43 | $863K | Clarity Over Resonance, Neighbors 🔊, Neighbors 🔊 [18+] |
 | Puzzle | 40 | $11K | $36K | $8.24 | $1.0M | MONOCHROME🎃, [🎃EVENT] Solve The Cube, [300] Kill Your Friend! |
 | Party & Casual | 175 | $8.7K | $20K | $7.89 | $4.0M | [🎃] Ball VS Ball, Timebomb Duels [Alpha], [🦑] Squid Game X |
@@ -95,13 +95,13 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Escape Room | 12 | $12K | $47K | $11 | $395K | MONOCHROME🎃, [300] Kill Your Friend!, HUNTRESS 🕷️ [ NIGHTMARE  |
 | Tycoon | 389 | $13K | $41K | $10 | $35.1M | Steal An Egg, Break and Steal an Egg, [💫] Ride A Pet |
 | Incremental Simulator | 360 | $10K | $33K | $9.87 | $15.2M | 🎉 [PSX] Pet Simulator 99, [🎵] +1 Speed Keyboard Es, [🎃UPD] Fish It! 🐟 |
-| Tower Defense | 42 | $20K | $45K | $9.02 | $1.9M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [💰X2] Cameraman Tower De |
+| Tower Defense | 42 | $20K | $45K | $9.02 | $1.9M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram |
 | Childhood Game | 25 | $16K | $22K | $8.56 | $463K | [UPD🖌️] Paint to Hide an, [NEW RIGS] Chameleon! 🎨, Duck Duck (Tag) 🦆 |
 | Minigame | 47 | $13K | $24K | $8.52 | $983K | [🦑] Squid Game X, [UPD] Aura Dance Battles, Don't Press The Button 7 |
 | Open World Action | 50 | $12K | $35K | $8.46 | $1.6M | BlockSpin 🔪 [HALLOWEEN U, RUNAWAYS [beta], Wanted [🎃UPDATE] |
 | Idle | 13 | $11K | $21K | $8.32 | $297K | Don’t Miss Your Flight! , [CARGO] Run an Airline✈️, Rush To The Vet! 🐶 |
 | Classic Obby | 28 | $5.1K | $8.8K | $8.00 | $297K | [HELL] Spiral Difficulty, Escape The Carnival of T, 20 Doors Till Midnight { |
-| Coloring & Drawing | 22 | $11K | $34K | $7.76 | $662K | [🎨] Hide In Pixels, [🥞] Paint a Pancake, Paint the Face |
+| Coloring & Drawing | 22 | $11K | $34K | $7.76 | $662K | [🎨] Hide In Pixels, [🥞] Paint a Pancake, Make a Face |
 | Tower Obby | 100 | $5.8K | $14K | $7.51 | $1.8M | Tower of Hell, TROLL Hug Tower, TROLL Fly & Carry Tower |
 | Action RPG | 74 | $10K | $26K | $7.46 | $4.7M | Blox Fruits, Slayers 2, Anime Zero [SOLAR RADIAN |
 | PvE Shooter | 22 | $6.4K | $21K | $7.45 | $350K | Guts & Blackpowder, Examination, [NEW 🚁] Zombie Air Force |
@@ -139,7 +139,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Merge / clicker | 23 | $23K | $51K | $10 | $1.2M | [👻] Tap Simulator REBORN, [FPS] One Tap, [UPD🎃] Merge a Nuke! |
 | Fishing / farming | 39 | $12K | $65K | $10 | $2.1M | [🎃UPD] Fish It! 🐟, [🎃] Blue Lock Farm, [UPD] Deep Fishing🎣 |
 | Obby / parkour | 75 | $7.0K | $18K | $8.89 | $1.7M | [🎃]Climb For Animals Egg, Jump for Animals!, [HELL] Spiral Difficulty |
-| Tower defense | 28 | $16K | $45K | $8.83 | $1.0M | [🌙 NIGHT 3] Tower Defens, [💰X2] Cameraman Tower De, [🎃PART 2🎃] Slop Tower De |
+| Tower defense | 28 | $16K | $45K | $8.83 | $1.0M | [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram, [🎃PART 2🎃] Slop Tower De |
 | Disasters / survival | 61 | $10K | $40K | $8.82 | $1.8M | 🎃 Creatures of Sonaria 🍬, [🎃EVENT] 🧟 Survive the A, Natural Disaster Surviva |
 | Tycoon / sell stuff | 98 | $11K | $33K | $8.77 | $2.9M | 🎃 Sell Fries! [Anomaly] ,  [🎃] Sell Lemons 🍋, Pet Store Tycoon |
 | Jobs / work sim | 26 | $10K | $26K | $8.55 | $519K | [🎃] Clean Everything, Dig & Clean 🧼, [🍬Trick-or-Treat]🍕Work a |
