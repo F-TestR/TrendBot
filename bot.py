@@ -35,6 +35,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import ask as ASK
 import forecast as FC
 import roblox_direct as RD
 import present as PR
@@ -1272,6 +1273,30 @@ def build_digest(state, today, cutoff, t=None):
     return "\n".join(lines)
 
 
+def run_ask(question, dry_run=False):
+    state = load_state()
+    if not state.get("games"):
+        post_discord(os.environ.get("DISCORD_DIGEST_WEBHOOK"), "The bot has no data yet — ask again after a few runs.", dry_run, "ask")
+        return
+    db = W.connect()
+    for mod in (T, HOLD, E, BD, P, FC):
+        try:
+            mod.ensure(db)
+        except Exception:
+            pass
+    t = now_utc()
+    ctx = {"S": S, "fmt": fmt, "today": day_str(t), "t": t, "link": link, "age_days": age_days, "I": I, "FC": FC,
+           "P": P, "PR": PR, "pctx": present_ctx(), "HOLD": HOLD, "FUT": FUT}
+    try:
+        content, cards = ASK.answer(db, state, question, ctx)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        content, cards = f"**Q:** {question[:200]}", [{"title": "⚠️ Couldn't answer that", "description": f"`{e}`", "color": 0xED4245}]
+    PR.post_cards(os.environ.get("DISCORD_DIGEST_WEBHOOK"), cards, content=content, dry_run=dry_run, label="ask")
+    db.close()
+
+
 def present_ctx():
     return {"FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
             "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
@@ -1333,12 +1358,18 @@ def main():
     ap.add_argument("--test-webhooks", action="store_true")
     ap.add_argument("--check-sources", action="store_true")
     ap.add_argument("--weekly-now", action="store_true")
+    ap.add_argument("--ask", help="answer a question from the bot's database and post it to the digest channel")
     a = ap.parse_args()
 
     if a.check_sources:
         load_dotenv()
         lines = S.check_sources(os.environ) + RD.check() + U.check(os.environ) + FUT.check(os.environ) + BD.check()
         post_discord(os.environ.get("DISCORD_ALERTS_WEBHOOK"), "**Source check**\n" + "\n".join(lines), a.dry_run, "alerts")
+        return
+
+    if a.ask:
+        load_dotenv()
+        run_ask(a.ask, a.dry_run)
         return
 
     if a.test_webhooks:

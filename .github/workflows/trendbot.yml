@@ -21,9 +21,13 @@ on:
         type: boolean
         default: false
       check_sources:
-        description: "Test YouTube / Roblox / Twitch / Discord access"
+        description: "Test all data sources"
         type: boolean
         default: false
+      question:
+        description: "Ask the bot a question (answer appears in #daily-digest), e.g. how is Wash the Car doing"
+        type: string
+        default: ""
 
 permissions:
   contents: write   # lets the bot back up its database to this repo's Releases page (private repos only)
@@ -64,8 +68,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATE_PATH: state/state.json
           DB_PATH: state/trendbot.db
+          QUESTION: ${{ inputs.question }}
         run: |
-          if [ "${{ inputs.test_webhooks }}" = "true" ]; then
+          if [ -n "$QUESTION" ]; then
+            python bot.py --ask "$QUESTION"
+          elif [ "${{ inputs.test_webhooks }}" = "true" ]; then
             python bot.py --test-webhooks
           elif [ "${{ inputs.check_sources }}" = "true" ]; then
             python bot.py --check-sources

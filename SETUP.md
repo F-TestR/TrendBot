@@ -49,6 +49,8 @@ It also keeps its **own database** and **learns**:
 
 **Forecasts (📈 🧭 ⏳):** once a day the bot fits an **S-curve** to every rising young game to forecast its likely peak and when it gets there (a range while it's early), runs **Bayesian change-point detection** on each game's growth to spot the moment a breakout *starts* (🧭 alert), and uses **survival analysis** to measure how long hits keep half their peak players, by genre, mechanic and weekday hold. Each is back-tested on the bot's own history and reported in the Sunday "📈 Forecasts & how long hits last" card; forecasts also show on the Games to watch board and the dashboard.
 
+**Ask the bot (🔎):** GitHub → **Actions → Roblox trend bot → Run workflow**, type a question in the **"Ask the bot a question"** box and press **Run workflow**; the answer appears in #daily-digest about a minute later (works from the GitHub phone app too). It understands questions like `how is Wash the Car doing`, `Be a Pirate vs Pilfering Pirates`, `is chocolate trending`, `tycoon games`, `Simulation games`, `what's rising`, `long term games`, `what is roblox rewarding` and `what's coming up` — game names can be rough. The dashboard also has a **🔎 Search** tab covering every game seen in the last 30 days.
+
 It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
 
 ---

@@ -147,7 +147,8 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
 def board_line(x, ctx, state):
     url = ctx["link"](x["gid"], state).strip("<>")
     age = f" · {x['age']}d old" if x.get("age") is not None else ""
-    return f"**{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age} · " + " ".join(x["tags"])
+    tags = (" · " + " ".join(x["tags"])) if x["tags"] else ""
+    return f"**{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age}{tags}"
 
 
 # ---------------------------------------------------------------- digest ---

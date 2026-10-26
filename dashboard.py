@@ -287,6 +287,36 @@ def build(state, today, cutoff):
             + f'<td data-v="{x.get("playtime") or -1}">{(str(round(x["playtime"])) + " min") if x.get("playtime") else "—"}</td>'
             + f'<td data-v="{x["age"] if x.get("age") is not None else 99999}">{(str(x["age"]) + "d") if x.get("age") is not None else "—"}</td></tr>')
 
+    # --- explorer: searchable index of every game seen in the last 30 days
+    import json as _json
+    cut30 = (t - timedelta(days=30)).strftime("%Y-%m-%d")
+    genre_of = {}
+    try:
+        import warehouse as _WH
+        _db2 = _WH.connect()
+        genre_of = {r["uid"]: r["genre"] for r in _db2.execute("SELECT uid, genre FROM games")}
+        _db2.close()
+    except Exception:
+        pass
+    idx = []
+    dlist = [(t - timedelta(days=k)).strftime("%Y-%m-%d") for k in range(13, -1, -1)]
+    for gid, r in games.items():
+        if r.get("last_seen", "") < cut30:
+            continue
+        b = (state.get("badges") or {}).get(gid) or {}
+        hrel = ((state.get("hold") or {}).get(gid) or {}).get("rel")
+        stv = ((state.get("stick") or {}).get(gid) or {}).get("score")
+        fc = (state.get("_fc") or {}).get(gid) or {}
+        idx.append({"i": gid, "n": r.get("name", gid)[:60], "p": r.get("last", 0), "a": age_days(r, today),
+                    "g": genre_of.get(gid) or "", "m": (I.mechanics_of(r.get("name", "")) or [""])[0],
+                    "d": [r["days"].get(d, 0) for d in dlist], "h": round(hrel, 2) if hrel else None,
+                    "s": round(stv) if stv is not None else None, "pt": b.get("playtime"), "dau": b.get("dau"),
+                    "rt": b.get("returning"), "lt": ((state.get("longterm") or {}).get(gid) or {}).get("status"),
+                    "fp": round(fc["peak"]) if fc.get("status") in ("rising", "early") else None,
+                    "u": (S.roblox_link(state, gid) or f"https://rowatcher.com/games/{gid}").strip("<>")})
+    idx.sort(key=lambda x: -x["p"])
+    idx_json = _json.dumps(idx, separators=(",", ":")).replace("</", "<\\/")
+
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     tw_total = S.src_state(state)["tw_total"].get(yday) or S.src_state(state)["tw_total"].get(today)
@@ -328,7 +358,7 @@ ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 <div class="stats">{stat_html}</div></header>
 <main>
 <nav><button class="on" data-s="overview">⭐ Overview</button><button data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
-<button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
+<button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="explore">🔎 Search</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="overview" class="on">
 <div class="card" style="padding:14px 18px"><div class="sl" style="margin-bottom:6px">TODAY IN 30 SECONDS</div><ul class="head">{head_html or '<li class=muted>Quiet day — nothing crossed the thresholds.</li>'}</ul></div>
 <p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Games to watch</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th><th>Promotion chance</th><th>Heat</th><th>Breakout chance</th><th>Forecast peak</th><th>Half-life</th><th>Playtime / player / day</th><th>Age</th></tr></thead><tbody>{"".join(brows) or '<tr><td colspan=11 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
@@ -347,6 +377,23 @@ ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 <p></p><input type="search" placeholder="Filter games…" data-for="t-algo">
 <div class="card"><table id="t-algo" class="sortable"><thead><tr><th data-t="s">Most likely to be promoted next</th><th>Promotion score</th><th>Chart entry</th><th>50%+ growth</th><th>Players</th><th class="nosort">Strongest signal</th><th class="nosort">Weak spot</th></tr></thead><tbody>{cand_rows or '<tr><td colspan=7 class=muted>No scores yet.</td></tr>'}</tbody></table></div>
 <p class="note">A mirror of Roblox's algorithm built from public data: it learns which signals came before promotions, not Roblox's actual model.</p></section>
+<section id="explore"><input type="search" id="q" placeholder="Search {len(idx):,} games by name, genre or type… e.g. wash, pirate, tycoon" style="max-width:520px">
+<div class="card"><table id="t-ex" class="sortable"><thead><tr><th data-t="s">Game</th><th>Players</th><th class="nosort">Last 14 days</th><th>Age</th><th data-t="s">Genre / type</th><th>Weekday hold</th><th>Stickiness</th><th>Playtime</th><th>Players / day</th><th>Returning</th><th>Forecast peak</th></tr></thead><tbody></tbody></table></div>
+<p class="note">Every game the bot has seen in the last 30 days. Showing the 60 biggest matches; click a column to sort.</p>
+<script>
+(function(){{const D={idx_json};const tb=document.querySelector('#t-ex tbody'),q=document.getElementById('q');
+const f=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1)+'K':String(Math.round(n||0));
+const sp=d=>{{const mx=Math.max(...d,1),w=84,h=20;const pts=d.map((v,i)=>(i*(w/(d.length-1))).toFixed(1)+','+(h-2-(v/mx)*(h-4)).toFixed(1)).join(' ');return '<svg width="'+w+'" height="'+h+'"><polyline fill="none" stroke="currentColor" stroke-width="1.5" points="'+pts+'"/></svg>'}};
+const e=s=>String(s).replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]));
+function draw(){{const s=q.value.toLowerCase().trim();const rows=(s?D.filter(x=>(x.n+' '+x.g+' '+x.m).toLowerCase().includes(s)):D).slice(0,60);
+tb.innerHTML=rows.map(x=>'<tr><td data-v="'+e(x.n.toLowerCase())+'"><a href="'+e(x.u)+'" target="_blank" rel="noopener">'+e(x.n)+'</a>'+(x.lt==='long-term'?' <span class=tag>long-term</span>':'')+'</td>'
++'<td data-v="'+x.p+'">'+f(x.p)+'</td><td>'+sp(x.d)+'</td><td data-v="'+(x.a??99999)+'">'+(x.a!=null?x.a+'d':'—')+'</td>'
++'<td data-v="'+e(x.g)+'">'+e([x.g,x.m].filter(Boolean).join(' · ')||'—')+'</td>'
++'<td data-v="'+(x.h??-1)+'">'+(x.h!=null?x.h.toFixed(2)+'×':'—')+'</td><td data-v="'+(x.s??-1)+'">'+(x.s??'—')+'</td>'
++'<td data-v="'+(x.pt??-1)+'">'+(x.pt?Math.round(x.pt)+' min':'—')+'</td><td data-v="'+(x.dau??-1)+'">'+(x.dau?f(x.dau):'—')+'</td>'
++'<td data-v="'+(x.rt??-1)+'">'+(x.rt!=null?Math.round(x.rt*100)+'%':'—')+'</td><td data-v="'+(x.fp??-1)+'">'+(x.fp?'~'+f(x.fp):'—')+'</td></tr>').join('')||'<tr><td colspan=11 class=muted>No matches.</td></tr>'}}
+q.addEventListener('input',draw);draw();}})();
+</script></section>
 <section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
 <div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
 <p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>
