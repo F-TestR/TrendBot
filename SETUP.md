@@ -40,6 +40,7 @@ accurate it has been.
 Every model and signal is **scored against what happened**, and the Sunday report shows the results.
 
 ### Ask the bot
+In Discord with **slash commands** (`/game`, `/theme`, `/top`, `/money`, `/ask`… — step 8), or on
 GitHub → **Actions → Roblox trend bot → Run workflow** → type in **"Ask the bot a question"** → **Run workflow**.
 The answer appears in #daily-digest a minute later (works from the GitHub phone app). Examples:
 `how is Wash the Car doing` · `Be a Pirate vs Pilfering Pirates` · `is chocolate trending` · `tycoon games` ·
@@ -100,7 +101,45 @@ Repo **Settings → Pages → Build and deployment → Source: Deploy from a bra
 After the next daily digest the dashboard is live at `https://<your-username>.github.io/<repo>/` (the link is also in the digest).
 Note: like the repo itself, the page is public.
 
-### 8. Check everything
+### 8. Discord slash commands (optional, free, about 15 minutes)
+Ask the bot from Discord: `/game Wash the Car`, `/compare`, `/theme chocolate`, `/top`, `/money`, `/longterm`,
+`/algorithm`, `/coming`, or `/ask` anything. Discord shows "Trend bot is thinking…" and the answer replaces it
+about a minute later (the bot wakes up on GitHub to answer). How it works: Discord → a tiny free
+**Cloudflare Worker** (`discord/worker.js`) → starts the bot's GitHub workflow → the bot edits the reply.
+
+**a) Discord app** — <https://discord.com/developers/applications> → **New Application** (e.g. "Trend Bot").
+- **General Information:** copy the **Application ID** and the **Public Key**.
+- **Bot:** **Reset Token** → copy the token (only used once, to register the commands).
+- **Installation:** under *Guild Install* make sure **applications.commands** is ticked, copy the **Install Link**,
+  open it and add the app to your server.
+- Your server's ID: Discord → User Settings → Advanced → Developer Mode on → right-click your server → **Copy Server ID**.
+  Your own user ID: right-click your name → **Copy User ID**.
+
+**b) GitHub secrets** (Settings → Secrets and variables → Actions): `DISCORD_APP_ID`, `DISCORD_BOT_TOKEN`,
+`DISCORD_GUILD_ID` (your server ID). Then **Actions → Discord commands → Run workflow** — the log should say
+"Registered 9 commands".
+
+**c) A GitHub token for the worker** — <https://github.com/settings/personal-access-tokens/new> → name "trendbot discord",
+expiry up to a year → **Repository access: Only select repositories → TrendBot** → **Permissions → Actions: Read and write** →
+**Generate token** → copy it.
+
+**d) Cloudflare Worker** — free account at <https://dash.cloudflare.com/sign-up> → **Workers & Pages → Create → Create Worker** →
+name it `trendbot-discord` → **Deploy** → **Edit code** → replace everything with the contents of `discord/worker.js` → **Deploy**.
+Then the worker's **Settings → Variables and Secrets → Add** (type *Secret*):
+
+| Name | Value |
+|---|---|
+| `DISCORD_PUBLIC_KEY` | the Public Key from (a) |
+| `GITHUB_TOKEN` | the token from (c) |
+| `GITHUB_REPO` | `F-TestR/TrendBot` |
+| `ALLOWED_USERS` | your Discord user ID (so only you can use it; leave out to allow everyone in the server) |
+
+Copy the worker's address (like `https://trendbot-discord.<you>.workers.dev`).
+
+**e) Connect them** — back in the Discord app's **General Information → Interactions Endpoint URL**, paste the worker address → **Save**
+(Discord checks it straight away; if it refuses, re-check `DISCORD_PUBLIC_KEY`). Type `/top` in your server.
+
+### 9. Check everything
 **Run workflow** with **"Test all data sources"** ticked → #alerts gets a ✅/❌ line per source.
 
 ---

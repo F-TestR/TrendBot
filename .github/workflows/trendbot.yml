@@ -28,12 +28,21 @@ on:
         description: "Ask the bot a question (answer appears in #daily-digest), e.g. how is Wash the Car doing"
         type: string
         default: ""
+      reply_token:
+        description: "(used by the Discord slash commands - leave empty)"
+        type: string
+        default: ""
+      reply_app:
+        description: "(used by the Discord slash commands - leave empty)"
+        type: string
+        default: ""
 
 permissions:
   contents: write   # backups to this repo's Releases page, and reports to the 'reports' branch
 
+# Questions run alongside the scheduled bot (they only read its memory); everything else runs one at a time.
 concurrency:
-  group: trendbot
+  group: ${{ github.event.inputs.question != '' && format('trendbot-ask-{0}', github.run_id) || 'trendbot' }}
   cancel-in-progress: false
 
 jobs:
@@ -75,7 +84,10 @@ jobs:
           STATE_PATH: state/state.json
           DB_PATH: state/trendbot.db
           QUESTION: ${{ inputs.question }}
+          REPLY_TOKEN: ${{ inputs.reply_token }}
+          REPLY_APP: ${{ inputs.reply_app }}
         run: |
+          if [ -n "$REPLY_TOKEN" ]; then echo "::add-mask::$REPLY_TOKEN"; fi
           if [ -n "$QUESTION" ]; then
             python bot.py --ask "$QUESTION"
           elif [ "${{ inputs.test_webhooks }}" = "true" ]; then
@@ -91,7 +103,7 @@ jobs:
           fi
 
       - name: Save bot memory
-        if: always() && hashFiles('state/state.json') != ''
+        if: always() && hashFiles('state/state.json') != '' && github.event.inputs.question == ''
         uses: actions/cache/save@v5
         with:
           path: state

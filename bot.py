@@ -1443,7 +1443,17 @@ def run_ask(question, dry_run=False):
         import traceback
         traceback.print_exc()
         content, cards = f"**Q:** {question[:200]}", [{"title": "⚠️ Couldn't answer that", "description": f"`{e}`", "color": 0xED4245}]
-    PR.post_cards(os.environ.get("DISCORD_DIGEST_WEBHOOK"), cards, content=content, dry_run=dry_run, label="ask")
+    rt, ra = os.environ.get("REPLY_TOKEN"), os.environ.get("REPLY_APP")
+    replied = False
+    if rt and ra and not dry_run:  # a Discord slash command: answer in place of "thinking…"
+        cards = [c for c in cards if c][:10]
+        while cards and sum(len(c.get("title", "")) + len(c.get("description", "")) for c in cards) > 5800:
+            cards[-1]["description"] = cards[-1]["description"][:max(200, len(cards[-1]["description"]) // 2)] + "\n…"
+            if len(cards) > 1 and sum(len(c.get("description", "")) for c in cards) > 5800:
+                cards.pop()
+        replied = DO.edit_interaction(ra, rt, {"content": content[:1900], "embeds": cards, "allowed_mentions": {"parse": []}})
+    if not replied:
+        PR.post_cards(os.environ.get("DISCORD_DIGEST_WEBHOOK"), cards, content=content, dry_run=dry_run, label="ask")
     if not dry_run:
         try:
             files = {"reports/ask.md": PUB.cards_md("Latest question", cards, content)}

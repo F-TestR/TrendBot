@@ -58,6 +58,21 @@ def send(url, payload, files=None):
     time.sleep(0.5)
 
 
+def edit_interaction(app_id, token, payload):
+    """Replace a slash command's "thinking…" message with the answer. Returns True on success."""
+    url = f"https://discord.com/api/v10/webhooks/{app_id}/{token}/messages/@original"
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="PATCH",
+                                 headers={"Content-Type": "application/json", "User-Agent": UA})
+    try:
+        urllib.request.urlopen(req, timeout=30).read()
+        return True
+    except urllib.error.HTTPError as e:
+        print(f"Discord reply failed {e.code}: {e.read()[:300]}", file=sys.stderr)
+    except (urllib.error.URLError, OSError) as e:
+        print(f"Couldn't reach Discord for the reply: {e}", file=sys.stderr)
+    return False
+
+
 def post_text(url, text, dry_run=False, label="", files=None):
     """Long text split into ~1,900-char messages; files go with the last one."""
     chunks, cur = [], ""
