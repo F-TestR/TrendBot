@@ -1,10 +1,12 @@
 # Latest question
 
-**Q:** how is Clean the skyscraper! doing
+**Q:** how is Find Animal Bones doing
 
-## 🔎 🏢 Clean The Skyscraper!
+## 🔎 [🎃] Find Animal Bones
 
-**43** playing · 102 days old · Simulation · Jobs / work sim
+**6.9K** playing · 17 days old · Simulation · Find / search
+🚀 **Trend Score 52**/100 — chance its players double within 2 weeks
 ⏳ Simulation hits usually keep half their peak players ~9 days
+🧠 Promotion chance next 7 days: **12%**
 
-_Did you mean: [THE HOLLOW] Clean Crew 🧹 · [🎃] Build a Skyscraper!_
+_Did you mean: [🎃] Animal Hospital (Anomaly)  · Find and Mark!_
