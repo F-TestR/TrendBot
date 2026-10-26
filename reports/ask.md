@@ -1,6 +1,6 @@
 # Latest question
 
-**Q:** Fifa Super Soccer vs Illegal Soccer
+**Q:** Fifa Super Soccer vs Realistic Street Soccer
 
 ## 🔎 FIFA Super Soccer
 
@@ -10,15 +10,15 @@
 ⏳ all games hits usually keep half their peak players ~10 days
 🧠 Promotion chance next 7 days: **5%** · weak spot: session length
 
-## 🔎 Illegal Soccer
+## 🔎 Realistic Street Soccer
 
-**41.2K** playing · 167 days old · Sports & Racing · Sports
-📊 Mon 38.8K avg vs 39.8K a week before (**-2%**)
-Last 14 days: `▂▃▃▅██▁▁▁▄▂██▁`
-🔁 weekday hold **1.22×** typical · stickiness **63**/100 · 🏛️ long-term
-⏱ 1.4M players/day · ~53 min each · 10.0% reach a 7-day streak
-💰 ~**$447K/month** (estimate) · $310 per 1K daily players — 68th percentile of Roblox games
-🕹️ Sessions ~13 min — bottom 46% (Roblox: 13.5 typical, 25.8 top-10%)
-📈 Forecast: steady
+**21.9K** playing · 1179 days old · Sports & Racing · Sports
+📊 Mon 16.5K avg vs 18.6K a week before (**-11%**)
+Last 14 days: `▆▅▅▇██▃▂▃▆▂██▁`
+🔁 weekday hold **1.32×** typical · stickiness **51**/100 · 🏛️ long-term
+⏱ 683.0K players/day · ~50 min each · 82% returning
+💰 ~**$367K/month** (estimate) · $537 per 1K daily players — 83th percentile of Roblox games
+🕹️ Sessions ~12 min — bottom 39% (Roblox: 13.5 typical, 25.8 top-10%)
+📈 Forecast: past its peak
 ⏳ all games hits usually keep half their peak players ~10 days
-🧠 Promotion chance next 7 days: **10%** · weak spot: session length
+🧠 Promotion chance next 7 days: **6%** · weak spot: session length
