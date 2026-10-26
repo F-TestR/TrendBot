@@ -1,13 +1,18 @@
 # Latest question
 
-**Q:** how is southwest florida doing
+**Q:** how is driving empire doing
 
-## 🔎 Southwest Florida Beta
+## 🔎 Driving Empire [✨2 NEW LIMITED✨]
 
-**653** playing · 2342 days old · Simulation
-💰 ~**$5.4K/month** (estimate)
-📈 Forecast: peak ~690 by Sun 25 Oct
-⏳ Simulation hits usually keep half their peak players ~9 days
-🧠 Promotion chance next 7 days: **5%**
+**23.1K** playing · 2682 days old · Simulation · Vehicles / riding
+📊 Mon 20.9K avg vs 19.9K a week before (**+5%**)
+Last 14 days: `▁▁▁▃▆▆▁▁▁▂▄█▅▂`
+🔁 weekday hold **1.10×** typical · stickiness **50**/100
+⏱ 793.1K players/day · ~50 min each · 66% returning
+💰 ~**$175K/month** (estimate) · $221 per 1K daily players — 57th percentile of Roblox games
+🕹️ Sessions ~14 min — 55th percentile (Roblox: 13.5 typical, 25.8 top-10%)
+📈 Forecast: steady
+⏳ Vehicles / riding hits usually keep half their peak players ~11 days
+🧠 Promotion chance next 7 days: **7%**
 
-_Did you mean: [REVAMP] Jupiter Florida · (NEW CUSTOMIZATION🚨) Westville_
+_Did you mean: [🐉] My Dino Empire 🦖 · [💎] Mining Empire_
