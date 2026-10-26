@@ -142,7 +142,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Tower defense | 28 | $16K | $45K | $8.83 | $1.0M | [🌙 NIGHT 3] Tower Defens, [💰X2] Cameraman Tower De, [🎃PART 2🎃] Slop Tower De |
 | Disasters / survival | 61 | $10K | $40K | $8.82 | $1.8M | 🎃 Creatures of Sonaria 🍬, [🎃EVENT] 🧟 Survive the A, Natural Disaster Surviva |
 | Tycoon / sell stuff | 98 | $11K | $33K | $8.77 | $2.9M | 🎃 Sell Fries! [Anomaly] ,  [🎃] Sell Lemons 🍋, Pet Store Tycoon |
-| Jobs / work sim | 26 | $10K | $26K | $8.55 | $519K | [🎃] Clean Everything, Dig & Clean 🧼, 🍕Work at a Pizza Place |
+| Jobs / work sim | 26 | $10K | $26K | $8.55 | $519K | [🎃] Clean Everything, Dig & Clean 🧼, [🍬Trick-or-Treat]🍕Work a |
 | Anime / fighting style | 63 | $18K | $50K | $8.32 | $6.5M | Blox Fruits, [HIRED KILLER] Jujutsu S, Slayers 2 |
 | Steal / brainrot | 112 | $8.5K | $32K | $8.14 | $21.5M | Steal An Egg, Break and Steal an Egg, [💀] Steal a Brainrot |
 | Find / search | 17 | $7.8K | $12K | $8.05 | $427K | [IMPOSSIBLE 😈] Search Fo, Find or Die! 🔎, Find and Mark! |
