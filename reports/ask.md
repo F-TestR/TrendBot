@@ -5,7 +5,6 @@
 ## 🔎 FIFA Super Soccer
 
 **11.3K** playing · 1379 days old · Sports & Racing · Sports
-💰 ~**$93K/month** (estimate)
 📈 Forecast: past its peak
 ⏳ all games hits usually keep half their peak players ~10 days
 🧠 Promotion chance next 7 days: **5%**
