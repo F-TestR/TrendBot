@@ -14,7 +14,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 2711375305,Catalog Avatar Creator,Shopping,Avatar Shopping,Other,69109,878851,12.72,406.16,1941,20K–100K,3+ years
 5750914919,Fisch 👻 [HORSEMAN],Simulation,,Other,87904,845191,9.61,725.44,957,20K–100K,1–3 years
 3317771874,🎉 [PSX] Pet Simulator 99! 🐾,Simulation,Incremental Simulator,Care / baby / pets,53365,788748,14.78,1879.51,1724,20K–100K,3+ years
-9584852943,[🎵] +1 Speed Keyboard Escape | Candy & Chocolate,Simulation,Incremental Simulator,Other,90506,755963,8.35,129.59,281,20K–100K,3–12 months
+9584852943,[🎵] +1 Speed Keyboard Escape | Candy & Chocolate,Simulation,Incremental Simulator,Other,90506,755963,8.35,226.79,281,20K–100K,3–12 months
 6701277882,[🎃UPD] Fish It! 🐟,Simulation,Incremental Simulator,Fishing / farming,76940,736345,9.57,1477.89,735,20K–100K,1–3 years
 5203828273,[🎃 NEW QUEST] Dress To Impress,Roleplay & Avatar Sim,Dress Up,Fashion / makeup,108716,685505,6.31,275.28,1104,100K+,3+ years
 5595353122,Slayers 2,RPG,Action RPG,Anime / fighting style,20169,658359,32.64,,997,20K–100K,1–3 years
@@ -24,7 +24,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10684750879,[🎃]+1 Loot To Forge,Simulation,Incremental Simulator,Other,12517,631863,50.48,,75,5K–20K,1–3 months
 6931042565,[UPD] Volleyball Legends,Sports & Racing,Sports,Sports,55141,628170,11.39,366.45,678,20K–100K,1–3 years
 10764627709,[Pt. 3 🎃] Huss Valley,Action,Battlegrounds & Fighting,Other,51639,612507,11.86,,56,20K–100K,1–3 months
-2440500124,DOORS 🍬🍭,Survival,Escape,Other,84137,588033,6.99,188.84,2052,20K–100K,3+ years
+2440500124,DOORS 🍬🍭,Survival,Escape,Other,84137,588033,6.99,256.04,2052,20K–100K,3+ years
 4839802560,LifeTogether 🏠 RP [FAMILIES],Roleplay & Avatar Sim,Life,Roleplay / life,37468,570656,15.23,,1209,20K–100K,3+ years
 10685282333,[🎃] Ball VS Ball,Party & Casual,,Other,26540,532819,20.08,,75,20K–100K,1–3 months
 10148749921,[🎃] Animal Hospital (Anomaly) 🧪,Survival,,Other,33529,529533,15.79,,169,20K–100K,3–12 months
@@ -34,46 +34,46 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10765490774,[🎃]Climb For Animals Eggs🥚,Simulation,Tycoon,Obby / parkour,43784,451578,10.31,374.13,50,20K–100K,1–3 months
 10155360168,Illegal Soccer,Sports & Racing,Sports,Sports,49075,447381,9.12,309.51,167,20K–100K,3–12 months
 2668101271,Fling Things and People,Simulation,Physics Sim,Other,32028,424194,13.24,,1958,20K–100K,3+ years
-5361032378,Sol's RNG [ Radiant Forest🌙],Simulation,Incremental Simulator,RNG / gacha / luck,32795,415612,12.67,709.64,1058,20K–100K,1–3 years
-703124385,Tower of Hell,Obby & Platformer,Tower Obby,Other,27529,397862,14.45,148.45,3052,20K–100K,3+ years
+5361032378,Sol's RNG [ Radiant Forest🌙],Simulation,Incremental Simulator,RNG / gacha / luck,32795,415612,12.67,791.56,1058,20K–100K,1–3 years
+703124385,Tower of Hell,Obby & Platformer,Tower Obby,Other,27529,397862,14.45,147.14,3052,20K–100K,3+ years
 10765298801,[🎃] +1 Stone Skipping,Simulation,Incremental Simulator,Other,20613,393053,19.07,,51,20K–100K,1–3 months
 5578556129,Vanguards: 2nd Anniversary,Strategy,Tower Defense,Other,32048,392523,12.25,,1002,20K–100K,1–3 years
 10744310825,[UPD🎃] Paint to Get Rich 🎨,Simulation,Tycoon,Other,11680,391798,33.54,,67,5K–20K,1–3 months
-1831550657,🎃 Creatures of Sonaria 🍬 Survive Kaiju Animals,Roleplay & Avatar Sim,Animal Sim,Disasters / survival,24235,369991,15.27,800.24,2314,20K–100K,3+ years
+1831550657,🎃 Creatures of Sonaria 🍬 Survive Kaiju Animals,Roleplay & Avatar Sim,Animal Sim,Disasters / survival,24235,369991,15.27,873.7,2314,20K–100K,3+ years
 4949420752,Realistic Street Soccer,Sports & Racing,Sports,Sports,22014,366613,16.65,460.79,1179,20K–100K,3+ years
-7436755782,[🎃] Grow a Garden 🌶️,Simulation,Tycoon,Eat / grow big,22425,356131,15.88,546.73,580,20K–100K,1–3 years
+7436755782,[🎃] Grow a Garden 🌶️,Simulation,Tycoon,Eat / grow big,22425,356131,15.88,703.4,580,20K–100K,1–3 years
 6765805766,BlockSpin 🔪 [HALLOWEEN UPDATE!],Action,Open World Action,Other,18123,352959,19.48,,719,5K–20K,1–3 years
-5995470825,[🔥ZOMBIES] Hypershot,Shooter,Deathmatch Shooter,Other,27426,350072,12.76,348.61,892,20K–100K,1–3 years
-7554119808,🛍️ My Avatar!,Shopping,Avatar Shopping,Other,19427,349162,17.97,575.62,557,5K–20K,1–3 years
+5995470825,[🔥ZOMBIES] Hypershot,Shooter,Deathmatch Shooter,Other,27426,350072,12.76,385.6,892,20K–100K,1–3 years
+7554119808,🛍️ My Avatar!,Shopping,Avatar Shopping,Other,19427,349162,17.97,620.58,557,5K–20K,1–3 years
 10767138232,[🎃] Kukirin Life [Testing],Simulation,Vehicle Sim,Roleplay / life,33188,347443,10.47,,37,20K–100K,1–3 months
 10767825538,Sarab,Survival,,Other,18701,346653,18.54,962.51,32,5K–20K,1–3 months
 10741654282,Build and Kill Zombies,Simulation,Sandbox,Other,6384,342814,53.7,,68,5K–20K,1–3 months
 10766506199,7 Days Cat-Sitting,Survival,,Other,20708,331330,16.0,296.86,41,20K–100K,1–3 months
-3647333358,[1.5x 🎃HLWN] Evade ,Survival,,Other,63815,329730,5.17,163.47,1599,20K–100K,3+ years
+3647333358,[🎃HLWN] Evade ,Survival,,Other,63815,329730,5.17,163.47,1599,20K–100K,3+ years
 10766620257,[🎃] Bike For Egg!,Simulation,Tycoon,Vehicles / riding,26791,328123,12.25,381.5,41,20K–100K,1–3 months
-6331902150,Forsaken,Survival,1 vs All,Other,50547,320991,6.35,273.21,820,20K–100K,1–3 years
+6331902150,Forsaken,Survival,1 vs All,Other,50547,320991,6.35,295.81,820,20K–100K,1–3 years
 10629695169,[👻] Tap Simulator REBORN,Simulation,Incremental Simulator,Merge / clicker,44544,318100,7.14,480.84,83,20K–100K,1–3 months
 10767380385,🎃 Sell Fries! [Anomaly] 🍟,Survival,,Tycoon / sell stuff,52726,315821,5.99,192.72,35,20K–100K,1–3 months
 10771421858,[NEW STAGES]  DONT SPLASH 🎃,Obby & Platformer,Runner,Other,55794,314688,5.64,,9,20K–100K,under 1 month
 2619619496,[🎃PART 2] BedWars,Action,Battlegrounds & Fighting,Other,27570,313412,11.37,,1978,20K–100K,3+ years
 10769149947,صيد الضبّان,Simulation,Incremental Simulator,Other,40614,312999,7.71,,23,20K–100K,under 1 month
-10758824872,[🎃] Ride a Dino,Simulation,Tycoon,Vehicles / riding,36469,310514,8.51,365.23,63,20K–100K,1–3 months
+10758824872,[🎃] Ride a Dino,Simulation,Tycoon,Vehicles / riding,36469,310514,8.51,393.69,63,20K–100K,1–3 months
 6521100398,Dreamville 🏡 RP [Pets! 😺],Roleplay & Avatar Sim,Life,Roleplay / life,23475,307872,13.11,529.05,779,20K–100K,1–3 years
 10436530264,Build An Ant Empire,Simulation,Tycoon,Other,7293,303616,41.63,,115,5K–20K,3–12 months
 10769384180,[🎃] Fake an Egg,Simulation,Tycoon,RNG / gacha / luck,25399,302699,11.92,,22,20K–100K,under 1 month
 10648820673,[🍲] Karinderya!,Simulation,Tycoon,Other,10322,302196,29.28,,80,5K–20K,1–3 months
 10756011174,[IMPOSSIBLE 😈] Search For The Needle,Simulation,Incremental Simulator,Find / search,9163,298525,32.58,,64,5K–20K,1–3 months
 10004244222,[🎃] Kick a Lucky Block,Simulation,Tycoon,RNG / gacha / luck,13889,293220,21.11,,202,5K–20K,3–12 months
-9167377564,100 Days at Sea [Halloween🎃],Survival,,Other,18821,293157,15.58,541.45,346,5K–20K,3–12 months
+9167377564,100 Days at Sea [Halloween🎃],Survival,,Other,18821,293157,15.58,591.68,346,5K–20K,3–12 months
 10766056678,Steal Animal Egg,Simulation,Tycoon,Steal / brainrot,3134,288982,92.21,,45,1K–5K,1–3 months
 10769543567,Cat Battles 🐾,Action,Battlegrounds & Fighting,Battles / army,47399,275506,5.81,,21,20K–100K,under 1 month
-7089588429,(WHEELIE STYLE x BIG UPDATE) Drag Drive Simulator,Simulation,Vehicle Sim,Vehicles / riding,12564,274473,21.85,,649,5K–20K,1–3 years
+7089588429,(WHEELIE STYLE x BIG UPDATE) Drag Drive Simulator,Simulation,Vehicle Sim,Vehicles / riding,12564,274473,21.85,727.08,649,5K–20K,1–3 years
 10512942223,Anime Zero [SOLAR RADIANCE ☀️],RPG,Action RPG,Anime / fighting style,8477,273388,32.25,,102,5K–20K,3–12 months
 10769516701,[🎃] Facecard: Makeup Showdown,Roleplay & Avatar Sim,Dress Up,Fashion / makeup,15928,268607,16.86,654.94,21,5K–20K,under 1 month
 10767012496,[🎃] Turbo Soccer : Beta 1.0,Sports & Racing,Sports,Sports,23848,267504,11.22,,37,20K–100K,1–3 months
 10769671266,MMV,Survival,1 vs All,Other,13882,263360,18.97,,20,5K–20K,under 1 month
 4049246711,Timebomb Duels [Alpha],Party & Casual,,Other,13622,258931,19.01,,1462,5K–20K,3+ years
-10767567751,Bunker vs Verity,Survival,,Other,14754,255022,17.29,920.59,34,5K–20K,1–3 months
+10767567751,Bunker vs Verity,Survival,,Other,14754,255022,17.29,998.04,34,5K–20K,1–3 months
 3310460039,🚨BARRY'S PRISON RUN! (OBBY),Obby & Platformer,,Other,14690,254710,17.34,,1727,5K–20K,3+ years
 10725799494,Wash the Car 🧽,Simulation,Tycoon,Vehicles / riding,15597,252447,16.19,,71,5K–20K,1–3 months
 3240075297,Berry Avenue 🏠 RP,Roleplay & Avatar Sim,Life,Roleplay / life,48737,249901,5.13,,1753,20K–100K,3+ years
@@ -86,32 +86,32 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 9534705677,[🎃Event] Sniper Arena,Shooter,Deathmatch Shooter,Battles / army,15747,236586,15.02,,289,5K–20K,3–12 months
 1516533665,Piggy [FRIGHTFUL CARNIVAL],Survival,,Other,20340,235848,11.6,313.47,2468,20K–100K,3+ years
 10768284407,[🎃] Bike Universe,Simulation,Vehicle Sim,Vehicles / riding,45953,235153,5.12,,29,20K–100K,under 1 month
-372226183,Flee the Facility,Survival,1 vs All,Other,47014,234096,4.98,150.92,3404,20K–100K,3+ years
-10550257968,[7X] Steal A Verity!,Simulation,Tycoon,Steal / brainrot,9569,232207,24.27,,95,5K–20K,3–12 months
+372226183,Flee the Facility,Survival,1 vs All,Other,47014,234096,4.98,180.25,3404,20K–100K,3+ years
+10550257968,[4X] Steal A Verity!,Simulation,Tycoon,Steal / brainrot,9569,232207,24.27,,95,5K–20K,3–12 months
 10675117523,[🎃PART 2] Anime Breaker,Simulation,Incremental Simulator,Anime / fighting style,9624,231349,24.04,,77,5K–20K,1–3 months
 9796898051,Drill to Earth’s Core 🎃👻,Adventure,Exploration,Other,13718,229637,16.74,,243,5K–20K,3–12 months
 10732236937,[ MechaGodzilla2021 Remodel! ] Kaiju Alpha,Action,Battlegrounds & Fighting,Other,13020,225282,17.3,551.49,70,5K–20K,1–3 months
 10258991999,[UPD] Command An Army,Action,Battlegrounds & Fighting,Battles / army,11591,225108,19.42,,146,5K–20K,3–12 months
 4723764956,🎥My Movie,Entertainment,Video,Other,14674,222081,15.13,,1245,5K–20K,3+ years
-2936053166,[🦑] Squid Game X,Party & Casual,Minigame,Other,19473,222017,11.4,225.79,1858,5K–20K,3+ years
+2936053166,[🦑] Squid Game X,Party & Casual,Minigame,Other,19473,222017,11.4,240.68,1858,5K–20K,3+ years
 10765012427,[Pt. 2 🎃] Build the Pyramid!,Simulation,Incremental Simulator,Other,6437,220146,34.2,,53,5K–20K,1–3 months
 9561553764,[🎃] Murder Duels,Shooter,Deathmatch Shooter,Other,12159,218983,18.01,,285,5K–20K,3–12 months
-7018190066,[👻EVENT] Dead Rails ,Adventure,Exploration,Other,26328,218032,8.28,288.14,663,20K–100K,1–3 years
-648454481,[😀HALLOWEEN PT 2] Grand Piece Online,RPG,Action RPG,Anime / fighting style,12338,216448,17.54,,3095,5K–20K,3+ years
+7018190066,[👻EVENT] Dead Rails ,Adventure,Exploration,Other,26328,218032,8.28,177.61,663,20K–100K,1–3 years
+648454481,[🎃HALLOWEEN PT 3] Grand Piece Online,RPG,Action RPG,Anime / fighting style,12338,216448,17.54,1497.83,3095,5K–20K,3+ years
 10765686447,Steal ASMR!,Simulation,Tycoon,Steal / brainrot,8296,216305,26.07,,48,5K–20K,1–3 months
-8178086002,[🎃] Lethal Ape Experience,Survival,,Other,20614,215515,10.45,257.84,467,20K–100K,1–3 years
+8178086002,[🎃] Lethal Ape Experience,Survival,,Other,20614,215515,10.45,277.76,467,20K–100K,1–3 years
 10634461028,[UPD] Drive A Kukirin!,Simulation,Vehicle Sim,Vehicles / riding,10477,215090,20.53,,82,5K–20K,1–3 months
-10767824942,[🎃]+1 Assassin Leveling,Simulation,Incremental Simulator,Other,12391,214974,17.35,997.36,32,5K–20K,1–3 months
+10767824942,[🎃]+1 Assassin Leveling,Simulation,Incremental Simulator,Other,12391,214974,17.35,1022.01,32,5K–20K,1–3 months
 6325068386,[QOL] Blue Lock: Rivals,Sports & Racing,Sports,Other,16782,214455,12.78,,822,5K–20K,1–3 years
 10764897725,+1 Wings For Eggs,Simulation,Tycoon,RNG / gacha / luck,2017,210560,104.41,,54,1K–5K,1–3 months
-10767408330,[🎃] Peel THE Potato,Simulation,Incremental Simulator,Other,12150,210018,17.29,425.43,35,5K–20K,1–3 months
+10767408330,[🎃] Peel THE Potato,Simulation,Incremental Simulator,Other,12150,210018,17.29,521.04,35,5K–20K,1–3 months
 6172475441,Party Voice,All,,Other,20284,208984,10.3,,853,20K–100K,1–3 years
 9641502068,[🎃] KNIFE DUELS,Shooter,Deathmatch Shooter,Other,10123,208844,20.63,,270,5K–20K,3–12 months
 10593482707,[🎃] Build a Keyboard!,Simulation,Tycoon,Other,12044,206936,17.18,,89,5K–20K,1–3 months
 578392296,ABA,Action,Battlegrounds & Fighting,Other,12641,204588,16.18,,3165,5K–20K,3+ years
 10747719434,[🎃V3] Feed A Mosquito,Simulation,Tycoon,Other,28010,202340,7.22,,66,20K–100K,1–3 months
 10765618402,Steel Fighters,Simulation,Tycoon,Other,25738,202303,7.86,256.76,49,20K–100K,1–3 months
-10768316438,Lift Rock For Eggs,Simulation,Tycoon,RNG / gacha / luck,9578,201293,21.02,642.05,29,5K–20K,under 1 month
+10768316438,Lift Rock For Eggs,Simulation,Tycoon,RNG / gacha / luck,9578,201293,21.02,743.95,29,5K–20K,under 1 month
 10261267004,[🎃 UPD] Storage Hunters: Open World,Simulation,Tycoon,Other,13979,201112,14.39,1129.77,146,5K–20K,3–12 months
 1852226622,Gacha Online 🎃 RP,Roleplay & Avatar Sim,Morph Roleplay,RNG / gacha / luck,13734,200453,14.6,,2304,5K–20K,3+ years
 10768026334,[🎨] Hide In Pixels,Party & Casual,Coloring & Drawing,Other,4699,200444,42.65,820.69,31,1K–5K,1–3 months
@@ -123,15 +123,15 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10173311467,[🛸FLYING CAR] Ghost Driver [ALPHA],Simulation,Vehicle Sim,Other,11623,190826,16.42,,163,5K–20K,3–12 months
 210851291,Build A Boat For Treasure,Simulation,Sandbox,Other,16314,190380,11.67,536.72,3645,5K–20K,3+ years
 10700618962,[🎃] Blue Lock Farm,Simulation,Tycoon,Fishing / farming,11088,188052,16.96,,73,5K–20K,1–3 months
-10762636904,[💰X2] Cameraman Tower Defense,Strategy,Tower Defense,Tower defense,28469,178918,6.28,150.61,61,20K–100K,1–3 months
+10762636904,[💰X2] Cameraman Tower Defense,Strategy,Tower Defense,Tower defense,28469,178918,6.28,176.69,61,20K–100K,1–3 months
 10222476236,🎃Catalog Avatar Runway,Roleplay & Avatar Sim,Dress Up,Other,17692,178802,10.11,428.39,154,5K–20K,3–12 months
 7633926880,[ZOMBIES!] BloxStrike,Shooter,Deathmatch Shooter,Other,16648,178137,10.7,,542,5K–20K,1–3 years
 7585140258,RUNAWAYS [beta],Action,Open World Action,Other,10809,177895,16.46,520.11,551,5K–20K,1–3 years
 6443367640,Gym Star Simulator 🏋️,Simulation,Incremental Simulator,Other,6911,176530,25.54,,797,5K–20K,1–3 years
 4658598196,Attack on Titan Revolution,RPG,Action RPG,Other,15394,175939,11.43,,1268,5K–20K,3+ years
 10769543742,Backseat Rally,All,,Other,33051,175355,5.31,,21,20K–100K,under 1 month
-1202096104,Driving Empire [✨2 NEW LIMITED✨],Simulation,Vehicle Sim,Vehicles / riding,27234,175315,6.44,191.27,2682,20K–100K,3+ years
-10767566226,Don't Steal My Eggs!,Simulation,Tycoon,Steal / brainrot,11090,174731,15.76,496.66,34,5K–20K,1–3 months
+1202096104,Driving Empire [✨2 NEW LIMITED✨],Simulation,Vehicle Sim,Vehicles / riding,27234,175315,6.44,221.06,2682,20K–100K,3+ years
+10767566226,Don't Steal My Eggs!,Simulation,Tycoon,Steal / brainrot,11090,174731,15.76,613.44,34,5K–20K,1–3 months
 10767774668,[🥞] Paint a Pancake,Party & Casual,Coloring & Drawing,Other,4962,173104,34.89,,33,1K–5K,1–3 months
 2783797267,[🧯FIRES🧯] American Plains Mudding,Simulation,Vehicle Sim,Other,10794,173022,16.03,534.82,1915,5K–20K,3+ years
 10763764817,[UPDATE] Swing For Eggs,Simulation,Tycoon,RNG / gacha / luck,4749,172770,36.38,,60,1K–5K,1–3 months
@@ -163,16 +163,16 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10766721625,(🦑) Drill for Eggs,Simulation,Tycoon,RNG / gacha / luck,3014,150128,49.82,,40,1K–5K,1–3 months
 4452297356,Neighbors 🔊,Social,,Other,9506,149507,15.73,,1330,5K–20K,3+ years
 10526853622,[UPD] Deep Fishing🎣,Simulation,Incremental Simulator,Fishing / farming,11822,147643,12.49,,100,5K–20K,3–12 months
-10767784294,Steal an Clown Egg,Simulation,Tycoon,Steal / brainrot,11456,147062,12.84,408.45,33,5K–20K,1–3 months
+10767784294,Steal an Clown Egg,Simulation,Tycoon,Steal / brainrot,11456,147062,12.84,571.31,33,5K–20K,1–3 months
 7398552394,A desrt [SANDBOX],Adventure,Exploration,Other,9466,146948,15.52,,587,5K–20K,1–3 years
 10765523466,Steve the Craftsman,Simulation,Sandbox,Other,10783,146858,13.62,,49,5K–20K,1–3 months
-10769548496,[🎃DAY 2] Fix My Phone!,Simulation,,Other,12415,146126,11.77,343.79,21,5K–20K,under 1 month
+10769548496,[🎃DAY 2] Fix My Phone!,Simulation,,Other,12415,146126,11.77,394.12,21,5K–20K,under 1 month
 6945584306,[🌌 QOL] Azure Latch,Sports & Racing,Sports,Other,9104,146016,16.04,,675,5K–20K,1–3 years
 9491545867,[🎃BOSS] Break a Brainrot Egg!,Simulation,Incremental Simulator,Steal / brainrot,7425,145759,19.63,,297,5K–20K,3–12 months
-8342498724,[🌊UPD] Heavyweight Fishing,Simulation,,Fishing / farming,11812,144157,12.2,,448,5K–20K,1–3 years
+8342498724,[🌊UPD] Heavyweight Fishing,Simulation,,Fishing / farming,11812,144157,12.2,799.55,448,5K–20K,1–3 years
 10765491459,Superhero Arena,Action,Battlegrounds & Fighting,Battles / army,11388,144065,12.65,,50,5K–20K,1–3 months
 10767814721,[🎃 WORLD 5] +1 Karate Evolution ⛩️,Simulation,Incremental Simulator,Other,6704,143222,21.36,374.38,32,5K–20K,1–3 months
-10767634248,[UPD] Firefighting Sim 🚒,Simulation,,Other,10779,142812,13.25,404.75,34,5K–20K,1–3 months
+10767634248,[UPD] Firefighting Sim 🚒,Simulation,,Other,10779,142812,13.25,392.92,34,5K–20K,1–3 months
 9837612476,[🎃] Mini War,Simulation,Tycoon,Battles / army,13132,142336,10.84,,235,5K–20K,3–12 months
 10753751277,[🎃] Steal From The Rich!,Simulation,Tycoon,Steal / brainrot,2031,142079,69.95,,65,1K–5K,1–3 months
 10761687472,Scream And Run [VERITY],Survival,Escape,Other,2558,141516,55.32,,62,1K–5K,1–3 months
@@ -182,10 +182,10 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 1016936714,🎃 Your Bizarre Adventure 🎃,RPG,Action RPG,Other,13490,140075,10.38,,2823,5K–20K,3+ years
 65241,Natural Disaster Survival,Survival,,Disasters / survival,8314,139226,16.75,,6786,5K–20K,3+ years
 10759337137,🎃 Last Stop [Beta],Survival,,Other,2647,139125,52.56,,63,1K–5K,1–3 months
-10767582899,[🎃] 📱 Build a Phone Empire,Simulation,Tycoon,Other,13772,139046,10.1,289.73,34,5K–20K,1–3 months
+10767582899,[🎃] 📱 Build a Phone Empire,Simulation,Tycoon,Other,13772,139046,10.1,353.56,34,5K–20K,1–3 months
 10624691669,MONOCHROME🎃,Puzzle,Escape Room,Other,7351,137671,18.73,,84,5K–20K,1–3 months
 10768861430,DIVINE HATCHERS 0.0001% [NEW!],Simulation,Tycoon,Other,14274,135863,9.52,,25,5K–20K,under 1 month
-10769259605,[🎃EVENT] Solve The Cube,Puzzle,,Other,8218,135380,16.47,255.09,22,5K–20K,under 1 month
+10769259605,[🎃EVENT] Solve The Cube,Puzzle,,Other,8218,135380,16.47,386.86,22,5K–20K,under 1 month
 6504986360,[🎃UPD] Bubble Gum Simulator INFINITY,Simulation,Incremental Simulator,Other,11759,134360,11.43,981.46,784,5K–20K,1–3 years
 1000233041,3008 [2.75],Survival,1 vs All,Other,13748,133867,9.74,,2836,5K–20K,3+ years
 7008097940,[⚔️] Ink Game,Party & Casual,,Other,12603,133484,10.59,327.32,664,5K–20K,1–3 years
@@ -210,10 +210,10 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10321202755,[🌀 UPDATE 12] Anime Fighting Simulator,Simulation,Incremental Simulator,Battles / army,6348,125214,19.73,,135,5K–20K,3–12 months
 10768458048,Army Commander Tycoon [UPDATE 4],Simulation,Tycoon,Tycoon / sell stuff,7381,124415,16.86,,28,5K–20K,under 1 month
 9931749389,[+1 DROP] Dungeon Quest Reborn,RPG,Action RPG,Other,6857,124155,18.11,,216,5K–20K,3–12 months
-10765013362,🎃 Dig For Eggs,Simulation,Tycoon,RNG / gacha / luck,7462,123970,16.61,826.09,53,5K–20K,1–3 months
+10765013362,🎃 Dig For Eggs,Simulation,Tycoon,RNG / gacha / luck,7462,123970,16.61,1024.66,53,5K–20K,1–3 months
 10608856704,[W3] +1 Paint Keyboard Adventure,Simulation,Incremental Simulator,Other,3590,123943,34.52,,86,1K–5K,1–3 months
 7235130477,Apple iPad Original,Simulation,,Other,8270,123851,14.98,,621,5K–20K,1–3 years
-10764240948,[🎃UPD] Harpoon a Fish,Simulation,Tycoon,Fishing / farming,6474,123508,19.08,581.3,59,5K–20K,1–3 months
+10764240948,[🎃UPD] Harpoon a Fish,Simulation,Tycoon,Fishing / farming,6474,123508,19.08,652.73,59,5K–20K,1–3 months
 10768349140,[🎃] +1 Pickaxe Swing for Eggs,Simulation,Tycoon,RNG / gacha / luck,12262,123506,10.07,,29,5K–20K,under 1 month
 10371406677,Race for Eggs,Simulation,Tycoon,Vehicles / riding,3406,122110,35.85,,127,1K–5K,3–12 months
 10768625767,Save the Krusty Krab 🍔,Survival,,Other,20408,121595,5.96,210.17,27,20K–100K,under 1 month
@@ -230,7 +230,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10755048940,Murder Arena [FPS],Shooter,Deathmatch Shooter,Battles / army,7048,111015,15.75,,64,5K–20K,1–3 months
 9592387369,[HELL] Spiral Difficulty Chart Obby,Obby & Platformer,Classic Obby,Obby / parkour,7060,111014,15.72,,279,5K–20K,3–12 months
 10532995815,[🎃] Mine Antarctica,Simulation,Incremental Simulator,Other,1747,110390,63.2,,99,1K–5K,3–12 months
-10765902945,[UPDATE 3] Anime Legacy Simulator,Simulation,Incremental Simulator,Anime / fighting style,10033,110357,11.0,916.41,46,5K–20K,1–3 months
+10765902945,[UPDATE 3] Anime Legacy Simulator,Simulation,Incremental Simulator,Anime / fighting style,10033,110357,11.0,1006.56,46,5K–20K,1–3 months
 1268927906,🎃Muscle Legends,Simulation,Incremental Simulator,Other,7823,110262,14.1,,2635,5K–20K,3+ years
 10766725034,Kidnap And Jail,Action,Battlegrounds & Fighting,Other,2078,109782,52.82,,40,1K–5K,1–3 months
 9891331827,Clover Time [CRIMSON GRIMOIRE],RPG,Action RPG,Other,3396,109713,32.3,,224,1K–5K,3–12 months
@@ -375,12 +375,12 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10766053492, Thanos Simulator: Infinity Gauntlet (BETA),Action,Battlegrounds & Fighting,Other,3508,58397,16.65,,45,1K–5K,1–3 months
 10376944238,Build Your Backrooms,Simulation,Tycoon,Horror,2627,58032,22.09,,126,1K–5K,3–12 months
 10765190004,Anime High School RP,Action,Battlegrounds & Fighting,Roleplay / life,2063,57885,28.06,,51,1K–5K,1–3 months
-47545,🍕Work at a Pizza Place,Roleplay & Avatar Sim,Life,Jobs / work sim,4051,57727,14.25,,6786,1K–5K,3+ years
+47545,[🍬Trick-or-Treat]🍕Work at a Pizza Place,Roleplay & Avatar Sim,Life,Jobs / work sim,4051,57727,14.25,,6786,1K–5K,3+ years
 3012965062,The Presentation Experience,Simulation,,Other,3352,57558,17.17,,1834,1K–5K,3+ years
 1489026993,🔪Survive the Killer!,Survival,1 vs All,Disasters / survival,4823,57300,11.88,,2485,1K–5K,3+ years
 10767922762,Dress Designer [🎃],Roleplay & Avatar Sim,Dress Up,Fashion / makeup,645,57017,88.37,,32,400–1K,1–3 months
 10739044772,Hamster Village🐹,Simulation,Tycoon,Other,1412,56968,40.36,,68,1K–5K,1–3 months
-7058980030,[🎃] Survive Overnight in a Mega Store,Survival,,Tycoon / sell stuff,9615,56281,5.85,148.36,655,5K–20K,1–3 years
+7058980030,[🎃] Survive Overnight in a Mega Store,Survival,,Tycoon / sell stuff,9615,56281,5.85,94.03,655,5K–20K,1–3 years
 10757247806,Build and Conquer [V0.1] ,Strategy,,Other,2722,56132,20.62,,64,1K–5K,1–3 months
 10566677406,[将] Shogun's Reign,Roleplay & Avatar Sim,Life,Other,3362,55675,16.56,,93,1K–5K,3–12 months
 10478974655,Try To Reach The Final Island🚀,Simulation,Incremental Simulator,Other,891,55566,62.38,,108,400–1K,3–12 months
@@ -396,7 +396,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 9091133975,[🎃] Catch And Tame!,Simulation,Tycoon,Other,2640,53497,20.27,,358,1K–5K,3–12 months
 1648496580,Bendy and the ink Machine,Action,Battlegrounds & Fighting,Other,4220,53307,12.63,,2397,1K–5K,3+ years
 10231502419,🎃 SNACK Defense! [TD],Strategy,Tower Defense,Tower defense,3023,53114,17.57,,152,1K–5K,3–12 months
-10768541373,Don’t Get Fired At Work!,Survival,,Jobs / work sim,1901,52868,27.81,,27,1K–5K,under 1 month
+10768541373,Don’t Get Fired At Work! [MOBILE 📱],Survival,,Jobs / work sim,1901,52868,27.81,,27,1K–5K,under 1 month
 10090256806,TTK Testing 🎃 [NEW AR15],Shooter,Deathmatch Shooter,Other,4298,52714,12.27,,182,1K–5K,3–12 months
 10599406058,[UPD] Feed the Fire 🔥,Simulation,Incremental Simulator,Other,6696,52633,7.86,,88,5K–20K,1–3 months
 10751939592,ASMR Auto Wallhop Tower 2,Obby & Platformer,Tower Obby,Other,4406,52539,11.93,,65,1K–5K,1–3 months
@@ -504,8 +504,8 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10756780270,STOP! Word Duel,Puzzle,Word,Other,2472,41060,16.61,,64,1K–5K,1–3 months
 4595016786,Barbie DreamHouse Tycoon,Simulation,Tycoon,Tycoon / sell stuff,2125,40953,19.27,,1288,1K–5K,3+ years
 3110388936,[ Autumn Event  + Immortal Clan 🎃 ] Ninja Time,RPG,Action RPG,Other,2665,40946,15.37,,1798,1K–5K,3+ years
-10764702969,❄️ Voxel Winter Survival ❄️,Survival,,Disasters / survival,7387,40779,5.52,92.44,55,5K–20K,1–3 months
-10769324921,Makeup All Stars [NEW THEMES]💄,Roleplay & Avatar Sim,Dress Up,Fashion / makeup,7175,40764,5.68,,22,5K–20K,under 1 month
+10764702969,❄️ Voxel Winter Survival ❄️,Survival,,Disasters / survival,7387,40779,5.52,112.47,55,5K–20K,1–3 months
+10769324921,Makeup All Stars [UPDATED]💄,Roleplay & Avatar Sim,Dress Up,Fashion / makeup,7175,40764,5.68,,22,5K–20K,under 1 month
 6369934270,💀 Hide or OOF!,Party & Casual,Childhood Game,Other,2169,40722,18.78,,813,1K–5K,1–3 years
 10768637423,[🎃] Roll a Barber RNG,Simulation,Tycoon,RNG / gacha / luck,3480,40694,11.69,,27,1K–5K,under 1 month
 10393438342,[⭐ UPDATE ⭐] Alliance Tower Defense! ⚔️,Strategy,Tower Defense,Tower defense,3220,40625,12.62,,123,1K–5K,3–12 months
@@ -530,7 +530,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10765969301,[🗽NYC] Travel Simulator,Roleplay & Avatar Sim,Life,Other,2527,39272,15.54,492.32,45,1K–5K,1–3 months
 10575295323,Highway Patrol [Alpha],Action,Open World Action,Other,8805,39145,4.45,,92,5K–20K,3–12 months
 10768450860,Steal from Gods!,Simulation,Tycoon,Steal / brainrot,3776,39046,10.34,,28,1K–5K,under 1 month
-10764959046,Locust Murder Mystery,Survival,1 vs All,Other,7478,39041,5.22,92.09,53,5K–20K,1–3 months
+10764959046,Locust Murder Mystery,Survival,1 vs All,Other,7478,39041,5.22,98.59,53,5K–20K,1–3 months
 4673599750,📚 Murderers vs Sheriffs 2,Shooter,Deathmatch Shooter,Other,3911,39008,9.97,,1262,1K–5K,3+ years
 9913288302,[V3] Cliff Mansion Tycoon,Simulation,Tycoon,Tycoon / sell stuff,1909,38967,20.41,,219,1K–5K,3–12 months
 2549475383,Livetopia 🏡 RP,Roleplay & Avatar Sim,Life,Roleplay / life,4896,38913,7.95,,2007,1K–5K,3+ years
@@ -580,7 +580,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10770879065,It Hears The Water [DONT SPLASH] 🎃,Survival,Escape,Other,6980,35446,5.08,73.77,12,5K–20K,under 1 month
 10769037074,[DUELS] Rally Panic!,Sports & Racing,Racing,Other,6473,35341,5.46,95.8,24,5K–20K,under 1 month
 10547430486,[EVENT] MOUNT SOREYA🌄,Obby & Platformer,,Other,4724,35295,7.47,,96,1K–5K,3–12 months
-2294168059,The Mimic,Survival,Escape,Other,3110,35269,11.34,,2110,1K–5K,3+ years
+2294168059,[UPDATE] The Mimic,Survival,Escape,Other,3110,35269,11.34,,2110,1K–5K,3+ years
 10635348596,[Codes] Machine Party 💥,Action,,Other,2807,35192,12.54,,82,1K–5K,1–3 months
 10057343903,+1 Speed Evolve 🦊,Simulation,Incremental Simulator,Other,2482,35173,14.17,,190,1K–5K,3–12 months
 10769501542,[WORLD 2] Bullets VS Everything,Simulation,Incremental Simulator,Other,3870,35134,9.08,,21,1K–5K,under 1 month
@@ -710,7 +710,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10658250410,Building Sandbox [🔨],Simulation,Sandbox,Other,4142,27477,6.63,,79,1K–5K,1–3 months
 3472976893,[UPDATE🎃] Backrooms,Survival,Escape,Horror,5917,27423,4.63,,1667,5K–20K,3+ years
 10762716119,Steal and Cook Food,Simulation,Tycoon,Steal / brainrot,1353,27417,20.26,,61,1K–5K,1–3 months
-10770593871,[UPD] Realistic Ragdoll Engine 🩸,Simulation,Physics Sim,Other,7072,27411,3.88,88.38,14,5K–20K,under 1 month
+10770593871,[UPD] Realistic Ragdoll Engine 🩸,Simulation,Physics Sim,Other,7072,27411,3.88,79.87,14,5K–20K,under 1 month
 10764239797,Interrogation [NEW CASES 🔥],Simulation,,Other,1970,27363,13.89,,59,1K–5K,1–3 months
 2862098693,Project Delta,Survival,,Other,2116,27252,12.88,,1887,1K–5K,3+ years
 4053293514,FNAF: Eternal Nights 🍕,Survival,,Anomaly / night shift,3198,27250,8.52,,1460,1K–5K,3+ years
@@ -776,7 +776,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 5026970880,🎃 BATHE DA BABY [S14],Survival,Escape,Care / baby / pets,2012,24032,11.95,,1158,1K–5K,3+ years
 8257857995,[UPD] Vehicle Crash Physics X 🚗,Simulation,Vehicle Sim,Other,3929,23994,6.11,,457,1K–5K,1–3 years
 5112244393,[UPD 🎃] Dudes Battlegrounds,Action,Battlegrounds & Fighting,Other,1847,23899,12.94,,1131,1K–5K,3+ years
-10109877123,[BOSS! 🎃] Drop a Fruit,Simulation,Incremental Simulator,Other,1883,23898,12.69,,178,1K–5K,3–12 months
+10109877123,[🎃 HALLOWEEN] Drop a Fruit,Simulation,Incremental Simulator,Other,1883,23898,12.69,,178,1K–5K,3–12 months
 8836568224,[SEASON 3] Kayak and Surf  🌊,Simulation,Incremental Simulator,Other,7355,23895,3.25,,391,5K–20K,1–3 years
 10603675889,[🎃] A Long Walk 🪓,Survival,,Other,1293,23862,18.46,,87,1K–5K,1–3 months
 4044579438,[🚂] Cart Ride,Obby & Platformer,Runner,Vehicles / riding,1668,23746,14.24,,1464,1K–5K,3+ years
@@ -1126,7 +1126,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 5272606478,[NEW CARS🚗] Highway Legends,Simulation,Vehicle Sim,Other,998,14051,14.07,,1085,400–1K,1–3 years
 10120888896,[🎯] Murderer vs Sheriff FFA,Survival,1 vs All,Other,1549,14049,9.07,,175,1K–5K,3–12 months
 10758516595,+1 Muscle vs Dinos [EGGS],Simulation,Incremental Simulator,Other,676,14003,20.71,,63,400–1K,1–3 months
-10606897251,!🔥NEW UPD🔥! Project Front Up | BETA,Simulation,Vehicle Sim,Other,1857,13938,7.5,,86,1K–5K,1–3 months
+10606897251,!🔥BUG FIX🔥! Project Front Up | BETA,Simulation,Vehicle Sim,Other,1857,13938,7.5,,86,1K–5K,1–3 months
 1794056685,[🎃] Camper Van 🚐,Adventure,Exploration,Other,2645,13931,5.27,,2331,1K–5K,3+ years
 9517263820,[FREE POWER!] POLICE JR 2 PLAYER ESCAPE PRISON!,Obby & Platformer,,Jobs / work sim,674,13839,20.53,,292,400–1K,3–12 months
 10769374148,VANITY [Realistic Makeup Studio] ALL AGES!!!,Roleplay & Avatar Sim,Dress Up,Other,1887,13797,7.31,,22,1K–5K,under 1 month
@@ -1243,7 +1243,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10767621255,[🎃 UPDATE] Holloway: She Hears,Survival,Escape,Other,420,11757,27.99,,34,400–1K,1–3 months
 10737524508,Pixel Capture! [BETA],Party & Casual,,Other,1344,11749,8.74,,69,1K–5K,1–3 months
 4457060041,Emergency Emden,Roleplay & Avatar Sim,Life,Other,1374,11739,8.54,,1329,1K–5K,3+ years
-6149186864,[X2] Freeze for UGC 🧊,Obby & Platformer,,Other,1128,11730,10.4,,857,1K–5K,1–3 years
+6149186864,Freeze for UGC 🧊,Obby & Platformer,,Other,1128,11730,10.4,,857,1K–5K,1–3 years
 10768597621,[🏰] Restore The World,Adventure,,Other,1827,11706,6.41,,27,1K–5K,under 1 month
 10286150288,MEGA RAMP FOR SLIME,Simulation,Tycoon,Other,1025,11701,11.42,,141,1K–5K,3–12 months
 5243581877,Bad Students,Action,Open World Action,Other,1417,11694,8.25,,1093,1K–5K,1–3 years
@@ -1335,7 +1335,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10508530387,Survive Tsunami! [1-4 PLAYERS]🌊,Simulation,Incremental Simulator,Disasters / survival,453,10228,22.59,,103,400–1K,3–12 months
 10770254650,[🎃] Bey Rivals,Action,Battlegrounds & Fighting,Other,3134,10210,3.26,,16,1K–5K,under 1 month
 6704505415,Find The Pou Poos 💩,Adventure,Scavenger Hunt,Find / search,1004,10200,10.16,,734,1K–5K,1–3 years
-5207621753,[🎁2X] Skibidi Masters Tower Defense,Strategy,Tower Defense,Tower defense,891,10199,11.45,,1103,400–1K,3+ years
+5207621753,[⌛3 DAYS] Skibidi Masters Tower Defense,Strategy,Tower Defense,Tower defense,891,10199,11.45,,1103,400–1K,3+ years
 10769401924,🎃 [HALLOWEEN] Hunting Together RPG,RPG,Action RPG,Other,4818,10152,2.11,,22,1K–5K,under 1 month
 10501377339,+1 Fat for Loot🍔,Simulation,Incremental Simulator,Eat / grow big,927,10151,10.95,,104,400–1K,3–12 months
 10757545671,Steal A Pet,Simulation,Tycoon,Care / baby / pets,586,10148,17.32,,64,400–1K,1–3 months
@@ -1439,7 +1439,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10767425315,+1 Speed Motorcycle ASMR Escape [Keyboard],Simulation,Incremental Simulator,Other,436,8879,20.38,,35,400–1K,1–3 months
 10749025899,Rakoon [CH 3],Simulation,Physics Sim,Other,585,8863,15.15,,66,400–1K,1–3 months
 8615743734,Build your Escape,Survival,Escape,Other,1068,8828,8.26,,419,1K–5K,1–3 years
-4491246195,[2x] War Machines,Action,,Battles / army,997,8820,8.85,,1318,400–1K,3+ years
+4491246195,War Machines,Action,,Battles / army,997,8820,8.85,,1318,400–1K,3+ years
 2309918273,[🎃HOLLOVVEEN] VV: ULTIMATUM,RPG,Action RPG,Other,2315,8799,3.8,,2106,1K–5K,3+ years
 10511429425,EVIL CLOWN CARNIVAL ESCAPE! [ITEMS],Obby & Platformer,Classic Obby,Other,454,8797,19.36,,102,400–1K,3–12 months
 7198930744,Balloons And Ropes,Simulation,Sandbox,Other,1041,8788,8.44,,628,1K–5K,1–3 years
@@ -1475,7 +1475,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 9785048253,[🎃HLWN!] Home Creator,Simulation,Sandbox,Other,598,8515,14.24,,245,400–1K,3–12 months
 10769194813,[🎃] Steal the Moon,Simulation,Incremental Simulator,Steal / brainrot,1995,8499,4.26,,23,1K–5K,under 1 month
 10747900291,TROLL Hug Baby tower,Obby & Platformer,Tower Obby,Care / baby / pets,538,8499,15.81,,66,400–1K,1–3 months
-10768544078,[🚨] SWAT Manager,Simulation,,Other,745,8486,11.4,,27,400–1K,under 1 month
+10768544078,[🎃] SWAT Manager 🚨,Simulation,,Other,745,8486,11.4,,27,400–1K,under 1 month
 10769648429,Survive the Lava for Eggs!,Simulation,Tycoon,Disasters / survival,1897,8478,4.47,,20,1K–5K,under 1 month
 7101140819,Naramo Nuclear Plant ,Action,Open World Action,Fishing / farming,849,8469,9.98,,647,400–1K,1–3 years
 10768960729,[🎃] Stick Wars,Party & Casual,,Battles / army,2774,8459,3.05,40.2,24,1K–5K,under 1 month
@@ -1540,7 +1540,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 6147276975,Drive the train to the end.,Obby & Platformer,Runner,Vehicles / riding,966,7771,8.04,,858,400–1K,1–3 years
 10766505634,[UPD] Anime Ability Clash,Simulation,Incremental Simulator,Anime / fighting style,599,7769,12.98,,41,400–1K,1–3 months
 7779608878,[🎃] Find the Key! 🔑,Puzzle,Escape Room,Find / search,636,7769,12.21,,518,400–1K,1–3 years
-10406853972,Break Tape For Brainrots,Simulation,Tycoon,Steal / brainrot,532,7768,14.61,,120,400–1K,3–12 months
+10406853972,[🎃] Break Tape For Brainrots,Simulation,Tycoon,Steal / brainrot,532,7768,14.61,,120,400–1K,3–12 months
 7662333120,🚣‍♂️Kayak Racing [Summer] ,Simulation,Incremental Simulator,Vehicles / riding,995,7740,7.78,,536,400–1K,1–3 years
 10722358525,[🎃] Steal Lucky Blocks,Simulation,Tycoon,Steal / brainrot,1989,7733,3.89,,71,1K–5K,1–3 months
 10759485670,Tower Reborn,Obby & Platformer,Tower Obby,Other,586,7701,13.14,,63,400–1K,1–3 months
@@ -1558,7 +1558,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10767817828,[🌸] Anime Girl Card Farm,Simulation,Tycoon,Fishing / farming,1135,7536,6.64,,32,1K–5K,1–3 months
 8169992290,No Man's Land [HALLOWEEN],Shooter,Deathmatch Shooter,Other,1047,7531,7.19,,468,1K–5K,1–3 years
 10601085941,[ALPHA RELEASE] Abyssal Escape,Survival,1 vs All,Other,1218,7511,6.17,,87,1K–5K,1–3 months
-8095834523,Obby Builder 🔨,Simulation,Sandbox,Obby / parkour,689,7508,10.89,,476,400–1K,1–3 years
+8095834523,[UPDATE] Obby Builder 🔨,Simulation,Sandbox,Obby / parkour,689,7508,10.89,,476,400–1K,1–3 years
 5170731021,Demon Blade,RPG,Action RPG,Other,561,7488,13.34,,1113,400–1K,3+ years
 10447234038,[⭐STORY MODE] Host A Rideout!,Simulation,Vehicle Sim,Other,1090,7466,6.85,,114,1K–5K,3–12 months
 7557272025,sesh,Sports & Racing,Sports,Other,506,7462,14.76,,556,400–1K,1–3 years
@@ -1610,8 +1610,8 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10768322898,[🎃] Spin A Pet,Simulation,Incremental Simulator,Care / baby / pets,1177,7027,5.97,,29,1K–5K,under 1 month
 7738927312,[☢️] Build a Bunker!,Survival,,Other,810,7027,8.68,,524,400–1K,1–3 years
 5620182793,Skateboard Obby🎃,Obby & Platformer,,Obby / parkour,836,7026,8.41,,991,400–1K,1–3 years
-10692944906,[🎃3x] Draw A Card,Simulation,Incremental Simulator,Other,735,7008,9.53,,74,400–1K,1–3 months
-10767570793,[UPD 1⚡] Pixel Basketball,Sports & Racing,Sports,Sports,2761,7001,2.54,,34,1K–5K,1–3 months
+10692944906,[🎃] Draw A Card,Simulation,Incremental Simulator,Other,735,7008,9.53,,74,400–1K,1–3 months
+10767570793,Pixel Basketball,Sports & Racing,Sports,Sports,2761,7001,2.54,,34,1K–5K,1–3 months
 6164853651,Hungry Pig,Survival,,Other,754,6992,9.27,,854,400–1K,1–3 years
 3210778402,Where's Santa [Story],Adventure,Story,Other,701,6970,9.94,,1763,400–1K,3+ years
 10418381226,[🧟 DON LORENZO] Build A Blue Lock Squad!,Sports & Racing,Sports,Other,443,6970,15.73,,119,400–1K,3–12 months
@@ -1663,7 +1663,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10768827250,Thai Word Chain [ 🎃 Halloween ],All,,Other,1520,6623,4.36,,25,1K–5K,under 1 month
 10762730780,Ludo Arena! 🎲 [2-4 Players],Strategy,Board & Card Games,Battles / army,991,6611,6.67,,61,400–1K,1–3 months
 10765927544,🍂 Zarechensk RP [ОСЕНЬ],Roleplay & Avatar Sim,Life,Roleplay / life,1221,6610,5.42,,46,1K–5K,1–3 months
-9144170213,[ 🛠️ ] Build Survival!,Survival,,Disasters / survival,655,6605,10.09,,350,400–1K,3–12 months
+9144170213,[ 🛠️ ] Build Survival! 🎃,Survival,,Disasters / survival,655,6605,10.09,,350,400–1K,3–12 months
 5279884489,[ADMIN ABUSE!] Soccer Training⚽💥,Simulation,Incremental Simulator,Sports,455,6605,14.53,,1082,400–1K,1–3 years
 6737261595,[10M Visits] Super Toilet Fight,Action,Battlegrounds & Fighting,Battles / army,705,6602,9.37,,726,400–1K,1–3 years
 9472441390,[🎃] 💎 ROB IT,Survival,Escape,Other,3469,6600,1.9,,299,1K–5K,3–12 months
@@ -1856,7 +1856,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10766222311,K - school,Roleplay & Avatar Sim,Life,Roleplay / life,1522,5162,3.39,,44,1K–5K,1–3 months
 10456511458,[SATURN! 🪐] Build to the moon!,Simulation,Incremental Simulator,Other,1504,5159,3.43,,112,1K–5K,3–12 months
 7264587281,[RANKED] SNIPER DUELS,Shooter,Deathmatch Shooter,Other,3618,5158,1.43,,614,1K–5K,1–3 years
-2655311011,[🎃2X] Anime Dimensions Simulator,RPG,Action RPG,Anime / fighting style,4363,5157,1.18,,1963,1K–5K,3+ years
+2655311011,[🎃] Anime Dimensions Simulator,RPG,Action RPG,Anime / fighting style,4363,5157,1.18,,1963,1K–5K,3+ years
 10757690102,🐟 How to Fisch!,Survival,,Other,472,5156,10.93,,64,400–1K,1–3 months
 7383133134,💰 Deadly Heist 💰,Adventure,Exploration,Other,563,5146,9.14,,590,400–1K,1–3 years
 10765121351,[🦇] Talyer!,Simulation,,Other,512,5144,10.05,,52,400–1K,1–3 months
@@ -1989,7 +1989,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 533435040,Flicker 💡,Survival,,Other,603,4370,7.25,,3209,400–1K,3+ years
 10765332405,LOCUST : DEAD AIR [🤖 NOSEY],Survival,Escape,Other,649,4369,6.73,,50,400–1K,1–3 months
 3717250353,[💵X2] My Prison👮‍♂️,Simulation,Tycoon,Other,836,4345,5.2,,1575,400–1K,3+ years
-5668874170,[RYU] Gojo Vs Toji Ability Test,Action,Battlegrounds & Fighting,Other,911,4337,4.76,,978,400–1K,1–3 years
+5668874170,[DOMAIN CLASH] Gojo Vs Toji Ability Test,Action,Battlegrounds & Fighting,Other,911,4337,4.76,,978,400–1K,1–3 years
 10764661696,[🎃] brainchip arena,Shooter,Deathmatch Shooter,Battles / army,400,4337,10.84,,56,400–1K,1–3 months
 7243236309,The Button,Survival,,Other,683,4334,6.34,,619,400–1K,1–3 years
 3964703660,[🎃]DEMON SLAYER 3D RP,Roleplay & Avatar Sim,Morph Roleplay,Roleplay / life,971,4331,4.46,,1493,400–1K,3+ years
@@ -2232,7 +2232,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10313983435,[🎧] Guess My ASMR,Party & Casual,,Other,442,3136,7.09,,136,400–1K,3–12 months
 7030416430,[UPD] Slippery Stairs,Obby & Platformer,,Other,405,3132,7.74,,661,400–1K,1–3 years
 7155018773,[Testing] DMvsS,Action,Battlegrounds & Fighting,Other,2367,3125,1.32,,637,1K–5K,1–3 years
-10768050565,[🎃] Tame a Pet ❤️,Simulation,Tycoon,Care / baby / pets,1178,3119,2.65,,31,1K–5K,1–3 months
+10768050565,[🎃] Tame a Pet ,Simulation,Tycoon,Care / baby / pets,1178,3119,2.65,,31,1K–5K,1–3 months
 625764726,The Whispering Wild [ALPHA],Roleplay & Avatar Sim,Animal Sim,Other,635,3115,4.9,,3115,400–1K,3+ years
 5661020014,PARANORMAL [HALLOWEEN],Adventure,Story,Other,3105,3114,1.0,,981,1K–5K,1–3 years
 10765823206,[🎃] Crib 212,Social,,Other,432,3108,7.2,,47,400–1K,1–3 months
@@ -2325,7 +2325,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10300788477,Kill Squishy Dumpling In Area 51,Survival,,Other,455,2730,6.01,,138,400–1K,3–12 months
 10768079971,Dressmaker's Dream,Roleplay & Avatar Sim,Dress Up,Other,2036,2729,1.34,,30,1K–5K,1–3 months
 2171758161,🌈 Fall 99999 Rainbow Spiral! Parkour Obby,Obby & Platformer,Classic Obby,Obby / parkour,589,2728,4.63,,2158,400–1K,3+ years
-10770032226,[2v2] Anime Ball vs Ball,Party & Casual,,Anime / fighting style,698,2723,3.9,,17,400–1K,under 1 month
+10770032226,[JJK] Anime Ball vs Ball,Party & Casual,,Anime / fighting style,698,2723,3.9,,17,400–1K,under 1 month
 10749022242,[🎉250K] Egg Farm Simulator [REBORN],Simulation,Incremental Simulator,Fishing / farming,1063,2722,2.56,,66,1K–5K,1–3 months
 9456333594,Bikelife Baltimore [NEW UPDATE💥],Simulation,Vehicle Sim,Other,3799,2718,0.72,,302,1K–5K,3–12 months
 6190071862,Grave/Digger,Shooter,Deathmatch Shooter,Other,1817,2717,1.5,,849,1K–5K,1–3 years
@@ -2763,7 +2763,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10763860058,💀 TRAPPED,Survival,1 vs All,Other,534,825,1.54,,59,400–1K,1–3 months
 10061909806,Sneak Out! 🤫,Survival,Escape,Other,658,824,1.25,,189,400–1K,3–12 months
 10052993685,[🎃UPD] FPE:Blight,Survival,1 vs All,Other,1041,821,0.79,,191,1K–5K,3–12 months
-7741686902,[🎃UPD]Storm▼ Inc.,Simulation,Physics Sim,Other,572,817,1.43,,523,400–1K,1–3 years
+7741686902,[🎃DOWS]Storm▼ Inc.,Simulation,Physics Sim,Other,572,817,1.43,,523,400–1K,1–3 years
 10183645295,[🪦] Sakumi Digging Game,Simulation,Tycoon,Other,670,805,1.2,,162,400–1K,3–12 months
 3170483284,Croydon: London Bus Simulator,Simulation,Vehicle Sim,Other,732,801,1.09,,1775,400–1K,3+ years
 2647834887,🔨 MM2 Aim Trainer,Shooter,,Other,454,781,1.72,,1967,400–1K,3+ years
@@ -2776,7 +2776,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10764440644,CQB Hell [HALLOWEEN],Shooter,PvE Shooter,Other,838,756,0.9,,57,400–1K,1–3 months
 7120911607,After 3 AM,Survival,Escape,Other,883,752,0.85,,643,400–1K,1–3 years
 6674021324,[PATCH] HEDGEHOG TESTING,Obby & Platformer,,Other,822,749,0.91,,743,400–1K,1–3 years
-9442472087,(2X EXP) WARDEN 🐲 Sonaria Horror Escape,Survival,Escape,Horror,1261,749,0.59,,303,1K–5K,3–12 months
+9442472087,WARDEN 🐲 Sonaria Horror Escape,Survival,Escape,Horror,1261,749,0.59,,303,1K–5K,3–12 months
 10289203412,[W2] +1 Speed Shinobi Escape,Simulation,Incremental Simulator,Other,558,745,1.34,,141,400–1K,3–12 months
 10771081056,[EVENT🎃] Doodle Basketball🏀,Sports & Racing,Sports,Sports,629,742,1.18,,11,400–1K,under 1 month
 10765145358,Streamer Tycoon,Simulation,Tycoon,Tycoon / sell stuff,883,742,0.84,,52,400–1K,1–3 months
@@ -2919,7 +2919,7 @@ universe_id,name,genre,subgenre,mechanic,avg_players_7d,monthly_revenue_usd,usd_
 10498543762,🔄 360°,Survival,1 vs All,Other,611,292,0.48,,105,400–1K,3–12 months
 9828503587,VR Hand Survival,Survival,,Disasters / survival,1606,291,0.18,,237,1K–5K,3–12 months
 1039663363,Checho's Deltarune RP,Roleplay & Avatar Sim,Morph Roleplay,Roleplay / life,437,286,0.65,,2806,400–1K,3+ years
-10550750043,Grow an Aquarium 🐠,Simulation,Tycoon,Eat / grow big,477,276,0.58,,95,400–1K,3–12 months
+10550750043,[🎃] Grow an Aquarium 🐠,Simulation,Tycoon,Eat / grow big,477,276,0.58,,95,400–1K,3–12 months
 9630276723,【UPD】+1 Speed Dinosaur Escape,Simulation,Incremental Simulator,Other,501,271,0.54,,272,400–1K,3–12 months
 7493638319,rainy valley,Simulation,Vehicle Sim,Other,415,267,0.64,,569,400–1K,1–3 years
 4489122267,Siren Head and train,Survival,,Other,471,267,0.57,,1318,400–1K,3+ years
