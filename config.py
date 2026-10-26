@@ -2,7 +2,6 @@
 
 # ---- API budget (RoWatcher free tier = 1,000 requests/day) ----
 DAILY_REQUEST_CAP = 950          # hard stop, leaves headroom under 1,000
-TOP_PAGES = 10                   # (legacy) see CORE_PAGES / DEEP_LAST_PAGE further down
 PAGE_SIZE = 100
 MAX_DETAIL_LOOKUPS_PER_RUN = 5   # extra calls for new candidates (created date etc.)
 
@@ -50,13 +49,19 @@ YT_EVERY_MIN = 120               # YouTube: every 2 hours (keeps well inside the
 ROBLOX_EVERY_MIN = 60            # Roblox likes/favourites/updates: hourly
 
 # ---- YouTube (free quota = 10,000 units/day; a search costs 100) ----
-YT_DAILY_UNIT_CAP = 8000
-YT_QUERIES = [                   # 4 searches x 12 runs/day x 100 units = 4,800 units/day
+YT_DAILY_UNIT_CAP = 9000         # of the free 10,000 (long videos + Shorts + trending + lookups)
+YT_QUERIES = [                   # long videos: 3 searches x 12 runs/day x 100 units = 3,600 units/day
     "roblox",
     "new roblox game",
-    "roblox tycoon",
     "roblox simulator",
 ]
+# YouTube Shorts (2 searches x 12 runs/day x 100 units = 2,400 units/day). TikTok and Instagram Reels
+# have no free public API, so Shorts is the short-video signal.
+YT_SHORTS_QUERIES = ["roblox"]
+YT_SHORTS_ORDERS = ["viewCount", "date"]   # most-watched new Shorts, and the newest (catches things early)
+YT_SHORT_MAX_SECONDS = 180       # videos this short count as Shorts
+YT_SHORTS_SIGNAL_VPH = 20_000    # a game counts as "hot on Shorts" at 20K+ views/hour across its Shorts...
+YT_SHORTS_SIGNAL_N = 3           # ...or 3+ Shorts about it in 48h
 YT_MAX_PLACE_LOOKUPS_PER_RUN = 25   # game links in video descriptions -> which game
 YT_MIN_NAME_CHARS = 8            # game names shorter than this aren't matched in titles (too generic)
 YT_SIGNAL_MIN_VIDEOS = 2         # a game counts as "hot on YouTube" with 2+ videos in 48h...
@@ -74,6 +79,7 @@ video videos game games play played playing playthrough gameplay part funny insa
 became become becoming made make making tried trying try first last ever day days hour hours
 vs win won lose lost each only never again here there then than like even still really
 shorts short youtube viral trending update new free gets got
+ crazy insane funny hours played playing best worst ever this that every
 """.split())
 NAME_EDGE_WORDS = set("new upd update updated event beta alpha release x2 x5 x10 2x 5x 10x".split())
 
@@ -386,3 +392,25 @@ CP_MIN_PLAYERS = 200             # ignore tiny games
 CP_BACKTEST_GAMES = 400          # games sampled for the back-test
 SURV_MIN_PEAK = 1000             # lifespans are measured for games that peaked above this
 SURV_MIN_GROUP = 8               # groups smaller than this aren't reported
+
+# =====================================================================
+# Trend Score: one calibrated 0-100 score combining every early signal
+# =====================================================================
+TS_MIN_TARGET = 1000             # "took off" = average players at least double within 14 days AND reach this
+TS_MIN_PLAYERS = 150             # young games below this aren't scored
+TS_MIN_EXAMPLES = 400            # outcomes needed before the learned model replaces the starting formula...
+TS_MIN_POSITIVES = 30            # ...including this many games that took off
+TS_KEEP_DAYS = 90                # daily snapshots kept for learning
+TS_ALERT = 60                    # 🚀 alert when a young game's Trend Score reaches this
+TS_PING = 80                     # ...and ping you at this
+MERGE_ALERTS = True              # several alerts about one game in the same run become one card
+
+# =====================================================================
+# Money (earnings by game, genre, mechanic, size) and published reports
+# =====================================================================
+MONEY_DAYS = 7                   # revenue averaged over the last 7 complete days
+MONEY_MIN_DAYS = 3               # a game needs revenue readings on at least 3 of them
+MONEY_MIN_CCU = 400              # only games averaging 400+ concurrent players
+MONEY_MIN_GROUP = 6              # groups smaller than this aren't shown
+PUBLISH_REPORTS = True           # write digest/weekly/money reports to the repo's "reports" branch
+REPORTS_BRANCH = "reports"

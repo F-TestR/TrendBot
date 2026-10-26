@@ -1,168 +1,124 @@
-# Roblox Trend Bot — setup
+# Roblox Trend Bot
 
-The bot checks RoWatcher every 20 minutes and posts to your Discord:
-
-- **#alerts** (instant): a new game entering the top 1,000, a young game surging 3×+ against last week, or 3+ copies of something appearing in a week.
-- **#daily-digest** (once a day, about 08:00 UK): top risers, new games, title words shared by new games, and your watchlist up or down.
-
-It also reads **YouTube**, **Twitch**, **Roblox's own public game data** (likes, favourites, update dates) and **community size** (each game's Roblox group members, plus any Discord servers you list), and combines them into one **heat score** per game:
-
-- 🔥 **Heating up** alert: a young game rising on 2+ platforms at once (e.g. players, YouTube and community growth).
-- 👀 **Early warning** alert: a game getting lots of YouTube videos while it still has under 5K players.
-- 💥 **Breakout** alert: a young game crossing 10K players (it's then followed for its whole lifecycle).
-- 🛠️ **Update** alert: a watchlist game publishes an update; the digest then reports what it did to players after 1, 3 and 7 days.
-- Alerts arrive as **cards** with the game's icon and a one-click link, and can **@mention you** on the biggest signals.
-- The **daily digest** gains a heat table, YouTube and Twitch sections, update results, **charts** of player curves and a **dashboard.html** file you open in your browser (sortable tables of every tracked game).
-- Every **Sunday** a **weekly opportunity report** groups games by mechanic (tycoon, anomaly, find-the, battles…) and labels each one 🟢 open gap / 🟡 crowding / 🔴 saturating, plus breakouts and how long trends last.
-
-Roblox data needs no key. YouTube needs one free key (Step 3). Twitch (Step 5), @mentions (Step 6) and Discord tracking (see Tuning) are optional.
-
-It also keeps its **own database** and **learns**:
-
-- It scans the top ~3,000 games (down to ~350 players) through the day, and once a day goes down to ~150 players to catch tiny new games.
-- It downloads the **past player history** of young games (about 2 months back) so it can learn from real breakouts straight away.
-- Every day it retrains a small **prediction model**: "how likely is this young game to reach 25K+ players within 3 weeks?" 🎯 alerts fire when a still-small game scores 50%+.
-- Every alert and prediction is logged and **scored** later, so the weekly report shows how often each signal was actually right.
-- 📈 alerts when a young game enters Roblox's **algorithm charts**, and 🏆 **proven studio** tags on games from studios that have had hits before.
-
-**Trend prediction (themes):** besides single games, it tracks **themes** — words and phrases shared by game titles ("cat", "chocolate", "anomaly") plus RoWatcher's curated trend list — and learns which ones are about to become trends:
-
-- 🌱 **Emerging theme** alert: a small theme the model thinks will soon have 3+ games over 2K players (before that, when several early signals fire at once: copy bursts, many studios, tiny-game bursts, renames…).
-- 🌉 **Outside trend reaching Roblox** alert: something rising on **Steam**, **YouTube trending**, **Wikipedia** or **Twitch** that has just started appearing in brand-new Roblox games.
-- The digest gets **🌱 Themes to watch** and **🌍 Outside Roblox**; the dashboard gets a **Themes** tab.
-- The Sunday report gets **🔬 Which indicators actually work**: for every signal, how often it was followed by a breakout, how much better than chance, and how many days' warning it gave. The theme model weights signals by what actually worked.
-- Seasonal themes (Halloween, Christmas, summer…) are in `config.py` → `SEASONS`; add your own.
-
-**Long-term games:** every week the bot measures how well each game keeps its weekend crowd on Tuesday–Wednesday compared with a typical game. Games that hold at least as well in most weeks are labelled 🏛️ **long-term** (habit games, not hype). The Sunday report ranks genres by how many of their games are long-term, a 🏛️ alert fires when a young game earns the label, the heat score rewards good hold, and the dashboard has a **Long-term** tab. It downloads ~8 weeks of history for established games in the background, so ratings appear within days.
-
-**Stickiness:** each week the bot also estimates every game's **session length** (from players online and daily visits), and combines weekday hold, session length, players kept vs its best recent week, favourite rate and revenue per player into a **stickiness score (0–100)**. The Sunday report tests whether the score predicts which games still have players 4 weeks later, lists the **description features** (daily rewards, codes, trading…) most common in long-term games, and attaches an **opportunity map** placing each genre by growth vs stickiness.
-
-**Forward calendar (🔮):** the bot keeps a list of things that are *coming* — games in Steam's Coming Soon list, upcoming and trending films and shows (optional free TMDB key, Step 7), and dates you add yourself in `config.py` → `FUTURE_EVENTS` (holidays are pre-filled; add Roblox events or launches you hear about). The digest shows **🔮 Coming up** with each item's Roblox status ("not on Roblox yet — first-mover chance" or "already N new Roblox games"), a 🔮 alert fires when the first Roblox copies of something upcoming appear, and the indicator league table measures whether upcoming releases really lead Roblox trends.
-
-**Badges (🏅):** every run the bot reads the public Roblox badges of ~10 games (about 400 a day, watchlist and young games first; no key needed). Each badge's "win rate" is the share of that day's players who earned it, so the bot can work out each game's real **players per day**, **playtime per player per day** (Roblox's top ranking signal), **sessions per player**, and — when the game has a "welcome / you played" badge — its **returning-player share** and **funnels** (how many new players reach level 10, a 7-day streak, 1,000 miles…). Playtime and returning share feed the stickiness score and heat score, the dashboard's Long-term tab shows them, and the Sunday report gets a **🏅 Badges** section with your watchlist's funnels.
-
-**Algorithm mirror (🧠):** once a day the bot learns what Roblox's recommendation algorithm is rewarding *right now*. It can't see inside Roblox's models, but it sees both ends: the public signals Roblox says it ranks on (playtime per player, returning players, first-badge drop-off, sessions, weekday hold, session length, likes, favourites, revenue per player) and what Roblox then does (chart entries and 50%+ growth in the next 7 days). Two simple models, trained on the last 5 weeks, give each signal a weight. The Sunday report shows the ranking, warns when the weights shift (**algorithm change watch**), and live-checks past predictions; the daily digest lists the young games **most likely to be promoted next** with each one's weak spot; the dashboard has a **🧠 Algorithm** tab.
-
-**How it reads in Discord:** the daily digest is five short cards — **📊 Today in 30 seconds** (one headline per category: biggest riser, most likely to be pushed by Roblox, hottest across platforms, most playtime, theme to watch, what's coming, watchlist warnings), **🎮 Games to watch** (one ranked list merging growth, promotion chance, heat, breakout chance and playtime, with a legend underneath), **🌱 Trends**, **🔮 Coming up** and **👀 Watchlist**. The Sunday report opens with **the week in 6 lines**, then one card each for mechanics, the algorithm, long-term games, engagement, what lasting games share, and whether the predictions are working; the full-length version is attached as `weekly_report.md`. The dashboard opens on an **⭐ Overview** tab with the same picks. Set `DIGEST_STYLE = "text"` in `config.py` to go back to the old long text digest.
-
-**Roblox direct (free, no key):** RoWatcher only serves its top 2,000 games, so the bot also reads Roblox itself: Roblox's home-page sorts every hour (Top Trending, Up-and-Coming, Fun with Friends, Top Revisited, every "Trending in…" genre, on computer and phone — the games Roblox's algorithm is pushing), Roblox search once a day for the words that matter (rising themes, copy-wave words and `RBX_SEARCH_WORDS` in `config.py`) to find tiny new copies, and live player counts for every young or watchlisted game outside RoWatcher's list (50 games per request). The source check shows three Roblox lines for these.
-
-**Forecasts (📈 🧭 ⏳):** once a day the bot fits an **S-curve** to every rising young game to forecast its likely peak and when it gets there (a range while it's early), runs **Bayesian change-point detection** on each game's growth to spot the moment a breakout *starts* (🧭 alert), and uses **survival analysis** to measure how long hits keep half their peak players, by genre, mechanic and weekday hold. Each is back-tested on the bot's own history and reported in the Sunday "📈 Forecasts & how long hits last" card; forecasts also show on the Games to watch board and the dashboard.
-
-**Ask the bot (🔎):** GitHub → **Actions → Roblox trend bot → Run workflow**, type a question in the **"Ask the bot a question"** box and press **Run workflow**; the answer appears in #daily-digest about a minute later (works from the GitHub phone app too). It understands questions like `how is Wash the Car doing`, `Be a Pirate vs Pilfering Pirates`, `is chocolate trending`, `tycoon games`, `Simulation games`, `what's rising`, `long term games`, `what is roblox rewarding` and `what's coming up` — game names can be rough. The dashboard also has a **🔎 Search** tab covering every game seen in the last 30 days.
-
-It uses no AI service, so it costs no tokens. It stays inside RoWatcher's free API allowance (1,000 requests a day): it paces itself through the day, uses about 750–900, and never goes past 950.
+A free, self-running bot that watches Roblox and the wider internet, learns from what happens next, and
+tells you in Discord which games and themes are about to take off. It runs on GitHub Actions every
+20 minutes, keeps its own database, uses no AI service (no tokens) and stays inside every free allowance.
 
 ---
 
-## Step 1 — Get a RoWatcher API key (2 minutes)
+## What you get
 
-1. Go to <https://rowatcher.com>, log in (create a free account if needed).
-2. Open <https://rowatcher.com/docs/api> and generate an API key (a long string of letters and numbers).
-3. Keep it private, like a password.
+### In Discord
 
-## Step 2 — Run it on GitHub (recommended: works when your PC is off)
+| Channel | What arrives |
+|---|---|
+| **#alerts** | One card per game when something big happens: 🚀 high **Trend Score**, 🧭 breakout just started, 🆕 crossed 2K players, 📈 entered Roblox's charts, 🔥 heating up across platforms, 👀 big on YouTube while still small. Several signals about the same game in one run are merged into one card. Theme alerts: 🌱 emerging theme, 🌉 outside trend reaching Roblox, 🔮 first copies of something upcoming. Plus a one-line notice if the bot ever fails. |
+| **#daily-digest** (about 08:00 UK) | Five short cards: **📊 Today in 30 seconds** · **🎮 Games to watch** (ranked by Trend Score, with plain-English reasons) · **🌱 Trends** (themes, copy waves, rising words in YouTube Shorts and videos) · **🔮 Coming up** · **👀 Watchlist** — plus charts and the **dashboard.html** file. |
+| **Sundays** | **🗓️ The week in a few lines**, then cards for mechanics, what Roblox's algorithm rewards, long-term games, engagement, what lasting games share, forecasts & lifespans, **💰 what earns the most**, and whether the predictions are working. The full-length report is attached. |
 
-1. Create a free account at <https://github.com> if you don't have one.
-2. Click **New repository** → name it `trend-bot`.
-   - **Public** = no limit on how often it runs (your keys stay secret either way).
-   - **Private** = fine too, but edit `.github/workflows/trendbot.yml` and change `"7,27,47 * * * *"` to `"7,37 * * * *"` (every 30 min) so it stays within GitHub's free monthly minutes.
-3. Upload every file from this folder, **including the `.github` folder**. (On the repo page: **Add file → Upload files**, then drag the folder contents in. If the `.github` folder doesn't upload by dragging, create the file manually: **Add file → Create new file**, name it `.github/workflows/trendbot.yml`, and paste its contents.)
-4. Add your three secrets: repo **Settings → Secrets and variables → Actions → New repository secret**:
+### The Trend Score (the one number to watch)
+Every young game gets a **Trend Score from 0 to 100**: the chance its players at least double within two
+weeks. It combines every signal below, learns their weights from what actually happened, and is
+calibrated (a score of 70 means about 70% of games scored like that took off). Until it has enough real
+outcomes it uses a sensible starting formula, and the Sunday report says which mode it's in and how
+accurate it has been.
 
-   | Name | Value |
-   |---|---|
-   | `ROWATCHER_API_KEY` | your RoWatcher API key |
-   | `DISCORD_ALERTS_WEBHOOK` | your **alerts** channel webhook URL |
-   | `DISCORD_DIGEST_WEBHOOK` | your **daily digest** channel webhook URL |
+### The signals behind it
+- **Players** — every game in RoWatcher's top 2,000 every 20–60 minutes, plus Roblox's own data for smaller and newer games (home-page sorts like Up-and-Coming, Roblox search, live player counts).
+- **Growth just accelerated** — Bayesian change-point detection on each game's growth.
+- **Forecast headroom** — an S-curve fitted to each rise: likely peak and when.
+- **Roblox promotion chance** — the *algorithm mirror* learns which signals Roblox is rewarding right now (and warns when that changes).
+- **Breakout model** — how much the game looks like past breakouts.
+- **YouTube Shorts** — how fast Shorts about the game are being watched (the fastest signal for what kids are into), plus YouTube videos and big-creator coverage. *TikTok and Instagram Reels have no free public access, so Shorts is the short-video source.*
+- **Copy waves** — new games sharing title words, studios piling in, tiny-game bursts.
+- **Quality** — weekday hold, playtime per player, returning players and funnels (from public badge stats), likes, favourites.
+- **Outside Roblox** — Steam, Wikipedia, YouTube trending, Twitch, upcoming films/shows/games and holidays.
 
-5. Test it: **Actions** tab → **Roblox trend bot** → **Run workflow** → tick **"Just post a hello"** → **Run**. You should get a ✅ message in both Discord channels.
-6. Then click **Run workflow** once more with nothing ticked to start it. From then on it runs by itself.
+Every model and signal is **scored against what happened**, and the Sunday report shows the results.
 
-Note: GitHub sometimes starts scheduled runs 5–15 minutes late when it's busy. That's normal.
+### Ask the bot
+GitHub → **Actions → Roblox trend bot → Run workflow** → type in **"Ask the bot a question"** → **Run workflow**.
+The answer appears in #daily-digest a minute later (works from the GitHub phone app). Examples:
+`how is Wash the Car doing` · `Be a Pirate vs Pilfering Pirates` · `is chocolate trending` · `tycoon games` ·
+`which genres earn the most` · `tycoon money` · `what's rising` · `long term games` · `what is roblox rewarding` · `what's coming up`
 
-## Step 3 — Add YouTube (free, about 5 minutes)
+### The dashboard
+Open **dashboard.html** from any digest in your browser. Tabs: ⭐ Overview · 🔥 Hot young games · ★ Watchlist ·
+🏛️ Long-term · 🧠 Algorithm · 🔎 Search (every game seen in 30 days) · 💰 Money · 🌱 Themes · 🧭 Mechanics · 💥 Breakouts · 🛠️ Updates.
+Every column sorts; every table filters.
 
-1. Go to <https://console.cloud.google.com> and sign in with any Google account.
-2. Top bar → project picker → **New project** → name it `trend-bot` → **Create**, then make sure it's selected.
-3. Search the top bar for **YouTube Data API v3** → open it → **Enable**.
-4. Left menu → **Credentials** → **Create credentials → API key**. Copy the key.
-5. (Recommended) Click the key → **API restrictions → Restrict key** → tick **YouTube Data API v3** → **Save**.
-6. In GitHub, add a fourth secret: name `YOUTUBE_API_KEY`, value = that key.
+### Reports branch
+Each day the bot also writes readable files to the repo's **`reports`** branch (switch the branch picker on
+GitHub): `digest.md`, `board.csv`, `money.md`, `money.csv`, and on Sundays `weekly.md`. Open the CSVs in a
+spreadsheet, or hand them to Claude to answer anything about the bot's data.
 
-No card is needed. The bot uses about half of YouTube's free daily allowance and stops itself before the limit.
+---
 
-## Step 4 — Check every source works
+## Setup
 
-**Actions → Roblox trend bot → Run workflow** → tick **"Test YouTube / Roblox / Twitch / Discord access"** → **Run**.
-Your #alerts channel gets a ✅ / ❌ line for each source (including Steam, Wikipedia, YouTube trending and Twitch top games). If anything shows ❌, screenshot it and send it over.
+### 1. RoWatcher key
+Log in at <https://rowatcher.com>, open <https://rowatcher.com/docs/api> and generate an API key.
 
-## Step 5 — Add Twitch (optional, free, about 5 minutes)
+### 2. GitHub
+1. Create a repository (public is fine — secrets stay secret) and upload every file, including `.github/workflows/trendbot.yml`.
+2. **Settings → Secrets and variables → Actions → New repository secret**, add:
 
-1. Twitch needs two-factor login switched on first: <https://www.twitch.tv/settings/security> → **Two-Factor Authentication**.
-2. Go to <https://dev.twitch.tv/console/apps> → **Register Your Application**.
-   - Name: anything unique, e.g. `trend-bot-yourname`
-   - OAuth Redirect URLs: `http://localhost`
-   - Category: **Analytics Tool** · Client Type: **Confidential**
-3. Click **Create**, then **Manage** on your new app. Copy the **Client ID**, then click **New Secret** and copy that too.
-4. Add two GitHub secrets: `TWITCH_CLIENT_ID` and `TWITCH_CLIENT_SECRET`.
-5. Run the source check again (Step 4): Twitch should show ✅.
+   | Secret | Value | Needed? |
+   |---|---|---|
+   | `ROWATCHER_API_KEY` | your RoWatcher key | required |
+   | `DISCORD_ALERTS_WEBHOOK` | webhook URL of your alerts channel | required |
+   | `DISCORD_DIGEST_WEBHOOK` | webhook URL of your digest channel | required |
+   | `YOUTUBE_API_KEY` | free YouTube Data API key (step 3) | strongly recommended (Shorts + videos) |
+   | `BACKUP_PASSWORD` | any long random password you keep somewhere safe | recommended (step 4) |
+   | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` | free Twitch app (step 5) | optional |
+   | `TMDB_API_KEY` | free TMDB key (step 6) | optional |
 
-## Step 6 — Get @mentioned on big signals (optional)
+3. **Actions → Roblox trend bot → Run workflow** with **"Just post a hello"** ticked → both channels get ✅. Then run once with nothing ticked; after that it runs by itself.
 
-1. Discord → **User Settings → Advanced** → turn on **Developer Mode**.
-2. Right-click your own name (in any member list or message) → **Copy User ID**.
-3. In GitHub, open `config.py` → ✏️ → set `PING_USER_ID = "your number here"` → **Commit changes**.
+### 3. YouTube (free, 5 minutes)
+<https://console.cloud.google.com> → new project → enable **YouTube Data API v3** → **Credentials → Create credentials → API key** → (optional) restrict it to that API → save as `YOUTUBE_API_KEY`. The bot uses up to 9,000 of the 10,000 free daily units and stops itself before the limit.
 
-You'll be pinged only for: heat 80+ on 3+ platforms, a 5×+ surge, 1M+ YouTube views on a small game, or a copy wave of 5+ games. Change these in `config.py` (`PING_*`).
+### 4. Encrypted backups (recommended)
+The bot's memory lives in GitHub's Actions cache, which is deleted if unused for 7 days. With a
+`BACKUP_PASSWORD` secret, the bot saves an **encrypted** copy (database + memory) to the repo's Releases page
+every day and restores itself automatically if the cache is ever lost. Without the password, the file is
+unreadable, so it's safe in a public repo. Keep the password somewhere safe; without it the backup can't be opened.
 
-## Step 7 — Add films and shows (optional, free, about 5 minutes)
+### 5. Twitch (optional)
+Turn on two-factor at <https://www.twitch.tv/settings/security>, register an app at <https://dev.twitch.tv/console/apps>
+(redirect `http://localhost`, category Analytics Tool, client type Confidential), copy the Client ID and a new secret.
 
-1. Create a free account at <https://www.themoviedb.org/signup> and confirm your email.
-2. Go to <https://www.themoviedb.org/settings/api> → **Create** / **Request an API key** → choose **Developer**, accept the terms, and fill in the short form (personal, non-commercial project).
-3. Copy the **API Key** (the shorter one, not the long "Read Access Token").
-4. Add a GitHub secret named `TMDB_API_KEY` with that key.
-5. Run the source check: "Films & shows (TMDB)" should show ✅.
+### 6. Films & shows (optional)
+Free account at <https://www.themoviedb.org/signup> → <https://www.themoviedb.org/settings/api> → request a Developer
+API key → save the short **API Key** as `TMDB_API_KEY`. (This product uses the TMDB API but is not endorsed or certified by TMDB.)
 
-Film/show data comes from TMDB; this bot uses the TMDB API but is not endorsed or certified by TMDB.
+### 7. Check everything
+**Run workflow** with **"Test all data sources"** ticked → #alerts gets a ✅/❌ line per source.
 
-## The dashboard
-
-Each daily digest has a **dashboard.html** attached. Click it in Discord → download → open it in your browser. Tabs: 🔥 hot young games (heat, 14-day curve, YouTube, Twitch, community, likes), ★ watchlist, 🧭 mechanics, 💥 breakouts and 🛠️ updates. Click any column to sort; type in the box to filter.
-
-## Alternative — run it on your PC instead of GitHub
-
-1. Install Python 3 from <https://python.org> (tick "Add Python to PATH").
-2. Copy `.env.example` to `.env` in the same folder and paste in your values (YouTube is optional).
-3. Open a terminal in the folder and run:
-   - `python bot.py --test-webhooks` — posts a hello to both channels.
-   - `python bot.py --check-sources` — tests YouTube / Roblox / Twitch / Discord access.
-   - `python bot.py --digest-now` / `--weekly-now` — post the digest or weekly report straight away.
-   - `python bot.py --loop 20` — runs every 20 minutes while the window stays open.
-
-## The database and backups
-
-The database (`trendbot.db`) lives in GitHub's Actions cache next to the bot's memory, so nothing extra is needed.
-
-- **Private repo:** it's also backed up once a day to your repo's **Releases** page (a release called "Trend bot database backup" — don't delete it). If the cache is ever cleared, the bot restores itself from there.
-- **Public repo:** the backup is skipped, because anyone could download it. The cache alone is normally fine, but if you want the safety net, make the repo private (Settings → General → Danger Zone → Change visibility) and change the schedule to every 30 minutes as described in Step 2.
+---
 
 ## What to expect
-
-- **Day 1:** the bot builds its memory. New-game alerts start after the first run; the digest starts the next morning.
-- **Day 1–2:** YouTube and Roblox data start straight away; group/Discord growth needs 2 days of counts; "rising title words" needs 2 days to compare.
-- **After about a week:** weekday-vs-last-week comparisons kick in properly, so surge alerts, the risers list and the players part of the heat score become reliable.
-- **First few days:** the bot downloads past histories in the background; the weekly report shows how many examples the model has.
-- **Usually within the first week:** the model has enough finished examples (60+, including 8+ explosions) to train, and 🎯 predictions start. Its accuracy is reported every Sunday — trust it more as the "AUC" and scorecard numbers climb.
-- **After two weeks:** the weekly report can compare mechanics week over week, so the 🟢 / 🟡 / 🔴 labels switch on.
-- **Over the following months:** breakouts and update results pile up (kept for 6 months), so "how long trends last" and "what updates do" get more trustworthy.
+- **Day 1:** memory builds; alerts start; first digest next morning.
+- **Week 1:** week-on-week growth, weekday hold, stickiness, badges and earnings fill in.
+- **Weeks 2–3:** the breakout, theme, algorithm-mirror and Trend Score models start passing their accuracy tests; their percentages appear only once they score at least 0.6 on data they never saw (0.5 = coin flip).
+- **Month 2+:** lifespans, indicator lead times and the Trend Score's live check become solid.
 
 ## Tuning
+Everything is in `config.py`, grouped by section: the **watchlist** (`WATCHLIST`), alert thresholds, ping levels
+(`PING_USER_ID` to be @mentioned), YouTube and Shorts searches (`YT_QUERIES`, `YT_SHORTS_QUERIES`), Roblox search
+words (`RBX_SEARCH_WORDS`), mechanic groups (`MECHANICS`), dates to watch (`FUTURE_EVENTS`), Trend Score alert
+level (`TS_ALERT`), and switches for cards, charts, the dashboard and reports.
 
-Everything lives in `config.py`: thresholds (e.g. surge = 3×), the watchlist of games you care about (add any game's universe ID from its RoWatcher link), the digest time, the YouTube search terms (`YT_QUERIES`), and the heat alert levels (`HEAT_ALERT_SCORE`, `EARLY_WARNING_*`), the **mechanic groups** (`MECHANICS` — add your own words or groups), the weekly report day, what counts as "exploded" for the model (`EXPLODE_CCU`, `LABEL_DAYS`), when 🎯 alerts fire (`PREDICT_ALERT_PROB`), and on/off switches for cards, charts and the dashboard (`RICH_CARDS`, `DIGEST_CHARTS`, `DASHBOARD`).
+## Limits worth knowing
+- RoWatcher's free API serves its top 2,000 games; smaller games come from Roblox directly.
+- Revenue figures are RoWatcher's estimates, not real payouts — good for comparing, not for exact amounts.
+- Badge-based numbers need games with common badges (about two thirds of games).
+- TikTok and Reels can't be read for free; YouTube Shorts covers short video.
 
-**Tracking a game's Discord server (optional):** Roblox hides games' Discord links from bots, so add the ones you care about to `DISCORD_INVITES` in `config.py`, e.g. `"10767380385": "https://discord.gg/abc123",` (game's universe ID, then its invite link). Find the invite on the game's Roblox page or in YouTube video descriptions. Use an invite that never expires.
+## If something breaks
+The bot posts the error to #alerts (once a day per error). If a webhook ever leaks: Discord → channel settings →
+Integrations → Webhooks → delete, create a new one, update the secret.
 
-## If a webhook URL ever leaks
-
-Discord → channel settings → Integrations → Webhooks → delete it, make a new one, and update the secret.
+## Running on a PC instead
+Install Python 3, copy `env.example` to `.env` and fill it in, then `python bot.py --loop 20`
+(also `--test-webhooks`, `--check-sources`, `--digest-now`, `--weekly-now`, `--ask "question"`).

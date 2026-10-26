@@ -264,14 +264,60 @@ def repo_is_private(repo, token):
         return None
 
 
+ENC_ASSET = "trendbot-backup.tar.gz.enc"
+
+
+def _openssl(args, data, password):
+    import subprocess
+    env = dict(os.environ, TB_PASS=password)
+    r = subprocess.run(["openssl", "enc", "-aes-256-cbc", "-pbkdf2", "-iter", "200000", "-md", "sha256",
+                        "-pass", "env:TB_PASS"] + args, input=data, capture_output=True, env=env, timeout=300)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.decode()[:200])
+    return r.stdout
+
+
+def _bundle(db):
+    """tar.gz of the database and state.json (the bot's whole memory)."""
+    import io
+    import tarfile
+    db.commit()
+    tmp = DB_PATH + ".bak"
+    dst = sqlite3.connect(tmp)
+    db.backup(dst)
+    dst.close()
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        tar.add(tmp, arcname="trendbot.db")
+        sp = os.environ.get("STATE_PATH")
+        if sp and os.path.exists(sp):
+            tar.add(sp, arcname="state.json")
+    os.remove(tmp)
+    return buf.getvalue()
+
+
+def backup_encrypted(db, repo, token, password):
+    data = _openssl(["-salt"], _bundle(db), password)
+    rel = _release(repo, token, create=True)
+    for a in rel.get("assets", []):
+        if a["name"] == ENC_ASSET:
+            _gh("DELETE", f"https://api.github.com/repos/{repo}/releases/assets/{a['id']}", token)
+    _gh("POST", f"https://uploads.github.com/repos/{repo}/releases/{rel['id']}/assets?name={ENC_ASSET}",
+        token, data, ctype="application/octet-stream")
+    return f"encrypted backup saved ({len(data)/1e6:.1f} MB)"
+
+
 def backup(db):
-    """Upload a gzipped copy of the database to a release asset (private repos only)."""
+    """Daily backup to the repo's Releases page: plain (private repos) or encrypted with BACKUP_PASSWORD (any repo)."""
     repo, token = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_TOKEN")
     if not (repo and token and C.BACKUP_TO_RELEASES):
         return "skipped (not running on GitHub)"
+    password = os.environ.get("BACKUP_PASSWORD")
+    if password:
+        return backup_encrypted(db, repo, token, password)
     private = repo_is_private(repo, token)
     if not private:
-        return "skipped — repo is public, so a backup would be public too (cache only)"
+        return "skipped — repo is public; add a BACKUP_PASSWORD secret for encrypted backups (see SETUP.md)"
     db.commit()
     tmp = DB_PATH + ".bak"
     src = sqlite3.connect(tmp)
@@ -289,6 +335,40 @@ def backup(db):
     return f"backed up ({len(data)/1e6:.1f} MB)"
 
 
+def _download(repo, token, asset):
+    opener = urllib.request.build_opener(_NoRedirect)
+    req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases/assets/{asset['id']}", headers={
+        "Authorization": f"Bearer {token}", "Accept": "application/octet-stream", "User-Agent": "roblox-trend-bot"})
+    try:
+        return opener.open(req, timeout=120).read()
+    except urllib.error.HTTPError as e:
+        if e.code not in (301, 302, 307):
+            raise
+        return urllib.request.urlopen(urllib.request.Request(
+            e.headers["Location"], headers={"User-Agent": "roblox-trend-bot"}), timeout=120).read()
+
+
+def _restore_encrypted(repo, token, asset, password):
+    import io
+    import tarfile
+    data = _openssl(["-d"], _download(repo, token, asset), password)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    restored = []
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+        for m in tar.getmembers():
+            if m.name == "trendbot.db" and not os.path.exists(DB_PATH):
+                with open(DB_PATH, "wb") as f:
+                    f.write(tar.extractfile(m).read())
+                restored.append("database")
+            sp = os.environ.get("STATE_PATH")
+            if m.name == "state.json" and sp and not os.path.exists(sp):
+                os.makedirs(os.path.dirname(sp), exist_ok=True)
+                with open(sp, "wb") as f:
+                    f.write(tar.extractfile(m).read())
+                restored.append("state")
+    return f"restored {' + '.join(restored) or 'nothing'} from the encrypted backup ({len(data)/1e6:.1f} MB)"
+
+
 def restore_if_missing():
     """If the cache lost the database, pull the last backup from Releases."""
     if os.path.exists(DB_PATH):
@@ -298,6 +378,10 @@ def restore_if_missing():
         return None
     try:
         rel = _release(repo, token)
+        password = os.environ.get("BACKUP_PASSWORD")
+        enc = next((a for a in rel.get("assets", []) if a["name"] == ENC_ASSET), None)
+        if password and enc:
+            return _restore_encrypted(repo, token, enc, password)
         asset = next((a for a in rel.get("assets", []) if a["name"] == "trendbot.db.gz"), None)
         if not asset:
             return None

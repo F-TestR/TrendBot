@@ -35,6 +35,9 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import money as MO
+import publish as PUB
+import trend as TS
 import ask as ASK
 import forecast as FC
 import roblox_direct as RD
@@ -270,14 +273,13 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if not api_key:
         sys.exit("ROWATCHER_API_KEY is not set. See SETUP.md.")
 
+    restored = W.restore_if_missing()  # before loading state, so a lost cache comes back whole
+    if restored:
+        print(restored)
     state = load_state()
     t = now_utc()
     today = day_str(t)
     api = RoWatcher(api_key, state, today)
-
-    restored = W.restore_if_missing()
-    if restored:
-        print(restored)
     db = W.connect()
     T.ensure(db)
     HOLD.ensure(db)
@@ -826,6 +828,31 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 import traceback
                 traceback.print_exc()
                 print(f"forecasts failed: {e}", file=sys.stderr)
+            # Trend Score: every signal combined into one calibrated number, with plain-English reasons
+            try:
+                ty = [gid for gid, r in games.items() if is_young(r, today) and r.get("last_seen") == today]
+                tctx = present_ctx()
+                tctx["t"] = t
+                nts, tst = TS.update(db, state, today, ty, tctx)
+                db.commit()
+                print(f"trend score: {nts} games scored ({state.get('ts_mode')}), "
+                      f"{tst.get('examples', 0)} outcomes / {tst.get('positives', 0)} took off")
+                for gid, v in sorted((state.get("_ts") or {}).items(), key=lambda kv: -kv[1]["score"]):
+                    rec = games.get(gid)
+                    if v["score"] < C.TS_ALERT or not rec or not cooled(state, "ts:" + gid, today, 10):
+                        continue
+                    add("trend", gid, f"🚀 Trend Score {v['score']}: {rec['name'][:70]}",
+                        (f"About **{v['score']}%** chance its players double within 2 weeks"
+                         + (" (starting formula — accuracy shown in the Sunday report)." if state.get("ts_mode") != "learned" else ".")
+                         + ("\n" + "\n".join("• " + x for x in v["reasons"]) if v["reasons"] else "")),
+                        [("Players", fmt(rec.get("last", 0))),
+                         ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
+                        + studio_field(db, gid), ping=v["score"] >= C.TS_PING)
+                    state["alerts"]["ts:" + gid] = today
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"trend score failed: {e}", file=sys.stderr)
             try:
                 pst = P.train(db, today)
                 print("algorithm mirror: " + ", ".join(
@@ -858,13 +885,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             print(f"weekday hold failed: {e}", file=sys.stderr)
 
     for a in alerts:
-        if a.get("gid") and a["kind"] not in ("theme", "bridge", "future", "cp"):
+        if a.get("gid") and a["kind"] not in ("theme", "bridge", "future", "cp", "trend"):
             try:
                 W.record_alert(db, t, a["gid"], a["kind"], S.players_now(state, a["gid"]))
             except Exception as e:
                 print(f"couldn't log alert: {e}", file=sys.stderr)
     db.commit()
 
+    if alerts and C.MERGE_ALERTS:
+        alerts = merge_alerts(alerts, state)
     if alerts:
         header = f"**Trend alert** · {t.strftime('%a %d %b %H:%M')} UTC"
         icons = S.game_icons([a["gid"] for a in alerts if a.get("gid")]) if (C.RICH_CARDS and not dry_run) else {}
@@ -879,6 +908,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             print(f"daily source write failed: {e}", file=sys.stderr)
         state["_dbstats"] = W.stats(db)
+        try:
+            state["_money"] = MO.table(db, state, today, I.mechanics_of)
+            print(f"money: {len(state['_money'])} games with revenue estimates")
+        except Exception as e:
+            print(f"money table failed: {e}", file=sys.stderr)
         cards = None
         if C.DIGEST_STYLE == "cards":
             try:
@@ -888,6 +922,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 traceback.print_exc()
                 print(f"digest cards failed, sending text instead: {e}", file=sys.stderr)
         files = digest_files(state, today, cutoff)
+        board_rows = list(state.get("_board") or [])
         state.pop("_head", None)
         state.pop("_board", None)
         posted = False
@@ -896,6 +931,16 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             posted = True
         if not posted:
             post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
+        if not dry_run:
+            try:
+                rep_files = {"reports/money.md": MO.markdown(state.get("_money") or [], fmt),
+                             "reports/money.csv": MO.to_csv(state.get("_money") or []),
+                             "reports/board.csv": board_csv(board_rows)}
+                if cards:
+                    rep_files["reports/digest.md"] = PUB.cards_md(f"Daily digest · {today}", cards)
+                print(PUB.publish(rep_files, f"Reports for {today}"))
+            except Exception as e:
+                print(f"report publish failed: {e}", file=sys.stderr)
         state["last_digest"] = today
         try:
             state["backup"] = W.backup(db)
@@ -936,6 +981,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             if png:
                 files.append(("mechanics.png", png, "image/png"))
         posted = False
+        if not state.get("_money"):
+            try:
+                state["_money"] = MO.table(db, state, today, I.mechanics_of)
+            except Exception as e:
+                print(f"money table failed: {e}", file=sys.stderr)
         if C.DIGEST_STYLE == "cards":
             try:
                 cards = PR.weekly_cards(db, state, today, present_ctx(), table)
@@ -943,6 +993,9 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 PR.post_cards(digest_url, cards, files=files + [("weekly_report.md", full, "text/markdown")],
                               dry_run=dry_run, label="weekly")
                 posted = True
+                if not dry_run:
+                    print(PUB.publish({"reports/weekly.md": PUB.cards_md(f"Weekly report · {today}", cards)
+                                       + "\n\n---\n\n" + text}, f"Weekly report {today}"))
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -955,7 +1008,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     db.close()
     state.pop("_preds", None)
     state.pop("_promo", None)
-    for k in ("_fc", "_cp", "_life"):
+    for k in ("_fc", "_cp", "_life", "_ts", "_money"):
         state.pop(k, None)
     state.pop("_themes", None)
     state.pop("_bridges", None)
@@ -1286,7 +1339,7 @@ def run_ask(question, dry_run=False):
             pass
     t = now_utc()
     ctx = {"S": S, "fmt": fmt, "today": day_str(t), "t": t, "link": link, "age_days": age_days, "I": I, "FC": FC,
-           "P": P, "PR": PR, "pctx": present_ctx(), "HOLD": HOLD, "FUT": FUT}
+           "P": P, "PR": PR, "pctx": present_ctx(), "HOLD": HOLD, "FUT": FUT, "MO": MO, "TS": TS}
     try:
         content, cards = ASK.answer(db, state, question, ctx)
     except Exception as e:
@@ -1294,11 +1347,84 @@ def run_ask(question, dry_run=False):
         traceback.print_exc()
         content, cards = f"**Q:** {question[:200]}", [{"title": "⚠️ Couldn't answer that", "description": f"`{e}`", "color": 0xED4245}]
     PR.post_cards(os.environ.get("DISCORD_DIGEST_WEBHOOK"), cards, content=content, dry_run=dry_run, label="ask")
+    if not dry_run:
+        try:
+            files = {"reports/ask.md": PUB.cards_md("Latest question", cards, content)}
+            if re.search(r"money|revenue|earn|profit|income|robux|monetis|monetiz", question.lower()):
+                rows = MO.table(db, state, day_str(t), I.mechanics_of)
+                files["reports/money.md"] = MO.markdown(rows, fmt)
+                files["reports/money.csv"] = MO.to_csv(rows)
+            print(PUB.publish(files, f"Answer: {question[:60]}"))
+        except Exception as e:
+            print(f"report publish failed: {e}", file=sys.stderr)
     db.close()
 
 
+GAME_KINDS = ("trend", "cp", "breakout", "predict", "chart", "new", "surge", "heat", "early", "update", "longterm")
+
+
+def board_csv(rows):
+    import csv as _csv
+    import io as _io
+    buf = _io.StringIO()
+    w = _csv.writer(buf)
+    w.writerow(["universe_id", "name", "players", "trend_score", "reasons", "growth_vs_last_week", "promotion_chance",
+                "heat", "breakout_chance", "forecast_peak", "playtime_min", "age_days"])
+    for x in rows:
+        fc = x.get("fc") or {}
+        w.writerow([x["gid"], x["name"], x["players"], x.get("ts") if x.get("ts") is not None else "",
+                    "; ".join(x.get("why") or []), round(x["ratio"], 2) if x.get("ratio") else "",
+                    round(x["promo"], 3) if x.get("promo") is not None else "", x.get("heat", ""),
+                    round(x["model"], 3) if x.get("model") is not None else "",
+                    round(fc["peak"]) if fc.get("peak") and fc.get("status") in ("rising", "early") else "",
+                    round(x["playtime"]) if x.get("playtime") else "", x.get("age") if x.get("age") is not None else ""])
+    return buf.getvalue()
+
+
+def merge_alerts(alerts, state):
+    """Several alerts about the same game in one run -> one card: strongest title, every reason listed,
+    fields combined, Trend Score added."""
+    by, order = {}, []
+    for a in alerts:
+        gid = a.get("gid")
+        if gid and a["kind"] in GAME_KINDS:
+            if gid not in by:
+                by[gid] = []
+                order.append(("g", gid))
+            by[gid].append(a)
+        else:
+            order.append(("a", a))
+    out = []
+    for kind, x in order:
+        if kind == "a":
+            out.append(x)
+            continue
+        group = sorted(by[x], key=lambda a: GAME_KINDS.index(a["kind"]))
+        lead = dict(group[0])
+        ts = (state.get("ts") or {}).get(x)
+        if len(group) > 1:
+            extra = []
+            for a in group[1:]:
+                first = a["desc"].split("\n")[0]
+                extra.append(f"**{a['title'].split(':')[0]}** — {first}")
+            lead["desc"] = lead["desc"] + "\n\n" + "\n".join(extra)
+            lead["text"] = lead["text"] + " (+" + ", ".join(a["kind"] for a in group[1:]) + ")"
+        seen, fields = set(), []
+        for a in group:
+            for n, v in a.get("fields") or []:
+                if n not in seen:
+                    seen.add(n)
+                    fields.append((n, v))
+        if ts is not None and "Trend Score" not in seen and lead["kind"] != "trend":
+            fields.insert(0, ("Trend Score", f"{ts}/100"))
+        lead["fields"] = fields
+        lead["ping"] = any(a.get("ping") for a in group)
+        out.append(lead)
+    return out
+
+
 def present_ctx():
-    return {"FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
+    return {"MO": MO, "TS": TS, "FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
             "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
             "is_base": is_base, "keywords": keywords}
 

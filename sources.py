@@ -111,9 +111,19 @@ def name_index(state):
     return idx
 
 
-def match_title(title, idx):
+HASHTAG = re.compile(r"#([A-Za-z0-9_]{6,40})")
+
+
+def match_title(title, idx, extra=""):
+    """Game names in a title, plus hashtags like #washthecar matched against names with spaces removed."""
     t = " " + norm(title) + " "
     hits = [n for n in idx if " " + n + " " in t]
+    tags = {h.lower().replace("_", "") for h in HASHTAG.findall(title + " " + extra)}
+    if tags:
+        nospace = {n.replace(" ", ""): n for n in idx if len(n.replace(" ", "")) >= C.YT_MIN_NAME_CHARS}
+        for tg in tags:
+            if tg in nospace and nospace[tg] not in hits:
+                hits.append(nospace[tg])
     # drop names contained in a longer matched name ("sell fries" inside "sell fries 2")
     hits = [h for h in hits if not any(h != o and h in o for o in hits)]
     return [idx[h] for h in hits]
@@ -136,10 +146,15 @@ def collect_youtube(state, t, key):
 
     after = (t - timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")
     found = set()
-    for q in C.YT_QUERIES:
+    searches = [(q, {"order": "viewCount"}) for q in C.YT_QUERIES]
+    # Shorts: the fastest-moving signal for what kids are into. "short" = under 4 minutes; the real
+    # Shorts flag below comes from each video's length (3 minutes or less).
+    searches += [(q, {"order": order, "videoDuration": "short"}) for q in C.YT_SHORTS_QUERIES
+                 for order in C.YT_SHORTS_ORDERS]
+    for q, extra in searches:
         try:
-            d = yt("search", {"part": "snippet", "type": "video", "order": "viewCount", "q": q,
-                              "publishedAfter": after, "maxResults": 50, "relevanceLanguage": "en"}, 100)
+            d = yt("search", dict({"part": "snippet", "type": "video", "q": q,
+                                   "publishedAfter": after, "maxResults": 50, "relevanceLanguage": "en"}, **extra), 100)
         except RuntimeError as e:
             log(str(e))
             break
@@ -158,7 +173,7 @@ def collect_youtube(state, t, key):
     for i in range(0, len(refresh), 50):
         batch = refresh[i:i + 50]
         try:
-            d = yt("videos", {"part": "snippet,statistics", "id": ",".join(batch), "maxResults": 50}, 1)
+            d = yt("videos", {"part": "snippet,statistics,contentDetails", "id": ",".join(batch), "maxResults": 50}, 1)
         except RuntimeError as e:
             log(str(e))
             break
@@ -180,11 +195,15 @@ def collect_youtube(state, t, key):
                     if u and u not in uids:
                         uids.append(u)
                 linked = bool(uids)
+                tags = " ".join(sn.get("tags") or [])
                 if not uids:
-                    uids = match_title(title, idx)
+                    uids = match_title(title, idx, desc[:500] + " " + tags)
+                secs = _duration(((it.get("contentDetails") or {}).get("duration")) or "")
                 rec = videos[vid] = {"t": title[:120], "c": sn.get("channelTitle", "")[:40], "ch": sn.get("channelId", ""),
                                      "p": sn.get("publishedAt", t.isoformat()), "u": uids[:3],
-                                     "l": linked, "v0": views, "t0": t.isoformat()}
+                                     "l": linked, "v0": views, "t0": t.isoformat(),
+                                     "s": 1 if (secs is not None and secs <= C.YT_SHORT_MAX_SECONDS) else 0,
+                                     "h": [h.lower() for h in HASHTAG.findall(title + " " + desc[:500])][:8]}
             rec["v"] = views
             rec["t1"] = t.isoformat()
 
@@ -215,15 +234,33 @@ def collect_youtube(state, t, key):
     src["yt_units"] = {d: n for d, n in src["yt_units"].items() if d >= (t - timedelta(days=7)).strftime("%Y-%m-%d")}
 
 
+DUR = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
+
+
+def _duration(iso):
+    m = DUR.fullmatch(iso or "")
+    if not m:
+        return None
+    h, mi, se = (int(x) if x else 0 for x in m.groups())
+    return h * 3600 + mi * 60 + se
+
+
 def yt_stats(state, t, hours=48):
-    """universe id -> {"n": videos, "views": total views, "top": (views, title, vid)}"""
+    """universe id -> {"n": videos, "views": total views, "top": (views, title, vid), "big", "subs",
+    "sn": Shorts, "sviews": Shorts views, "svph": Shorts views per hour (summed over each Short's life)}"""
     out = {}
     since = t - timedelta(hours=hours)
     for vid, r in src_state(state)["videos"].items():
-        if datetime.fromisoformat(r["p"].replace("Z", "+00:00")) < since:
+        pub = datetime.fromisoformat(r["p"].replace("Z", "+00:00"))
+        if pub < since:
             continue
         for u in r.get("u", []):
-            s = out.setdefault(u, {"n": 0, "views": 0, "top": (0, "", ""), "big": 0, "subs": 0})
+            s = out.setdefault(u, {"n": 0, "views": 0, "top": (0, "", ""), "big": 0, "subs": 0,
+                                   "sn": 0, "sviews": 0, "svph": 0.0})
+            if r.get("s"):
+                s["sn"] += 1
+                s["sviews"] += r.get("v", 0)
+                s["svph"] += r.get("v", 0) / max(1.0, (t - pub).total_seconds() / 3600)
             subs = src_state(state)["channels"].get(r.get("ch") or "", 0) or 0
             s["subs"] = max(s["subs"], subs)
             if subs >= C.YT_BIG_CHANNEL_SUBS:
@@ -235,19 +272,26 @@ def yt_stats(state, t, hours=48):
     return out
 
 
-def rising_title_words(state, t):
-    """Words/phrases appearing in many more Roblox video titles in the last 48h than the 48h before."""
+def rising_title_words(state, t, shorts=None):
+    """Words/phrases appearing in many more Roblox video titles in the last 48h than the 48h before.
+    shorts=True: Shorts only (titles + hashtags); False: long videos only; None: all."""
     now_c, prev_c = {}, {}
     for r in src_state(state)["videos"].values():
+        if shorts is not None and bool(r.get("s")) != shorts:
+            continue
         age = (t - datetime.fromisoformat(r["p"].replace("Z", "+00:00"))).total_seconds() / 3600
         bucket = now_c if age <= 48 else (prev_c if age <= 96 else None)
         if bucket is None:
             continue
-        words = [w for w in norm(r["t"]).split() if len(w) >= 3 and not any(ch.isdigit() for ch in w)]
+        title = HASHTAG.sub(" ", r["t"])  # hashtags are counted separately below, with their "#"
+        words = [w for w in norm(title).split() if len(w) >= 3 and not any(ch.isdigit() for ch in w)]
         grams = {w for w in words if w not in C.YT_TITLE_STOPWORDS}
         for a, b in zip(words, words[1:]):
             if a not in C.YT_TITLE_STOPWORDS and b not in C.YT_TITLE_STOPWORDS:
                 grams.add(a + " " + b)
+        for h in r.get("h") or []:
+            if h not in ("roblox", "shorts", "short", "fyp", "viral", "gaming", "funny", "robloxshorts", "trending"):
+                grams.add("#" + h)
         for g in grams:
             bucket[g] = bucket.get(g, 0) + 1
     have_prev = bool(prev_c)
@@ -558,6 +602,12 @@ def heat(state, gid, today, cutoff, yts):
         if y["n"] >= C.YT_SIGNAL_MIN_VIDEOS or y["views"] >= C.YT_SIGNAL_MIN_VIEWS or y.get("big", 0) >= 1:
             signals.append("youtube")
 
+    # YouTube Shorts: how fast Shorts about the game are being watched (views per hour)
+    if y and y.get("sn"):
+        score += max(0, min(20, 6 * math.log10(max(y["svph"], 1) / 200)))
+        if y["svph"] >= C.YT_SHORTS_SIGNAL_VPH or y["sn"] >= C.YT_SHORTS_SIGNAL_N:
+            signals.append("shorts")
+
     # Community: Roblox group and/or Discord growth over ~2 days
     best = None
     for key, (members, pct) in (("group", group_growth(state, gid)), ("discord", discord_growth(state, gid))):
@@ -621,6 +671,8 @@ def heat_line(state, gid, h, name=None):
     if "yt" in p:
         bits.append(f"YouTube {p['yt']['n']} vid{'s' if p['yt']['n'] != 1 else ''} / {fmt(p['yt']['views'])} views"
                     + (f" ({p['yt']['big']} from 1M+ channels)" if p['yt'].get('big') else ""))
+        if p["yt"].get("sn"):
+            bits.append(f"Shorts {p['yt']['sn']} · {fmt(p['yt']['svph'])} views/hour")
     for key, label in (("group", "group"), ("discord", "Discord")):
         if key in p:
             m, pct = p[key]

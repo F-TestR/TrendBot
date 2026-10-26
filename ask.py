@@ -29,6 +29,7 @@ STOP = {"how", "is", "are", "the", "a", "an", "doing", "about", "tell", "me", "w
         "trending", "theme", "with", "my", "our", "can", "you", "i", "should", "look", "at", "like", "much", "many"}
 
 KINDS = [
+    ("money", r"\b(money|revenue|earn|earns|earning|earnings|profit|profitable|income|robux|monetis|monetiz)"),
     ("algorithm", r"\b(algorithm|rewarding|reward|promot|recommend)"),
     ("longterm", r"\b(long[ -]?term|lasting|lasts|sticky|stickiest|habit)"),
     ("coming", r"\b(coming up|upcoming|calendar|release|releases|next month|halloween|christmas)\b"),
@@ -204,6 +205,9 @@ def game_card(db, state, uid, ctx, compact=False):
             lines.append(" · ".join(bits))
     except Exception:
         pass
+    ts = (state.get("ts") or {}).get(uid)
+    if ts is not None:
+        lines.insert(1, f"🚀 **Trend Score {ts}**/100 — chance its players double within 2 weeks")
     pm = (state.get("_preds") or {}).get(uid)
     if pm is None:
         row = db.execute("SELECT prob FROM predictions WHERE uid=? ORDER BY day DESC LIMIT 1", (uid,)).fetchone()
@@ -285,7 +289,7 @@ def genre_answer(db, state, genre, ctx):
 
 def help_card(hint=None):
     ex = ["`how is Wash the Car doing`", "`Be a Pirate vs Pilfering Pirates`", "`is chocolate trending`",
-          "`tycoon games`", "`what's rising`", "`long term games`", "`what is roblox rewarding`", "`what's coming up`"]
+          "`tycoon games`", "`what's rising`", "`which genres earn the most`", "`tycoon money`", "`long term games`", "`what is roblox rewarding`", "`what's coming up`"]
     d = (f"I couldn't match \"{hint}\" to a game or theme.\n\n" if hint else "") + "Try:\n" + "\n".join("• " + e for e in ex)
     return {"title": "❓ Ask the trend bot", "description": d, "color": 0x95A5A6}
 
@@ -336,6 +340,16 @@ def answer(db, state, question, ctx):
     if kind == "algorithm":
         cards = [c for c in ctx["PR"].weekly_cards(db, state, ctx["today"], ctx["pctx"], []) if c and "algorithm" in c["title"]]
         return q, cards or [help_card()]
+    if kind == "money":
+        M = ctx["MO"]
+        rows = M.table(db, state, ctx["today"], ctx["I"].mechanics_of)
+        words = [w for w in norm(question).split() if w not in STOP and not re.match(
+            r"(money|revenue|earn\w*|profit\w*|income|robux|monetis\w*|monetiz\w*|most|highest|which|genre|genres|best)$", w)]
+        sub = [r for r in rows if words and all(w in norm(r["name"] + " " + r["genre"] + " " + r["mech"]) for w in words)]
+        lines = M.report_lines(sub or rows, ctx["fmt"], lambda u: ctx["link"](u, state).strip("<>"), n_top=6)
+        title = f"💰 Earnings: {' '.join(words)}" if sub else "💰 What earns the most"
+        return q, [{"title": title, "description": "\n".join(lines)[:4000], "color": 0xFAA61A,
+                    "footer": {"text": "RoWatcher revenue estimates, last 7 days · $/player = monthly $ per concurrent player"}}]
     if kind == "coming":
         ups = ctx["FUT"].upcoming(db, ctx["today"])
         lines = [f"🔮 **{u['name'][:40]}** · {ctx['PR']._when(u)} · {ctx['PR']._status(u)}" for u in ups[:10]] or ["Nothing on the calendar."]

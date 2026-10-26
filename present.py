@@ -17,8 +17,10 @@ import config as C
 import discord_out as DO
 
 BLUE, RED, GREEN, PINK, AMBER, PURPLE, TEAL = 0x5865F2, 0xED4245, 0x2ECC71, 0xE91E63, 0xFAA61A, 0x8E7CC3, 0x1ABC9C
-LEGEND = ("×N growth vs same day last week · 🧭 breakout just started · 📈 forecast peak · 🧠 promotion chance · "
-          "🔥 heat · 🎯 breakout chance · ⏱ playtime/player/day")
+LEGEND = ("Trend Score = chance (%) its players double within 2 weeks, combining every signal · "
+          "reasons = what pushed it up most")
+LEGEND_TAGS = ("×N growth vs same day last week · 🧭 breakout just started · 📈 forecast peak · 🧠 promotion chance · "
+               "🔥 heat · 🎯 breakout chance · ⏱ playtime/player/day")
 
 
 def _d(s):
@@ -96,8 +98,9 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
     preds = state.get("_preds") or {}
     promo = state.get("_promo") or {}
     badges = state.get("badges") or {}
+    tsd = state.get("_ts") or {}
     ids = set(S.candidate_games(state, today, 400)) | set(yts) | set(preds) | \
-        {u for u, v in promo.items() if v.get("p", 0) >= 0.2}
+        {u for u, v in promo.items() if v.get("p", 0) >= 0.2} | set(tsd)
     rows = []
     for gid in ids:
         r = games.get(gid)
@@ -136,7 +139,11 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
             tags.append(f"📺{ctx['fmt'](y['views'])}")
         if new:
             tags.append("🆕")
+        tsv = tsd.get(gid)
+        if tsv:
+            score = tsv["score"] * 1000 + score  # the Trend Score leads; the old score only breaks ties
         rows.append({"gid": gid, "name": r["name"], "players": players, "score": score, "tags": tags[:5],
+                     "ts": tsv["score"] if tsv else None, "why": tsv["reasons"] if tsv else [],
                      "fc": fc or None, "cp": bool(cpf), "life": ((state.get("_life") or {}).get(gid) or {}).get("days"),
                      "ratio": ratio, "heat": h["score"], "promo": pr, "model": pm, "playtime": pt, "new": new,
                      "age": ctx["age_days"](r, today)})
@@ -147,6 +154,9 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
 def board_line(x, ctx, state):
     url = ctx["link"](x["gid"], state).strip("<>")
     age = f" · {x['age']}d old" if x.get("age") is not None else ""
+    if x.get("ts") is not None:
+        why = (" · " + " · ".join(x["why"][:2])) if x.get("why") else ""
+        return f"**{x['ts']}** · **{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age}{why}"
     tags = (" · " + " ".join(x["tags"])) if x["tags"] else ""
     return f"**{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age}{tags}"
 
@@ -170,6 +180,10 @@ def digest_cards(db, state, today, cutoff, t, ctx):
                 return x
         return None
     allb = watch_board(state, today, cutoff, t, ctx, limit=60)
+    x = pick(allb, "ts", 50)
+    if x:
+        why = f" ({', '.join(x['why'][:2])})" if x.get("why") else ""
+        head.append(f"🚀 **Highest Trend Score:** {name_link(x['name'], lk(x['gid']))} — **{x['ts']}**{why}")
     x = pick(allb, "ratio", 1.5)
     if x:
         head.append(f"🚀 **Biggest riser:** {name_link(x['name'], lk(x['gid']))} — ×{x['ratio']:.1f} to {fmt(x['players'])}")
@@ -223,8 +237,11 @@ def digest_cards(db, state, today, cutoff, t, ctx):
                      f"comparing {_d(yday).strftime('%A')} with the same kind of day last week")
 
     # --- games to watch
-    c2 = card("🎮 Games to watch", [board_line(x, ctx, state) for x in board[:C.BOARD_ROWS]], RED, footer=LEGEND,
-              max_lines=C.BOARD_ROWS)
+    has_ts = any(x.get("ts") is not None for x in board)
+    mode = state.get("ts_mode") or "starting formula"
+    c2 = card("🎮 Games to watch · ranked by Trend Score" if has_ts else "🎮 Games to watch",
+              [board_line(x, ctx, state) for x in board[:C.BOARD_ROWS]], RED,
+              footer=(LEGEND + f" · {mode}") if has_ts else LEGEND_TAGS, max_lines=C.BOARD_ROWS)
     if not board:
         c2["description"] = "_Builds up over the first week — growth needs a week of history to compare against._"
 
@@ -239,9 +256,12 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     if brs:
         tl.append("🌉 Reaching Roblox from outside: " + ", ".join(f"\"{w}\" ({row['new7']})" for w, _, row in brs[:4]))
     try:
-        words, have_prev = S.rising_title_words(state, t)
+        sw, _ = S.rising_title_words(state, t, shorts=True)
+        if sw:
+            tl.append("🎬 Rising in YouTube Shorts: " + ", ".join(f"\"{g}\"" for n, p, g in sw[:5]))
+        words, have_prev = S.rising_title_words(state, t, shorts=False)
         if words:
-            tl.append("🗣️ Rising in video titles: " + ", ".join(f"\"{g}\"" for n, p, g in words[:5]))
+            tl.append("🗣️ Rising in YouTube video titles: " + ", ".join(f"\"{g}\"" for n, p, g in words[:5]))
     except Exception:
         pass
     c3 = card("🌱 Trends", tl, GREEN, footer="🌱 theme model chance · 🧬 copy wave · 🌉 outside-Roblox word now in new games",
@@ -479,6 +499,10 @@ def weekly_cards(db, state, today, ctx, table):
             ck.append(f"🔬 {r['label']}: **{r['lift']:.1f}×** better than chance{lead}")
     except Exception:
         pass
+    try:
+        ck = ctx["TS"].weekly_lines(db, state, today) + ck
+    except Exception:
+        pass
     if ms.get("test_auc") is not None:
         head.append(f"🎯 **Model check:** breakout model accuracy {ms['test_auc']:.2f} (0.5 = coin flip)")
     if not ck:
@@ -493,4 +517,23 @@ def weekly_cards(db, state, today, ctx, table):
         head.append("Still building history — most sections fill in over the first 2–3 weeks.")
     c0 = card(f"🗓️ Weekly report · week to {_d(today).strftime('%a %d %b')}", head[:7], BLUE,
               footer="full-length report attached (weekly_report.md) · tables in the dashboard")
-    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_fc, c_ck]
+    mo = state.get("_money") or []
+    c_mo = None
+    if mo:
+        M = ctx["MO"]
+        gl = sorted(M.groups(mo, "genre"), key=lambda g: -g["per_player"])[:5]
+        ml = [f"**{len(mo):,} games** (400+ players) · typical **{M.usd(median(r['monthly'] for r in mo))}/month**"]
+        ml += [f"💰 **{g['group']}** — {M.usd(g['median'])} typical · {M.usd(g['top25'])} top-quartile · "
+               f"**{M.usd(g['per_player'])}**/player" for g in gl]
+        small = sorted([r for r in mo if r["ccu"] < 5000], key=lambda r: -r["monthly"])[:3]
+        if small:
+            ml.append("Top earners under 5K players: " + ", ".join(
+                f"{name_link(r['name'], lk(r['uid']), 22)} {M.usd(r['monthly'])}" for r in small))
+        c_mo = card("💰 What earns the most", ml, AMBER,
+                    footer="RoWatcher revenue estimates, last 7 days · $/player = monthly $ per concurrent player · "
+                           "full tables: reports/money.md")
+        g0 = gl[0] if gl else None
+        if g0:
+            head.append(f"💰 **Best-earning genre per player:** {g0['group']} — {M.usd(g0['per_player'])}/player/month")
+        c0["description"] = "\n".join(head[:8])
+    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_fc, c_mo, c_ck]

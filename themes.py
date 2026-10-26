@@ -62,6 +62,8 @@ FEATURES = [
     ("up_tw", "new in Twitch's top games"),
     ("season", "in season"),
     ("up_future", "an upcoming release or event"),
+    ("sh3", "YouTube Shorts mentions"),
+    ("sh_accel", "YouTube Shorts mentions rising"),
 ]
 
 INDICATORS = {
@@ -78,6 +80,7 @@ INDICATORS = {
     "twitch_top": ("🟣 Twitch top games", lambda r, p: (r["up_tw"] or 0) > 0),
     "season": ("🗓️ in season", lambda r, p: (r["season"] or 0) > 0),
     "future": ("🔮 upcoming release/event", lambda r, p: (r["up_future"] or 0) > 0),
+    "shorts_buzz": ("🎬 YouTube Shorts buzz", lambda r, p: (r.get("sh3") or 0) >= 3 and (r.get("sh3") or 0) >= 3 * ((r.get("sh3_prev") or 0) + 1)),
 }
 
 
@@ -95,6 +98,9 @@ def ensure(db):
     cols = {r[1] for r in db.execute("PRAGMA table_info(theme_daily)")}
     if "up_future" not in cols:
         db.execute("ALTER TABLE theme_daily ADD COLUMN up_future REAL")
+    for c in ("sh3", "sh3_prev"):
+        if c not in cols:
+            db.execute(f"ALTER TABLE theme_daily ADD COLUMN {c} INTEGER")
 
 
 def display(key, state=None):
@@ -141,10 +147,12 @@ def compute_days(db, days, rw_trends):
         old = keys_for(r["old"], rw_trends)
         for k in keys_for(r["new"], rw_trends) - old:
             renames.setdefault(k, []).append(r["day"])
-    ytw, up = {}, {}
+    ytw, up, shw = {}, {}, {}
     for r in db.execute("SELECT source, day, word, score FROM upstream WHERE day>=? AND day<=?", (lo, hi)):
         if r["source"] == "yt_roblox":
             ytw.setdefault(r["word"], {})[r["day"]] = r["score"]
+        elif r["source"] == "yt_shorts":
+            shw.setdefault(r["word"], {})[r["day"]] = r["score"]
         else:
             up.setdefault(r["word"], {}).setdefault(r["source"], {})[r["day"]] = r["score"]
 
@@ -200,11 +208,17 @@ def compute_days(db, days, rw_trends):
             yt3 = sum(v for dd, v in yw.items() if _s(_d(day) - timedelta(days=3)) < dd <= day)
             yt3p = sum(v for dd, v in yw.items() if _s(_d(day) - timedelta(days=6)) < dd <= _s(_d(day) - timedelta(days=3)))
             rn = sum(1 for dd in renames.get(k, []) if d7 < dd <= day)
+            sw = shw.get(k[2:] if not k.startswith("rw:") else "", {})
+            sh3 = sum(v for dd, v in sw.items() if _s(_d(day) - timedelta(days=3)) < dd <= day)
+            sh3p = sum(v for dd, v in sw.items() if _s(_d(day) - timedelta(days=6)) < dd <= _s(_d(day) - timedelta(days=3)))
             rows.append((k, day, a["ccu"], a["games"], a["hits"], a["new7"], a["new7_prev"], a["tiny7"],
                          len(a["studios"]), rn, a["charts"], int(yt3), int(yt3p),
                          upscore(k, "steam", day), upscore(k, "wikipedia", day), upscore(k, "yt_trending", day),
-                         upscore(k, "twitch_top", day), upscore(k, "season", day), upscore(k, "future", day)))
-        db.executemany("""INSERT OR REPLACE INTO theme_daily VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
+                         upscore(k, "twitch_top", day), upscore(k, "season", day), upscore(k, "future", day),
+                         int(sh3), int(sh3p)))
+        db.executemany("""INSERT OR REPLACE INTO theme_daily(theme, day, ccu, games, hits, new7, new7_prev, tiny7, studios7,
+                          renames7, charts, yt3, yt3_prev, up_steam, up_wiki, up_ytt, up_tw, season, up_future, sh3, sh3_prev)
+                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
         written += len(rows)
     return written
 
@@ -235,13 +249,19 @@ def record_roblox_youtube_words(db, state, day):
     """Words used in Roblox YouTube video titles published on `day` (feature yt3)."""
     from sources import src_state
     U.ensure(db)
-    counts = {}
+    counts, shorts = {}, {}
     for r in src_state(state)["videos"].values():
         if (r.get("p") or "")[:10] == day:
-            for w in U.words_of(r.get("t", "")):
+            words = set(U.words_of(r.get("t", "")))
+            for w in words:
                 counts[w] = counts.get(w, 0) + 1
+            if r.get("s"):
+                for w in words | {h for h in (r.get("h") or []) if len(h) >= 4}:
+                    shorts[w] = shorts.get(w, 0) + 1
     for w, n in counts.items():
         U.put(db, "yt_roblox", day, w, float(n))
+    for w, n in shorts.items():
+        U.put(db, "yt_shorts", day, w, float(n))
 
 
 # ---------------------------------------------------------- learning ---
@@ -272,6 +292,8 @@ def _features(r, hist, day):
         "up_ytt": min(3.0, math.log1p(r["up_ytt"] or 0)), "up_tw": float(r["up_tw"] or 0),
         "season": float(r["season"] or 0),
         "up_future": float(r.get("up_future") or 0),
+        "sh3": math.log1p(r.get("sh3") or 0),
+        "sh_accel": math.log1p(r.get("sh3") or 0) - math.log1p(r.get("sh3_prev") or 0),
     }
 
 

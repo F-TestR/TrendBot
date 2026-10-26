@@ -317,6 +317,28 @@ def build(state, today, cutoff):
     idx.sort(key=lambda x: -x["p"])
     idx_json = _json.dumps(idx, separators=(",", ":")).replace("</", "<\\/")
 
+    # --- money
+    money_rows = genre_money = ""
+    try:
+        import money as MO
+        mo = state.get("_money") or []
+        if mo:
+            gm = sorted(MO.groups(mo, "genre"), key=lambda g: -g["per_player"])
+            genre_money = "".join(
+                f'<tr><td data-v="{_e(g["group"])}"><b>{_e(g["group"])}</b></td><td data-v="{g["n"]}">{g["n"]}</td>'
+                f'<td data-v="{g["median"]}">{MO.usd(g["median"])}</td><td data-v="{g["top25"]}">{MO.usd(g["top25"])}</td>'
+                f'<td data-v="{g["per_player"]}"><b>{MO.usd(g["per_player"])}</b></td><td data-v="{g["total"]}">{MO.usd(g["total"])}</td>'
+                f'<td>{_e(", ".join(r["name"][:22] for r in g["top"]))}</td></tr>' for g in gm)
+            money_rows = "".join(
+                f'<tr><td data-v="{_e(r["name"].lower())}"><a href="{_e((S.roblox_link(state, r["uid"]) or "https://rowatcher.com/games/" + r["uid"]).strip("<>"))}" target="_blank" rel="noopener">{_e(r["name"][:48])}</a></td>'
+                f'<td data-v="{_e(r["genre"])}">{_e(r["genre"])}</td><td data-v="{_e(r["mech"])}">{_e(r["mech"])}</td>'
+                f'<td data-v="{r["ccu"]}">{fmt(r["ccu"])}</td><td data-v="{r["monthly"]}"><b>{MO.usd(r["monthly"])}</b></td>'
+                f'<td data-v="{r["per_player"]}">{MO.usd(r["per_player"])}</td>'
+                f'<td data-v="{r["age"] if r["age"] is not None else 99999}">{(str(r["age"]) + "d") if r["age"] is not None else "—"}</td></tr>'
+                for r in mo[:400])
+    except Exception:
+        pass
+
     reqs = state["requests"].get(yday, 0)
     yt_units = S.src_state(state)["yt_units"].get(yday, 0)
     tw_total = S.src_state(state)["tw_total"].get(yday) or S.src_state(state)["tw_total"].get(today)
@@ -358,7 +380,7 @@ ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 <div class="stats">{stat_html}</div></header>
 <main>
 <nav><button class="on" data-s="overview">⭐ Overview</button><button data-s="hot">🔥 Hot young games</button><button data-s="watch">★ Watchlist</button>
-<button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="explore">🔎 Search</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
+<button data-s="longterm">🏛️ Long-term</button><button data-s="algo">🧠 Algorithm</button><button data-s="explore">🔎 Search</button><button data-s="money">💰 Money</button><button data-s="themes">🌱 Themes</button><button data-s="mech">🧭 Mechanics</button><button data-s="life">💥 Breakouts</button><button data-s="upd">🛠️ Updates</button></nav>
 <section id="overview" class="on">
 <div class="card" style="padding:14px 18px"><div class="sl" style="margin-bottom:6px">TODAY IN 30 SECONDS</div><ul class="head">{head_html or '<li class=muted>Quiet day — nothing crossed the thresholds.</li>'}</ul></div>
 <p></p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Games to watch</th><th>Players</th><th class="nosort">Last 14 days</th><th>Growth</th><th>Promotion chance</th><th>Heat</th><th>Breakout chance</th><th>Forecast peak</th><th>Half-life</th><th>Playtime / player / day</th><th>Age</th></tr></thead><tbody>{"".join(brows) or '<tr><td colspan=11 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
@@ -394,6 +416,10 @@ tb.innerHTML=rows.map(x=>'<tr><td data-v="'+e(x.n.toLowerCase())+'"><a href="'+e
 +'<td data-v="'+(x.rt??-1)+'">'+(x.rt!=null?Math.round(x.rt*100)+'%':'—')+'</td><td data-v="'+(x.fp??-1)+'">'+(x.fp?'~'+f(x.fp):'—')+'</td></tr>').join('')||'<tr><td colspan=11 class=muted>No matches.</td></tr>'}}
 q.addEventListener('input',draw);draw();}})();
 </script></section>
+<section id="money"><p class="note">Estimated earnings (RoWatcher's revenue model, last 7 days) for games averaging 400+ concurrent players. "$ per player" = monthly earnings per concurrent player — how well a game turns players into money.</p>
+<div class="card"><table class="sortable"><thead><tr><th data-t="s">Genre</th><th>Games</th><th>Typical $/month</th><th>Top-quartile $/month</th><th>$ per player / month</th><th>Total $/month</th><th class="nosort">Top earners</th></tr></thead><tbody>{genre_money or '<tr><td colspan=7 class=muted>Builds up over the first week.</td></tr>'}</tbody></table></div>
+<p></p><input type="search" placeholder="Filter games, genres or mechanics…" data-for="t-money">
+<div class="card"><table id="t-money" class="sortable"><thead><tr><th data-t="s">Game</th><th data-t="s">Genre</th><th data-t="s">Mechanic</th><th>Players (7d avg)</th><th>Est. $/month</th><th>$ per player</th><th>Age</th></tr></thead><tbody>{money_rows or '<tr><td colspan=7 class=muted>No revenue data yet.</td></tr>'}</tbody></table></div></section>
 <section id="themes"><input type="search" placeholder="Filter themes…" data-for="t-themes">
 <div class="card"><table id="t-themes" class="sortable"><thead><tr><th data-t="s">Theme</th><th>Model</th><th>Signals</th><th>Players</th><th>Games</th><th>New this week</th><th>Studios</th><th>2K+ games</th><th class="nosort">Indicators firing</th></tr></thead><tbody>{"".join(trows) or '<tr><td colspan=9 class=muted>No theme data yet.</td></tr>'}</tbody></table></div>
 <p class="note">A theme is a word or phrase shared by game titles. "Model" = learned chance that {C.THEME_BREAKOUT_GAMES}+ of its games pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days. See the weekly report for which indicators have proven useful.</p>{bridge_html}</section>
