@@ -21,8 +21,8 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 - **Fishing / farming** — $12K typical · **$10**/player (39)
 - **Obby / parkour** — $7.0K typical · **$8.89**/player (75)
 - **Tower defense** — $16K typical · **$8.83**/player (28)
-- **Disasters / survival** — $10K typical · **$8.82**/player (61)
 - **Tycoon / sell stuff** — $11K typical · **$8.77**/player (98)
+- **Disasters / survival** — $9.9K typical · **$8.68**/player (62)
 
 **By size** (concurrent players):
 - **400–1K** — $3.6K typical · $6.6K top-quartile · $6.29/player (1382)
@@ -48,6 +48,23 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 - Kidnap And Jail — **$53**/player · $110K/month · 2.1K players · Action
 - 🎃 Last Stop [Beta] — **$53**/player · $139K/month · 2.6K players · Survival
 
+**Best monetisers per daily player** (vs Roblox's own benchmarks):
+- [🍲] Karinderya! — **$2.3K** per 1K daily players/month · top 1% · Simulation · Other
+- [IMPOSSIBLE 😈] Search For The  — **$2.1K** per 1K daily players/month · top 1% · Simulation · Find / search
+- 🎉 [PSX] Pet Simulator 99! 🐾 — **$1.9K** per 1K daily players/month · top 2% · Simulation · Care / baby / pets
+- (ANNIVERSARY) Outcome Memories — **$1.6K** per 1K daily players/month · top 3% · Survival · Other
+- [🎨] Hide In Pixels — **$1.5K** per 1K daily players/month · top 3% · Party & Casual · Other
+- [🎃HALLOWEEN PT 3] Grand Piece  — **$1.5K** per 1K daily players/month · top 3% · RPG · Anime / fighting style
+- [🎃UPD] Fish It! 🐟 — **$1.5K** per 1K daily players/month · top 3% · Simulation · Fishing / farming
+-  [🎃] Sell Lemons 🍋 — **$1.3K** per 1K daily players/month · top 4% · Simulation · Tycoon / sell stuff
+- [HALLOWEEN] Anime Astral Simul — **$1.2K** per 1K daily players/month · top 4% · Simulation · Anime / fighting style
+- [🎃 UPD] Storage Hunters: Open  — **$1.2K** per 1K daily players/month · top 4% · Simulation · Other
+- Drill to Earth’s Core 🎃👻 — **$1.2K** per 1K daily players/month · top 5% · Adventure · Other
+- Sarab — **$1.2K** per 1K daily players/month · top 5% · Survival · Other
+- [✨] Swim For Eggs! — **$1.1K** per 1K daily players/month · top 5% · Simulation · RNG / gacha / luck
+- Pet Store Tycoon — **$1.1K** per 1K daily players/month · top 6% · Simulation · Tycoon / sell stuff
+- [🎃UPD] Bubble Gum Simulator IN — **$1.0K** per 1K daily players/month · top 6% · Simulation · Other
+
 **Top earners under 5K players** (realistic for a small studio):
 - Steal Animal Egg — **$289K/month** · 3.1K players · Simulation · Steal / brainrot
 - +1 Wings For Eggs — **$211K/month** · 2.0K players · Simulation · RNG / gacha / luck
@@ -65,6 +82,12 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 - [🎃PART 2🎃] Slop Tower Defense! — **$129K/month** · 2.3K players · Strategy · Tower defense
 - +1 Mog Evolution — **$128K/month** · 1.7K players · Simulation · Other
 
+**What real Roblox numbers look like** (Creator Hub benchmarks, checked on a top game's real dashboard):
+- Per 1K daily players: typical game **$184/month**, top-10% monetiser **$1,388/month** (daily players × payer conversion 0.9–2.4% × R$181–507 per payer)
+- Good benchmarks: session 13.5 min typical / 25.8 top-10% · day-1 retention 10.6% / 14.8% · day-7 2.2% / 5.9%
+- A top game's money: ~78% developer products (bundles, currency packs), ~18% passes, ~5% private servers, plus ~11% extra from premium playtime payouts
+- Weekends earn 2–3× a weekday; update days with a new limited bundle spike hardest
+
 ## All groups
 
 ### Genre
@@ -72,11 +95,11 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Group | Games | Typical $/month | Top-quartile $/month | $ per player/month | Total $/month | Top games |
 |---|---|---|---|---|---|---|
 | Simulation | 1119 | $10K | $30K | $8.83 | $60.2M | Steal An Egg, Break and Steal an Egg, [💫] Ride A Pet |
-| Strategy | 71 | $14K | $44K | $8.47 | $2.6M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram |
+| Strategy | 71 | $14K | $44K | $8.47 | $2.6M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🌟X2 EXP] Cameraman Towe |
 | Social | 52 | $7.6K | $16K | $8.43 | $863K | Clarity Over Resonance, Neighbors 🔊, Neighbors 🔊 [18+] |
-| Puzzle | 40 | $11K | $36K | $8.24 | $1.0M | MONOCHROME🎃, [🎃EVENT] Solve The Cube, [300] Kill Your Friend! |
+| Puzzle | 40 | $11K | $36K | $8.24 | $1.0M | MONOCHROME🎃, [🎃] Solve The Cube, [300] Kill Your Friend! |
 | Party & Casual | 175 | $8.7K | $20K | $7.89 | $4.0M | [🎃] Ball VS Ball, Timebomb Duels [Alpha], [🦑] Squid Game X |
-| Action | 254 | $8.6K | $25K | $7.70 | $9.5M | [HIRED KILLER] Jujutsu S, [X2🎃DUELS] Murderers VS , [Pt. 3 🎃] Huss Valley |
+| Action | 254 | $8.6K | $25K | $7.70 | $9.5M | [HIRED KILLER] Jujutsu S, [🎃DUELS] Murderers VS Sh, [Pt. 3 🎃] Huss Valley |
 | Shooter | 110 | $7.3K | $21K | $7.57 | $5.0M | [🎃] RIVALS, [🔥ZOMBIES] Hypershot, [FPS] One Tap |
 | RPG | 93 | $9.9K | $26K | $7.37 | $5.1M | Blox Fruits, Slayers 2, Anime Zero [SOLAR RADIAN |
 | Obby & Platformer | 266 | $6.2K | $14K | $7.30 | $4.3M | Tower of Hell, [NEW STAGES]  DONT SPLAS, 🚨BARRY'S PRISON RUN! (OB |
@@ -93,9 +116,9 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Group | Games | Typical $/month | Top-quartile $/month | $ per player/month | Total $/month | Top games |
 |---|---|---|---|---|---|---|
 | Escape Room | 12 | $12K | $47K | $11 | $395K | MONOCHROME🎃, [300] Kill Your Friend!, HUNTRESS 🕷️ [ NIGHTMARE  |
-| Tycoon | 389 | $13K | $41K | $10 | $35.1M | Steal An Egg, Break and Steal an Egg, [💫] Ride A Pet |
-| Incremental Simulator | 360 | $10K | $33K | $9.87 | $15.2M | 🎉 [PSX] Pet Simulator 99, [🎵] +1 Speed Keyboard Es, [🎃UPD] Fish It! 🐟 |
-| Tower Defense | 42 | $20K | $45K | $9.02 | $1.9M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram |
+| Tycoon | 390 | $13K | $41K | $10 | $35.1M | Steal An Egg, Break and Steal an Egg, [💫] Ride A Pet |
+| Incremental Simulator | 360 | $10K | $33K | $9.87 | $15.2M | 🎉 [PSX] Pet Simulator 99, +1 Speed Keyboard Escape, [🎃UPD] Fish It! 🐟 |
+| Tower Defense | 42 | $20K | $45K | $9.02 | $1.9M | Vanguards: 2nd Anniversa, [🌙 NIGHT 3] Tower Defens, [🌟X2 EXP] Cameraman Towe |
 | Childhood Game | 25 | $16K | $22K | $8.56 | $463K | [UPD🖌️] Paint to Hide an, [NEW RIGS] Chameleon! 🎨, Duck Duck (Tag) 🦆 |
 | Minigame | 47 | $13K | $24K | $8.52 | $983K | [🦑] Squid Game X, [UPD] Aura Dance Battles, Don't Press The Button 7 |
 | Open World Action | 50 | $12K | $35K | $8.46 | $1.6M | BlockSpin 🔪 [HALLOWEEN U, RUNAWAYS [beta], Wanted [🎃UPDATE] |
@@ -105,7 +128,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Tower Obby | 100 | $5.8K | $14K | $7.51 | $1.8M | Tower of Hell, TROLL Hug Tower, TROLL Fly & Carry Tower |
 | Action RPG | 74 | $10K | $26K | $7.46 | $4.7M | Blox Fruits, Slayers 2, Anime Zero [SOLAR RADIAN |
 | PvE Shooter | 22 | $6.4K | $21K | $7.45 | $350K | Guts & Blackpowder, Examination, [NEW 🚁] Zombie Air Force |
-| Battlegrounds & Fighting | 185 | $7.2K | $24K | $7.42 | $7.7M | [HIRED KILLER] Jujutsu S, [X2🎃DUELS] Murderers VS , [Pt. 3 🎃] Huss Valley |
+| Battlegrounds & Fighting | 185 | $7.2K | $24K | $7.42 | $7.7M | [HIRED KILLER] Jujutsu S, [🎃DUELS] Murderers VS Sh, [Pt. 3 🎃] Huss Valley |
 | Deathmatch Shooter | 74 | $7.3K | $39K | $7.38 | $4.5M | [🎃] RIVALS, [🔥ZOMBIES] Hypershot, [FPS] One Tap |
 | Story | 36 | $7.5K | $18K | $7.24 | $655K | Rainbow Friends, [UPD] Something is Wrong, Where Is Fahd? |
 | Dress Up | 29 | $9.4K | $41K | $7.19 | $1.9M | [🎃 NEW QUEST] Dress To I, [🎃] Facecard: Makeup Sho, 🎃Catalog Avatar Runway |
@@ -115,7 +138,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Vehicle Sim | 149 | $8.7K | $24K | $6.85 | $3.9M | [🎃] Kukirin Life [Testin, (WHEELIE STYLE x BIG UPD, [🎃] Bike Universe |
 | Life | 73 | $13K | $39K | $6.78 | $4.8M | Brookhaven 🏡RP, LifeTogether 🏠 RP [FAMIL, Dreamville 🏡 RP [Pets! 😺 |
 | Physics Sim | 56 | $6.8K | $20K | $6.77 | $1.5M | Fling Things and People, Crazy Diver, 🧪Realistic Phone Drop Te |
-| Scavenger Hunt | 17 | $5.3K | $10K | $6.76 | $148K | Gnomes! [Steal & Escape], ✨Collect The Body, [BUILD] Clean The Librar |
+| Scavenger Hunt | 17 | $5.3K | $10K | $6.76 | $148K | Gnomes! [Steal & Escape], ✨Collect The Body, Clean The Library 📖  |
 | Escape | 101 | $8.2K | $18K | $6.70 | $3.0M | DOORS 🍬🍭, 🎃 Dandy's World [ALPHA], Aisles Of The Locust [CH |
 | Sports | 76 | $7.2K | $27K | $6.60 | $3.5M | [UPD] Volleyball Legends, Illegal Soccer, Realistic Street Soccer |
 | Runner | 11 | $12K | $18K | $6.39 | $418K | [NEW STAGES]  DONT SPLAS, [🚂] Cart Ride, Bobsled Ride Down a Moun |
@@ -125,7 +148,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Animal Sim | 30 | $5.9K | $15K | $5.82 | $778K | 🎃 Creatures of Sonaria 🍬, Kitten Game 🐾, Warrior Cats: Ultimate E |
 | Morph Roleplay | 45 | $4.1K | $13K | $5.79 | $646K | Gacha Online 🎃 RP, [UPD] SCP MORPH, [UPDATE] Toilet World Ro |
 | 1 vs All | 91 | $5.3K | $19K | $5.67 | $5.9M | Murder Mystery 2, [BUTCHER x 🎃] Violence D, Forsaken |
-| Racing | 18 | $4.5K | $15K | $5.05 | $269K | [ANOMALY RALLY] WRONG WA, SKI 🎃, [DUELS] Rally Panic! |
+| Racing | 18 | $4.5K | $15K | $5.05 | $269K | [ANOMALY RALLY] WRONG WA, SKI 🎃, [DUELS] Rally Panic! [2  |
 | Pet Care | 7 | $6.5K | $43K | $4.93 | $1.1M | [🎃] Adopt Me!, 🎃👻 Wild Horse Islands, 🐴 Horse Riding Elite (UP |
 | Avatar Shopping | 13 | $2.8K | $18K | $4.47 | $1.3M | Catalog Avatar Creator, 🛍️ My Avatar!, Avatar Simulator |
 | Turn-based RPG | 8 | $4.6K | $29K | $3.72 | $142K | Pixel Lineage [🎃Spear Cl, [CO-OP GAMEMODES] FNaF W, 🏰 Block Tales [DEMO 5] |
@@ -139,16 +162,16 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Merge / clicker | 23 | $23K | $51K | $10 | $1.2M | [👻] Tap Simulator REBORN, [FPS] One Tap, [UPD🎃] Merge a Nuke! |
 | Fishing / farming | 39 | $12K | $65K | $10 | $2.1M | [🎃UPD] Fish It! 🐟, [🎃] Blue Lock Farm, [UPD] Deep Fishing🎣 |
 | Obby / parkour | 75 | $7.0K | $18K | $8.89 | $1.7M | [🎃]Climb For Animals Egg, Jump for Animals!, [HELL] Spiral Difficulty |
-| Tower defense | 28 | $16K | $45K | $8.83 | $1.0M | [🌙 NIGHT 3] Tower Defens, [🔥TRADES+X2 EXP💎}Cameram, [🎃PART 2🎃] Slop Tower De |
-| Disasters / survival | 61 | $10K | $40K | $8.82 | $1.8M | 🎃 Creatures of Sonaria 🍬, [🎃EVENT] 🧟 Survive the A, Natural Disaster Surviva |
+| Tower defense | 28 | $16K | $45K | $8.83 | $1.0M | [🌙 NIGHT 3] Tower Defens, [🌟X2 EXP] Cameraman Towe, [🎃PART 2🎃] Slop Tower De |
 | Tycoon / sell stuff | 98 | $11K | $33K | $8.77 | $2.9M | 🎃 Sell Fries! [Anomaly] ,  [🎃] Sell Lemons 🍋, Pet Store Tycoon |
+| Disasters / survival | 62 | $9.9K | $40K | $8.68 | $1.8M | 🎃 Creatures of Sonaria 🍬, [🎃EVENT] 🧟 Survive the A, Natural Disaster Surviva |
 | Jobs / work sim | 26 | $10K | $26K | $8.55 | $519K | [🎃] Clean Everything, Dig & Clean 🧼, [🍬Trick-or-Treat]🍕Work a |
 | Anime / fighting style | 63 | $18K | $50K | $8.32 | $6.5M | Blox Fruits, [HIRED KILLER] Jujutsu S, Slayers 2 |
 | Steal / brainrot | 112 | $8.5K | $32K | $8.14 | $21.5M | Steal An Egg, Break and Steal an Egg, [💀] Steal a Brainrot |
 | Find / search | 17 | $7.8K | $12K | $8.05 | $427K | [IMPOSSIBLE 😈] Search Fo, Find or Die! 🔎, Find and Mark! |
 | Vehicles / riding | 105 | $7.9K | $23K | $7.53 | $3.3M | [🎃] Bike For Egg!, [🎃] Ride a Dino, (WHEELIE STYLE x BIG UPD |
 | Fashion / makeup | 16 | $23K | $131K | $7.50 | $1.5M | [🎃 NEW QUEST] Dress To I, [🎃] Facecard: Makeup Sho, Makeup Mania! BETA [MALE |
-| Other | 1839 | $7.6K | $23K | $7.48 | $61.9M | Murder Mystery 2, [🎃] RIVALS, The Hollow |
+| Other | 1838 | $7.6K | $23K | $7.48 | $61.9M | Murder Mystery 2, [🎃] RIVALS, The Hollow |
 | Battles / army | 107 | $8.7K | $27K | $7.33 | $3.2M | Cat Battles 🐾, [🎃Event] Sniper Arena, [UPD] Command An Army |
 | Horror | 38 | $6.9K | $14K | $7.12 | $432K | Build Your Backrooms, [NOW] Catch a Monster, [UPDATE] Backrooms Compa |
 | Sports | 59 | $7.4K | $22K | $6.92 | $2.8M | [UPD] Volleyball Legends, Illegal Soccer, Realistic Street Soccer |
@@ -171,7 +194,7 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Group | Games | Typical $/month | Top-quartile $/month | $ per player/month | Total $/month | Top games |
 |---|---|---|---|---|---|---|
 | 1–3 months | 621 | $14K | $41K | $9.54 | $29.0M | Break and Steal an Egg, [🎃] Anime Dice, [🎃]+1 Loot To Forge |
-| 3–12 months | 868 | $7.2K | $21K | $8.03 | $37.4M | Steal An Egg, [💫] Ride A Pet, [🎵] +1 Speed Keyboard Es |
+| 3–12 months | 868 | $7.2K | $21K | $8.03 | $37.4M | Steal An Egg, [💫] Ride A Pet, +1 Speed Keyboard Escape |
 | 3+ years | 616 | $8.2K | $25K | $7.38 | $30.0M | Murder Mystery 2, Brookhaven 🏡RP, Blox Fruits |
 | 1–3 years | 685 | $6.3K | $18K | $7.08 | $23.0M | [🎃] RIVALS, 99 Nights in the Forest , [💀] Steal a Brainrot |
 | under 1 month | 209 | $9.6K | $35K | $5.12 | $9.1M | The Hollow, [NEW STAGES]  DONT SPLAS, صيد الضبّان |
@@ -195,13 +218,13 @@ Estimated from RoWatcher's revenue model over the last 7 days; games with 400+ c
 | Catalog Avatar Creator | Shopping | 69.1K | $879K | $13 |
 | Fisch 👻 [HORSEMAN] | Simulation | 87.9K | $845K | $9.61 |
 | 🎉 [PSX] Pet Simulator 99! 🐾 | Simulation | 53.4K | $789K | $15 |
-| [🎵] +1 Speed Keyboard Escape / Candy & C | Simulation | 90.5K | $756K | $8.35 |
+| +1 Speed Keyboard Escape / Candy & Choco | Simulation | 90.5K | $756K | $8.35 |
 | [🎃UPD] Fish It! 🐟 | Simulation | 76.9K | $736K | $9.57 |
 | [🎃 NEW QUEST] Dress To Impress | Roleplay & Avatar Sim | 108.7K | $686K | $6.31 |
 | Slayers 2 | RPG | 20.2K | $658K | $33 |
 | [BUTCHER x 🎃] Violence District | Survival | 68.8K | $649K | $9.43 |
 | [🎃] Anime Dice | Simulation | 76.0K | $648K | $8.53 |
-| [X2🎃DUELS] Murderers VS Sheriffs | Action | 62.1K | $636K | $10 |
+| [🎃DUELS] Murderers VS Sheriffs | Action | 62.1K | $636K | $10 |
 | [🎃]+1 Loot To Forge | Simulation | 12.5K | $632K | $50 |
 | [UPD] Volleyball Legends | Sports & Racing | 55.1K | $628K | $11 |
 | [Pt. 3 🎃] Huss Valley | Action | 51.6K | $613K | $12 |
