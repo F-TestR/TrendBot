@@ -1,13 +1,14 @@
 # Latest question
 
-**Q:** how is Fabled Legacy doing
+**Q:** how is pirate doing
 
-## 🔎 [🎃HALLOWEEN] Fabled Legacy! RPG
+## 🔎 Be a Pirate
 
-**407** playing · 1406 days old · RPG
-💰 ~**$3.6K/month** (estimate)
-📈 Forecast: peak ~602 by Tue 03 Nov
+**1.7K** playing · 27 days old · Adventure
+💰 ~**$11K/month** (estimate)
+📈 Forecast: past its peak
 ⏳ all games hits usually keep half their peak players ~10 days
-🧠 Promotion chance next 7 days: **8%**
+🧠 Promotion chance next 7 days: **12%**
+🌍 Charting abroad first: TR #64, ID #70, FR #79
 
-_Did you mean: [WHEELIE/STOPPIE OVERHAUL👻CH4  · SIREN HEAD: LEGACY_
+_Did you mean: Pirate Mayhem_
