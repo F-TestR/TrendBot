@@ -99,6 +99,65 @@ def discover(state, t):
     return found
 
 
+# ------------------------------------------------------------ countries ---
+
+def countries(state, t):
+    """Top Trending / Up-and-Coming per country (first page only: 1 request per country).
+    Remembers each game's best rank per country for the last few days, so the bot can see
+    games climbing abroad before they show up in the worldwide lists."""
+    rs = rstate(state)
+    if rs.get("cc_at") and (t - datetime.fromisoformat(rs["cc_at"])) < timedelta(minutes=C.RBX_COUNTRY_EVERY_MIN - 2):
+        return {}
+    day = _s(t)
+    cc = rs.setdefault("cc", {})  # uid -> {country: [best rank today, day]}
+    found = {}
+    ok = 0
+    for country in C.RBX_COUNTRIES:
+        try:
+            d = get_json(EXPLORE + "?" + urllib.parse.urlencode(
+                {"sessionId": rs["session"], "device": "phone", "country": country}))
+        except Exception as e:
+            log(f"roblox sorts failed ({country}): {e}")
+            continue
+        ok += 1
+        for srt in d.get("sorts") or []:
+            if srt.get("sortId") not in ("top-trending", "up-and-coming"):
+                continue
+            for rank, g in enumerate(srt.get("games") or [], 1):
+                uid = str(g.get("universeId") or "")
+                if not uid:
+                    continue
+                e = cc.setdefault(uid, {})
+                prev = e.get(country)
+                if not prev or prev[1] != day or rank < prev[0]:
+                    e[country] = [rank, day]
+                found.setdefault(uid, {"name": g.get("name") or uid, "players": int(g.get("playerCount") or 0),
+                                       "up": g.get("totalUpVotes"), "down": g.get("totalDownVotes"),
+                                       "genre": g.get("genreL1"), "place": g.get("rootPlaceId"), "sorts": []})
+        time.sleep(0.25)
+    if ok:
+        rs["cc_at"] = t.isoformat()
+        old = _s(t - timedelta(days=3))
+        for uid in list(cc):
+            cc[uid] = {k: v for k, v in cc[uid].items() if v[1] >= old}
+            if not cc[uid]:
+                del cc[uid]
+        for uid, f in found.items():
+            rs["seen"][uid] = dict(rs["seen"].get(uid, {}), **{k: v for k, v in f.items() if k != "sorts"}, day=day)
+    return found
+
+
+def abroad(state, uid, today):
+    """Countries where the game is in Top Trending / Up-and-Coming today but it isn't in the worldwide lists.
+    Returns [(country, rank)] best first."""
+    rs = rstate(state)
+    e = rs.get("cc", {}).get(uid) or {}
+    world = set(((rs.get("seen") or {}).get(uid) or {}).get("sorts") or []) & {"top-trending", "up-and-coming"}
+    if world:
+        return []
+    return sorted(((c, v[0]) for c, v in e.items() if v[1] == today and c not in C.RBX_HOME_COUNTRIES), key=lambda x: x[1])
+
+
 # --------------------------------------------------------------- search ---
 
 def search_words(state, today, extra=()):
@@ -225,6 +284,10 @@ def collect(state, t, have_ids, is_young):
         found.update(discover(state, t))
     except Exception as e:
         log(f"roblox discover failed: {e}")
+    try:
+        found.update(countries(state, t))
+    except Exception as e:
+        log(f"roblox country sorts failed: {e}")
     try:
         words = search_words(state, _s(t))
         if words:

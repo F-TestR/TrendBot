@@ -151,6 +151,12 @@ def collect_youtube(state, t, key):
     # Shorts flag below comes from each video's length (3 minutes or less).
     searches += [(q, {"order": order, "videoDuration": "short"}) for q in C.YT_SHORTS_QUERIES
                  for order in C.YT_SHORTS_ORDERS]
+    # Shorts in other languages / regions (every few hours) - trends often start outside the US
+    last_intl = src.get("yt_intl_at")
+    if not last_intl or (t - datetime.fromisoformat(last_intl)) >= timedelta(minutes=C.YT_SHORTS_INTL_EVERY_MIN - 5):
+        searches += [(q, {"order": "viewCount", "videoDuration": "short", "relevanceLanguage": lang, "regionCode": reg})
+                     for q, lang, reg in C.YT_SHORTS_INTL]
+        src["yt_intl_at"] = t.isoformat()
     for q, extra in searches:
         try:
             d = yt("search", dict({"part": "snippet", "type": "video", "q": q,

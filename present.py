@@ -44,6 +44,14 @@ def name_link(name, url, n=34):
     return f"[{nm}]({url})" if url else nm
 
 
+def _pages():
+    try:
+        import publish
+        return publish.pages_url()
+    except Exception:
+        return None
+
+
 def _short(name, n):
     nm = re.sub(r"\s*\[[^\]]*\]?\s*$", "", name or "").strip() or (name or "")
     return nm if len(nm) <= n else nm[:n - 1] + "…"
@@ -150,6 +158,7 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
             score = tsv["score"] * 1000 + score  # the Trend Score leads; the old score only breaks ties
         rows.append({"gid": gid, "name": r["name"], "players": players, "score": score, "tags": tags[:5],
                      "ts": tsv["score"] if tsv else None, "why": tsv["reasons"] if tsv else [],
+                     "event": (tsv or {}).get("event"),
                      "fc": fc or None, "cp": bool(cpf), "life": ((state.get("_life") or {}).get(gid) or {}).get("days"),
                      "ratio": ratio, "heat": h["score"], "promo": pr, "model": pm, "playtime": pt, "new": new,
                      "age": ctx["age_days"](r, today)})
@@ -162,6 +171,8 @@ def board_line(x, ctx, state):
     age = f" · {x['age']}d old" if x.get("age") is not None else ""
     if x.get("ts") is not None:
         why = (" · " + " · ".join(x["why"][:2])) if x.get("why") else ""
+        if x.get("event"):
+            why += " · ⚠️ Roblox event boost"
         return f"**{x['ts']}** · **{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age}{why}"
     tags = (" · " + " ".join(x["tags"])) if x["tags"] else ""
     return f"**{name_link(x['name'], url)}** — {ctx['fmt'](x['players'])} playing{age}{tags}"
@@ -235,6 +246,10 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     if falling:
         w = min(falling, key=lambda w: w["pct"])
         head.append(f"⚠️ **Watchlist falling:** {w['label']} {w['pct']:+.0f}% week on week")
+    ov = (state.get("overflow") or {}).get(yday, []) + (state.get("overflow") or {}).get(today, [])
+    if ov:
+        head.append(f"📥 **Also flagged** (kept out of #alerts to stay readable): " + "; ".join(o for o in ov[:5])
+                    + (f" (+{len(ov) - 5} more)" if len(ov) > 5 else ""))
     if not head:
         head.append("Quiet day — nothing crossed the alert thresholds. Full tables are in the dashboard.")
     dbs = state.get("_dbstats") or {}
@@ -258,6 +273,10 @@ def digest_cards(db, state, today, cutoff, t, ctx):
         tl.append(f"🌱 \"{T.display(k, state)}\" · {pct} · {r['games']} games, {r['new7']} new · {fmt(r['ccu'])} players")
     for kw, rs in _copy_clusters(state, today, ctx)[:3]:
         tl.append(f"🧬 \"{kw}\" in {len(rs)} new titles: " + ", ".join(_short(x["name"], 24) for x in rs[:3]))
+    cps = [(u, v) for u, v in (state.get("icon_copies") or {}).items() if v[2] == today]
+    if cps:
+        tl.append("🖼️ Icon copies: " + ", ".join(
+            f"{_short(nm(u), 22)} ≈ {_short(nm(v[0]), 22)}" for u, v in cps[:3]))
     brs = state.get("_bridges") or []
     if brs:
         tl.append("🌉 Reaching Roblox from outside: " + ", ".join(f"\"{w}\" ({row['new7']})" for w, _, row in brs[:4]))
@@ -307,7 +326,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     yu = state["requests"].get(yday, 0)
     c5 = card("👀 Watchlist", wl, AMBER, max_lines=12,
               footer=f"vs same day last week · ↩ returning players · RoWatcher {yu}/1,000 requests yesterday · "
-                     f"full tables in dashboard.html") if wl else None
+                     + (f"live dashboard: {_pages()}" if _pages() else "full tables in dashboard.html")) if wl else None
     state["_head"] = head
     state["_board"] = board
     return [c1, c2, c3, c4, c5]
@@ -523,6 +542,22 @@ def weekly_cards(db, state, today, ctx, table):
         head.append("Still building history — most sections fill in over the first 2–3 weeks.")
     c0 = card(f"🗓️ Weekly report · week to {_d(today).strftime('%a %d %b')}", head[:7], BLUE,
               footer="full-length report attached (weekly_report.md) · tables in the dashboard")
+    c_ic = None
+    try:
+        eff = ctx["IC"].effects(state)
+        il = []
+        for k, label in (("icon", "Icon changes"), ("title", "Title changes")):
+            x = eff.get(k)
+            if x:
+                il.append(f"🎨 {label}: players **{x['median']:+.0f}%** 3 days later (median) · "
+                          f"{x['up'] * 100:.0f}% gave a 10%+ boost ({x['n']} changes)")
+        ncop = len(state.get("icon_copies") or {})
+        if ncop:
+            il.append(f"🖼️ {ncop} young games use an icon nearly identical to a hit from another studio (last 30 days)")
+        c_ic = card("🎨 Icons & titles", il, PURPLE, optional=True,
+                    footer="icon changes spotted daily; copies found by comparing icon fingerprints")
+    except Exception:
+        pass
     mo = state.get("_money") or []
     c_mo = None
     if mo:
@@ -535,6 +570,10 @@ def weekly_cards(db, state, today, ctx, table):
         if small:
             ml.append("Top earners under 5K players: " + ", ".join(
                 f"{name_link(r['name'], lk(r['uid']), 22)} {M.usd(r['monthly'])}" for r in small))
+        try:
+            ml += ctx["PA"].lines(mo, ctx["PA"].load(db))
+        except Exception:
+            pass
         c_mo = card("💰 What earns the most", ml, AMBER,
                     footer="RoWatcher revenue estimates, last 7 days · $/player = monthly $ per concurrent player · "
                            "full tables: reports/money.md")
@@ -542,4 +581,4 @@ def weekly_cards(db, state, today, ctx, table):
         if g0:
             head.append(f"💰 **Best-earning genre per player:** {g0['group']} — {M.usd(g0['per_player'])}/player/month")
         c0["description"] = "\n".join(head[:8])
-    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_fc, c_mo, c_ck]
+    return [c0, c_mech, c_al, c_lt, c_en, c_sh, c_fc, c_mo, c_ic, c_ck]

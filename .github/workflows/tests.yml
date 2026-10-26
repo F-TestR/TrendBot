@@ -1,0 +1,26 @@
+name: Tests
+
+# Runs the whole bot against a simulated Roblox (no network, no Discord) whenever code changes,
+# so a broken update is caught before the scheduled bot runs it.
+on:
+  push:
+    paths: ["**.py", "requirements.txt", ".github/workflows/tests.yml"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install --quiet -r requirements.txt
+      - name: Check every file compiles
+        run: python -m compileall -q .
+      - name: Simulated two weeks
+        run: VERBOSE=1 python tests/test_sim.py

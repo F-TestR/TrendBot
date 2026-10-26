@@ -70,6 +70,14 @@ def publish(files, message):
         return f"report publish failed: {e}"
 
 
+def pages_url():
+    repo = os.environ.get("GITHUB_REPOSITORY") or ""
+    if "/" not in repo or not C.PAGES_DASHBOARD:
+        return None
+    owner, name = repo.split("/", 1)
+    return f"https://{owner.lower()}.github.io/{name}/"
+
+
 def cards_md(title, cards, content=""):
     """Discord cards -> Markdown page."""
     out = [f"# {title}", ""]

@@ -84,8 +84,10 @@ def _float(v):
 
 # ------------------------------------------------------------------ writes ---
 
-def record_snapshot(db, g, t, mechanics=""):
-    """g: a raw game dict from RoWatcher's /games list (rich fields). One live reading."""
+def record_snapshot(db, g, t, mechanics="", adj=1.0):
+    """g: a raw game dict from RoWatcher's /games list (rich fields). One live reading.
+    adj = how busy Roblox usually is at this hour vs its daily average; the running sum used for daily
+    averages is divided by it, so games read at quiet or busy hours get fair (unbiased) averages."""
     uid = str(g.get("universeId") or g.get("_id") or g.get("id") or "")
     if not uid:
         return
@@ -118,7 +120,7 @@ def record_snapshot(db, g, t, mechanics=""):
                     rw_score=COALESCE(excluded.rw_score, rw_score), fav_conv=COALESCE(excluded.fav_conv, fav_conv),
                     algo_reach=COALESCE(excluded.algo_reach, algo_reach), rev_usd=COALESCE(excluded.rev_usd, rev_usd),
                     src='live'""",
-               (uid, day, playing, playing, playing, _int(g.get("visits")), _int(g.get("favorites")),
+               (uid, day, playing, playing, int(round(playing / (adj or 1.0))), _int(g.get("visits")), _int(g.get("favorites")),
                 _int(g.get("likes")), _int(g.get("dislikes")), _float(g.get("breakoutScore")),
                 _float(g.get("favConversion")), _float(g.get("algoReach")), rev))
     if playing >= 50 and created and \

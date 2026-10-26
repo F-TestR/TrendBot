@@ -35,6 +35,9 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import icons as IC
+import passes as PA
+import events as EV
 import money as MO
 import publish as PUB
 import trend as TS
@@ -396,6 +399,21 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         db.commit()
         return
 
+    # time-of-day profile: how busy Roblox is at each hour (from the top games, read every run)
+    hour_adj = 1.0
+    try:
+        core = [g["playing"] for g in top if not g["raw"].get("_src")][:C.CORE_PAGES * C.PAGE_SIZE]
+        if len(core) >= 100:
+            prof = state.setdefault("hour_prof", [None] * 24)
+            h = t.hour
+            tot = float(sum(core))
+            prof[h] = tot if prof[h] is None else (1 - C.HOUR_PROFILE_ALPHA) * prof[h] + C.HOUR_PROFILE_ALPHA * tot
+            if all(v for v in prof):
+                mean = sum(prof) / 24
+                hour_adj = max(0.4, min(2.5, prof[h] / mean))
+    except Exception as e:
+        print(f"hour profile failed: {e}", file=sys.stderr)
+
     if first_run:
         state["baseline_day"] = today
     if fetched_deepest:
@@ -435,7 +453,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             if not first_run and (prev_max < C.MIN_PLAYERS_NEW_ENTRY):
                 crossed.append(g["id"])
         try:
-            W.record_snapshot(db, g["raw"], t, ", ".join(I.mechanics_of(g["name"])))
+            W.record_snapshot(db, g["raw"], t, ", ".join(I.mechanics_of(g["name"])), hour_adj)
             E.record_description(db, g["id"], g["raw"].get("description"))
         except Exception as e:
             print(f"db write failed for {g['id']}: {e}", file=sys.stderr)
@@ -536,6 +554,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             state.pop("_young_ids", None)
             print(f"badges failed: {e}", file=sys.stderr)
 
+    # 2b6. Game passes for top earners (a few per run, each about weekly)
+    if state.get("money_top") and not first_run:
+        try:
+            npa = PA.collect(db, state, [{"uid": u} for u in state["money_top"]], today)
+            if npa:
+                print(f"game passes: {npa} games read")
+        except Exception as e:
+            print(f"game passes failed: {e}", file=sys.stderr)
+
     # 2c. Backfill past history for young games (teaches the model faster)
     if not first_run:
         since = day_str(t - timedelta(days=C.BACKFILL_MAX_AGE_DAYS))
@@ -587,9 +614,53 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
 
     def add(kind, gid, title, desc, fields=(), ping=False, extra_text=""):
         url = link(gid, state).strip("<>") if gid else None
+        evt = EV.event_of(state, (games.get(gid) or {}).get("name", "")) if gid and kind in GAME_KINDS else None
+        if evt:
+            desc += f"\n⚠️ Taking part in a Roblox event (\"{evt}\") — part of this boost is the event, not demand."
         alerts.append({"kind": kind, "gid": gid, "title": title, "desc": desc, "url": url,
                        "fields": list(fields), "ping": ping,
                        "text": f"**{title}** — {desc}{extra_text}" + (f" {link(gid, state)}" if gid else "")})
+
+    try:
+        evs = EV.update(state, today)
+        if evs:
+            print("roblox events: " + ", ".join(f"{k} ({v})" for k, v in list(evs.items())[:5]))
+    except Exception as e:
+        print(f"event detection failed: {e}", file=sys.stderr)
+
+    # 3a0. A studio with a past hit just launched something
+    for gid in new_ids:
+        rec = games.get(gid)
+        if not rec or not is_young(rec, today) or rec.get("last", 0) < C.STUDIO_ALERT_MIN_PLAYERS:
+            continue
+        try:
+            g = db.execute("SELECT creator_id, creator_name FROM games WHERE uid=?", (gid,)).fetchone()
+            best = W.creator_best(db, g["creator_id"], gid) if g and g["creator_id"] else 0
+        except Exception:
+            best = 0
+        if best >= C.STUDIO_ALERT_PEAK and cooled(state, "studio:" + gid, today, 9999):
+            add("studio", gid, f"🏆 Proven studio launched: {rec['name'][:70]}",
+                f"From **{(g['creator_name'] or 'a studio')[:40]}**, whose other game peaked at **{fmt(best)}** players. "
+                f"Studios with a past hit are far more likely to land another — {fmt(rec.get('last', 0))} playing already.",
+                [("Players", fmt(rec.get("last", 0))), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "new")])
+            state["alerts"]["studio:" + gid] = today
+
+    # 3a1. Climbing in other countries before the worldwide lists
+    for gid in list((state.get("rbx_direct") or {}).get("cc", {}).keys()):
+        rec = games.get(gid)
+        if not rec or not is_young(rec, today) or not cooled(state, "abroad:" + gid, today, 7):
+            continue
+        ab = RD.abroad(state, gid, today)
+        if len(ab) < C.ABROAD_ALERT_COUNTRIES:
+            continue
+        where = ", ".join(f"{country_label(c)} (#{r})" for c, r in ab[:5])
+        add("abroad", gid, f"🌍 Climbing abroad first: {rec['name'][:70]}",
+            f"In Roblox's Top Trending / Up-and-Coming in **{where}** — but not in the worldwide lists yet. "
+            f"Trends that start abroad often reach the US and worldwide charts days later.",
+            [("Players", fmt(rec.get("last", 0))), ("Countries", str(len(ab))),
+             ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")] + studio_field(db, gid),
+            ping=len(ab) >= 4)
+        state["alerts"]["abroad:" + gid] = today
 
     # 3a. Young games crossing 2K players for the first time
     for gid in crossed:
@@ -828,6 +899,18 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 import traceback
                 traceback.print_exc()
                 print(f"forecasts failed: {e}", file=sys.stderr)
+            # Icons: changes and copies (daily)
+            try:
+                young_now = sorted([g for g, r in games.items() if is_young(r, today) and r.get("last_seen") == today],
+                                   key=lambda g: -games[g].get("last", 0))[:250]
+                bigs = [r["uid"] for r in db.execute(
+                    "SELECT uid, MAX(peak) AS m FROM daily WHERE day>=? GROUP BY uid HAVING m>=? ORDER BY m DESC LIMIT 300",
+                    (day_str(t - timedelta(days=30)), C.HIT_PLAYERS))]
+                nch, ncp = IC.update(db, state, today, young_now + list(C.WATCHLIST) + (state.get("money_top") or [])[:50],
+                                     S.game_icons, bigs)
+                print(f"icons: {nch} changes, {ncp} new icon copies")
+            except Exception as e:
+                print(f"icons failed: {e}", file=sys.stderr)
             # Trend Score: every signal combined into one calibrated number, with plain-English reasons
             try:
                 ty = [gid for gid, r in games.items() if is_young(r, today) and r.get("last_seen") == today]
@@ -895,6 +978,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if alerts and C.MERGE_ALERTS:
         alerts = merge_alerts(alerts, state)
     if alerts:
+        alerts = apply_budget(alerts, state, today)
+    if alerts:
         header = f"**Trend alert** · {t.strftime('%a %d %b %H:%M')} UTC"
         icons = S.game_icons([a["gid"] for a in alerts if a.get("gid")]) if (C.RICH_CARDS and not dry_run) else {}
         DO.post_alerts(alerts_url, alerts, header, icons, dry_run)
@@ -910,6 +995,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         state["_dbstats"] = W.stats(db)
         try:
             state["_money"] = MO.table(db, state, today, I.mechanics_of)
+            state["money_top"] = [r["uid"] for r in sorted(state["_money"], key=lambda r: -r["monthly"])[:600]]
             print(f"money: {len(state['_money'])} games with revenue estimates")
         except Exception as e:
             print(f"money table failed: {e}", file=sys.stderr)
@@ -933,11 +1019,16 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
         if not dry_run:
             try:
-                rep_files = {"reports/money.md": MO.markdown(state.get("_money") or [], fmt),
+                rep_files = {"reports/money.md": MO.markdown(state.get("_money") or [], fmt)
+                             + PA.markdown_section(state.get("_money") or [], PA.load(db)),
                              "reports/money.csv": MO.to_csv(state.get("_money") or []),
                              "reports/board.csv": board_csv(board_rows)}
                 if cards:
                     rep_files["reports/digest.md"] = PUB.cards_md(f"Daily digest · {today}", cards)
+                if C.PAGES_DASHBOARD:
+                    for n, data, _ in files:
+                        if n == "dashboard.html":
+                            rep_files["index.html"] = data.decode("utf-8")
                 print(PUB.publish(rep_files, f"Reports for {today}"))
             except Exception as e:
                 print(f"report publish failed: {e}", file=sys.stderr)
@@ -1003,6 +1094,12 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         if not posted:
             post_discord(digest_url, text, dry_run, "weekly", files)
         state["last_weekly"] = today
+        try:  # weekly database maintenance: reclaim space and refresh query statistics
+            db.commit()
+            db.execute("VACUUM")
+            db.execute("ANALYZE")
+        except Exception as e:
+            print(f"database maintenance failed: {e}", file=sys.stderr)
 
     db.commit()
     db.close()
@@ -1360,7 +1457,16 @@ def run_ask(question, dry_run=False):
     db.close()
 
 
-GAME_KINDS = ("trend", "cp", "breakout", "predict", "chart", "new", "surge", "heat", "early", "update", "longterm")
+COUNTRY_NAMES = {"us": "🇺🇸 US", "br": "🇧🇷 Brazil", "ph": "🇵🇭 Philippines", "id": "🇮🇩 Indonesia", "mx": "🇲🇽 Mexico",
+                 "gb": "🇬🇧 UK", "de": "🇩🇪 Germany", "fr": "🇫🇷 France", "es": "🇪🇸 Spain", "th": "🇹🇭 Thailand",
+                 "vn": "🇻🇳 Vietnam", "tr": "🇹🇷 Turkey", "pl": "🇵🇱 Poland", "ca": "🇨🇦 Canada", "au": "🇦🇺 Australia"}
+
+
+def country_label(c):
+    return COUNTRY_NAMES.get(c, c.upper())
+
+
+GAME_KINDS = ("trend", "abroad", "studio", "cp", "breakout", "predict", "chart", "new", "surge", "heat", "early", "update", "longterm")
 
 
 def board_csv(rows):
@@ -1379,6 +1485,36 @@ def board_csv(rows):
                     round(fc["peak"]) if fc.get("peak") and fc.get("status") in ("rising", "early") else "",
                     round(x["playtime"]) if x.get("playtime") else "", x.get("age") if x.get("age") is not None else ""])
     return buf.getvalue()
+
+
+KIND_RANK = ["trend", "abroad", "studio", "cp", "theme", "bridge", "future", "breakout", "predict", "chart", "new",
+             "surge", "heat", "early", "copy", "longterm", "update"]
+
+
+def apply_budget(alerts, state, today):
+    """Keep #alerts readable: at most ALERT_DAILY_BUDGET cards a day. Pings and watchlist games always go
+    through; the rest are ranked (Trend Score, then alert type) and any overflow is listed in the digest."""
+    count = state.setdefault("alert_count", {})
+    used = count.get(today, 0)
+    ts = state.get("ts") or {}
+    must = [a for a in alerts if a.get("ping") or (a.get("gid") in C.WATCHLIST)]
+    rest = [a for a in alerts if a not in must]
+    rest.sort(key=lambda a: (-(ts.get(a.get("gid")) or 0),
+                             KIND_RANK.index(a["kind"]) if a["kind"] in KIND_RANK else len(KIND_RANK)))
+    room = max(0, C.ALERT_DAILY_BUDGET - used - len(must))
+    keep, over = rest[:room], rest[room:]
+    if over:
+        ov = state.setdefault("overflow", {})
+        ov.setdefault(today, [])
+        ov[today] += [a["title"][:90] for a in over]
+        for d in [d for d in ov if d < day_str(now_utc() - timedelta(days=3))]:
+            del ov[d]
+        print(f"alert budget: {len(over)} alert(s) moved to the digest")
+    count[today] = used + len(must) + len(keep)
+    for d in [d for d in count if d < day_str(now_utc() - timedelta(days=3))]:
+        del count[d]
+    out = must + keep
+    return [a for a in alerts if a in out]
 
 
 def merge_alerts(alerts, state):
@@ -1424,7 +1560,7 @@ def merge_alerts(alerts, state):
 
 
 def present_ctx():
-    return {"MO": MO, "TS": TS, "FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
+    return {"IC": IC, "PA": PA, "MO": MO, "TS": TS, "FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
             "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
             "is_base": is_base, "keywords": keywords}
 

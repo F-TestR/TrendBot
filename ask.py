@@ -205,6 +205,20 @@ def game_card(db, state, uid, ctx, compact=False):
             lines.append(" · ".join(bits))
     except Exception:
         pass
+    try:
+        import roblox_direct as RD
+        ab = RD.abroad(state, uid, today)
+        if ab:
+            lines.append("🌍 Charting abroad first: " + ", ".join(f"{c.upper()} #{r}" for c, r in ab[:5]))
+        import events as EV
+        ev = EV.event_of(state, name)
+        if ev:
+            lines.append(f"⚠️ Taking part in a Roblox event (\"{ev}\") — part of its numbers are the event")
+        cp = (state.get("icon_copies") or {}).get(uid)
+        if cp:
+            lines.append(f"🖼️ Its icon is nearly identical to {state['games'].get(cp[0], {}).get('name', cp[0])}'s")
+    except Exception:
+        pass
     ts = (state.get("ts") or {}).get(uid)
     if ts is not None:
         lines.insert(1, f"🚀 **Trend Score {ts}**/100 — chance its players double within 2 weeks")
@@ -347,6 +361,11 @@ def answer(db, state, question, ctx):
             r"(money|revenue|earn\w*|profit\w*|income|robux|monetis\w*|monetiz\w*|most|highest|which|genre|genres|best)$", w)]
         sub = [r for r in rows if words and all(w in norm(r["name"] + " " + r["genre"] + " " + r["mech"]) for w in words)]
         lines = M.report_lines(sub or rows, ctx["fmt"], lambda u: ctx["link"](u, state).strip("<>"), n_top=6)
+        try:
+            import passes as PA
+            lines += [""] + PA.lines(sub or rows, PA.load(db))
+        except Exception:
+            pass
         title = f"💰 Earnings: {' '.join(words)}" if sub else "💰 What earns the most"
         return q, [{"title": title, "description": "\n".join(lines)[:4000], "color": 0xFAA61A,
                     "footer": {"text": "RoWatcher revenue estimates, last 7 days · $/player = monthly $ per concurrent player"}}]

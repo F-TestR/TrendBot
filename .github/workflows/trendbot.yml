@@ -38,19 +38,24 @@ concurrency:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install helpers
+        run: pip install --quiet -r requirements.txt
 
       # The bot's memory (state.json + the trendbot.db database) lives in the Actions cache,
       # so nothing is committed to the repo on every run.
       - name: Restore bot memory
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: state
           key: trendbot-state-${{ github.run_id }}
@@ -87,7 +92,7 @@ jobs:
 
       - name: Save bot memory
         if: always() && hashFiles('state/state.json') != ''
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: state
           key: trendbot-state-${{ github.run_id }}

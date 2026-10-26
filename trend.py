@@ -29,11 +29,12 @@ CREATE TABLE IF NOT EXISTS trend_feats (day TEXT, uid TEXT, players REAL, feats 
 """
 
 NAMES = ["growth", "accel", "headroom", "promo", "breakout", "heat", "shorts_speed", "shorts_n", "yt_views",
-         "sorts", "wave", "hold", "playtime", "size", "age"]
+         "sorts", "abroad", "wave", "studio", "event", "hold", "playtime", "size", "age"]
 
 # starting weights (used until enough real outcomes exist); features are roughly 0..3 each
 PRIOR = {"growth": 0.9, "accel": 1.2, "headroom": 0.5, "promo": 2.0, "breakout": 1.5, "heat": 1.5,
-         "shorts_speed": 0.5, "shorts_n": 0.4, "yt_views": 0.25, "sorts": 0.5, "wave": 0.4, "hold": 0.3,
+         "shorts_speed": 0.5, "shorts_n": 0.4, "yt_views": 0.25, "sorts": 0.5, "abroad": 0.6, "wave": 0.4,
+         "studio": 0.4, "event": -0.8, "hold": 0.3,
          "playtime": 0.3, "size": -0.2, "age": -0.4}
 PRIOR_BIAS = -3.4
 
@@ -92,6 +93,27 @@ def features(state, db, gid, today, ctx, yts, theme_new):
     sorts = [s for s in seen.get("sorts", []) if s in C.RBX_CHART_SORTS or s.startswith("trending-in-")]
     f["sorts"] = math.log1p(len(sorts))
     info["sorts"] = sorts
+    try:
+        import roblox_direct as RD
+        ab = RD.abroad(state, gid, today)
+    except Exception:
+        ab = []
+    f["abroad"] = math.log1p(len(ab))
+    info["abroad"] = ab
+    try:
+        g = db.execute("SELECT creator_id FROM games WHERE uid=?", (gid,)).fetchone()
+        best = W.creator_best(db, g["creator_id"], gid) if g and g["creator_id"] else 0
+    except Exception:
+        best = 0
+    f["studio"] = math.log10(1 + best) / 2
+    info["studio"] = best
+    try:
+        import events as EV
+        evt = EV.event_of(state, r.get("name", ""))
+    except Exception:
+        evt = None
+    f["event"] = 1.0 if evt else 0.0
+    info["event"] = evt
     best_w, best_n = None, 0
     for w in ctx["keywords"](r.get("name", "")):
         n = theme_new.get(w, 0)
@@ -141,6 +163,10 @@ def reasons(contrib, info, fmt, n=3):
             names = [nice.get(s, s.replace("trending-in-", "Trending in ").replace("-and-", " & ").replace("-", " ").title())
                      for s in info["sorts"][:2]]
             txt = "on Roblox's " + " + ".join(names)
+        elif name == "abroad" and info.get("abroad"):
+            txt = f"charting abroad first ({len(info['abroad'])} countries)"
+        elif name == "studio" and info.get("studio", 0) >= 5000:
+            txt = f"studio has had a hit ({fmt(info['studio'])} peak)"
         elif name == "wave" and info.get("wave", (None, 0))[1]:
             txt = f"part of a wave (\"{info['wave'][0]}\", {info['wave'][1]} new games)"
         elif name == "hold" and info.get("hold"):
@@ -294,7 +320,8 @@ def update(db, state, today, ids, ctx):
             continue
         f, info = features(state, db, gid, today, ctx, yts, theme_new)
         p, contrib = score_one(model if trusted else None, f)
-        out[gid] = {"score": round(100 * p), "reasons": reasons(contrib, info, ctx["fmt"]), "players": r.get("last", 0)}
+        out[gid] = {"score": round(100 * p), "reasons": reasons(contrib, info, ctx["fmt"]), "players": r.get("last", 0),
+                    "event": info.get("event")}
         rows.append((today, gid, float(yavg.get(gid) or r.get("last", 0)), json.dumps(f), p))
     db.executemany("INSERT OR REPLACE INTO trend_feats VALUES(?,?,?,?,?)", rows)
     db.execute("DELETE FROM trend_feats WHERE day < ?", (_s(_d(today) - timedelta(days=C.TS_KEEP_DAYS)),))

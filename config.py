@@ -60,6 +60,12 @@ YT_QUERIES = [                   # long videos: 3 searches x 12 runs/day x 100 u
 YT_SHORTS_QUERIES = ["roblox"]
 YT_SHORTS_ORDERS = ["viewCount", "date"]   # most-watched new Shorts, and the newest (catches things early)
 YT_SHORT_MAX_SECONDS = 180       # videos this short count as Shorts
+YT_SHORTS_INTL = [               # Shorts in other languages (every 4 hours: 3 x 6 x 100 = 1,800 units/day)
+    ("roblox", "pt", "BR"),
+    ("roblox", "es", "MX"),
+    ("roblox", "id", "ID"),
+]
+YT_SHORTS_INTL_EVERY_MIN = 240
 YT_SHORTS_SIGNAL_VPH = 20_000    # a game counts as "hot on Shorts" at 20K+ views/hour across its Shorts...
 YT_SHORTS_SIGNAL_N = 3           # ...or 3+ Shorts about it in 48h
 YT_MAX_PLACE_LOOKUPS_PER_RUN = 25   # game links in video descriptions -> which game
@@ -366,6 +372,12 @@ RBX_DEVICES = ["computer", "phone"]   # sorts differ a little by device
 RBX_SKIP_SORTS = {"filters_v5", "top-paid-access", "music-top-100", "trending-music-experiences",
                   "more-when-you-subscribe", "learning-and-explore"}
 RBX_CHART_SORTS = {"top-trending", "up-and-coming", "fun-with-friends", "top-revisited"}  # count as "Roblox is pushing it"
+# Countries whose Top Trending / Up-and-Coming lists are read (phone, first page = 1 request each).
+# Trends often start in Brazil, the Philippines, Indonesia or Mexico days before the US.
+RBX_COUNTRIES = ["us", "br", "ph", "id", "mx", "gb", "de", "fr", "es", "th", "vn", "tr", "pl", "ca", "au"]
+RBX_HOME_COUNTRIES = {"us", "gb", "ca", "au"}   # "abroad first" = charting outside these but not worldwide
+RBX_COUNTRY_EVERY_MIN = 60
+ABROAD_ALERT_COUNTRIES = 2       # 🌍 alert when a young game charts in 2+ countries but not worldwide
 RBX_SEARCH_WORDS = ["simulator", "tycoon", "obby", "steal", "anomaly", "clean", "wash", "pirate", "disaster", "brainrot"]
 RBX_SEARCH_WORDS_PER_RUN = 2     # words searched per run (each once a day) - finds tiny new copies
 RBX_SEARCH_PAGES = 3             # result pages per word (~30-60 games)
@@ -414,3 +426,19 @@ MONEY_MIN_CCU = 400              # only games averaging 400+ concurrent players
 MONEY_MIN_GROUP = 6              # groups smaller than this aren't shown
 PUBLISH_REPORTS = True           # write digest/weekly/money reports to the repo's "reports" branch
 REPORTS_BRANCH = "reports"
+HOUR_PROFILE_ALPHA = 0.1         # how fast the time-of-day profile adapts (daily averages are corrected by it)
+
+# =====================================================================
+# Roblox platform events, studios, game passes, icons, alert budget, live dashboard
+# =====================================================================
+RBX_EVENTS = ["the hollow", "the hunt", "the games", "the hatch", "the classic", "egg hunt"]  # known event names
+EVENT_MIN_GAMES = 8              # a new title tag in this many games at once counts as an event
+EVENT_NEW_DAYS = 10              # ...if it first appeared within this many days
+STUDIO_ALERT_PEAK = 10000        # 🏆 alert when a studio whose other game peaked this high launches something new
+STUDIO_ALERT_MIN_PLAYERS = 100   # ...and the new game already has this many players
+PASSES_GAMES_PER_RUN = 8         # game-pass lists read per run (top earners first, each about once a week)
+PASSES_REFRESH_DAYS = 7
+ICON_TRACK_MAX = 300             # games whose icon is checked for changes each day (young + board + watchlist)
+ICON_COPY_DISTANCE = 6           # icons this similar (perceptual hash bits) count as a copy
+ALERT_DAILY_BUDGET = 12          # most alert cards per day (pings and watchlist always go through); the rest go in the digest
+PAGES_DASHBOARD = True           # publish the dashboard as a live web page (GitHub Pages, from the reports branch)
