@@ -1,10 +1,16 @@
 # Latest question
 
-**Q:** is Pirate trending
+**Q:** what's coming up
 
-## 🌱 Theme: "pirate"
+## 🔮 Coming up
 
-**2** games with "pirate" in the title · **4.4K** players
-🆕 0 new this week (vs 0 the week before) · 0 studios · 1 with 2.0K+ players
-▫️ Not trending right now
-Top games: [Pilfering Pirates](https://rowatcher.com/games/2220495353) 4.8K, [Be a Pirate](https://www.roblox.com/games/78265060714011) 4.2K, [Pirate Mayhem](https://rowatcher.com/games/7820099744) 130
+🔮 **Clayface** · out now · ✨ not on Roblox yet
+🔮 **VisionQuest** · out now · ✨ not on Roblox yet
+🔮 **Street Fighter** · out now · 🌉 1 new Roblox game already
+🔮 **Masterplan** · out now · ✨ not on Roblox yet
+🔮 **Crystal Lake** · out now · 4 older Roblox games
+🔮 **The Mongoose** · in 4 days · ✨ not on Roblox yet
+🔮 **Wildwood** · out now · ✨ not on Roblox yet
+🔮 **Infernal West Demo** · date tbc · 8 older Roblox games
+🔮 **Thalassomania Demo** · date tbc · 2 older Roblox games
+🔮 **Task Bar Cube: Inventory Package** · out now · 6 older Roblox games
