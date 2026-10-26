@@ -1,13 +1,13 @@
 # Latest question
 
-**Q:** how is Pixel Quest doing
+**Q:** how is Fabled Legacy doing
 
-## 🔎  🎃 [2X LUCK] Pixel Quest!
+## 🔎 [🎃HALLOWEEN] Fabled Legacy! RPG
 
-**398** playing · 575 days old · RPG
-💰 ~**$2.3K/month** (estimate)
-📈 Forecast: peak ~756 by Wed 28 Oct
+**407** playing · 1406 days old · RPG
+💰 ~**$3.6K/month** (estimate)
+📈 Forecast: peak ~602 by Tue 03 Nov
 ⏳ all games hits usually keep half their peak players ~10 days
-🧠 Promotion chance next 7 days: **11%**
+🧠 Promotion chance next 7 days: **8%**
 
-_Did you mean: [SPOOKY🎃] Pixel Blade · Pixel Capture! [BETA]_
+_Did you mean: [WHEELIE/STOPPIE OVERHAUL👻CH4  · SIREN HEAD: LEGACY_
