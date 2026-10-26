@@ -1,24 +1,17 @@
 # Latest question
 
-**Q:** Fifa Super Soccer vs Realistic Street Soccer
+**Q:** how is Blox Fruits doing
 
-## 🔎 FIFA Super Soccer
+## 🔎 Blox Fruits
 
-**8.7K** playing · 1379 days old · Sports & Racing · Sports
-💰 ~**$93K/month** (estimate)
+**124.4K** playing · 2840 days old · RPG · Anime / fighting style
+📊 Mon 137.4K avg vs 145.5K a week before (**-6%**)
+Last 14 days: `▃▃▃▅██▂▁▁▂▂▆▄▁`
+🔁 weekday hold **1.11×** typical · stickiness **56**/100
+💰 ~**$1.9M/month** (estimate)
+🕹️ Sessions ~18 min — 72th percentile (Roblox: 13.5 typical, 25.8 top-10%)
 📈 Forecast: past its peak
 ⏳ all games hits usually keep half their peak players ~10 days
-🧠 Promotion chance next 7 days: **5%** · weak spot: session length
+🧠 Promotion chance next 7 days: **12%**
 
-## 🔎 Realistic Street Soccer
-
-**21.9K** playing · 1179 days old · Sports & Racing · Sports
-📊 Mon 16.5K avg vs 18.6K a week before (**-11%**)
-Last 14 days: `▆▅▅▇██▃▂▃▆▂██▁`
-🔁 weekday hold **1.32×** typical · stickiness **51**/100 · 🏛️ long-term
-⏱ 683.0K players/day · ~50 min each · 82% returning
-💰 ~**$367K/month** (estimate) · $537 per 1K daily players — 83th percentile of Roblox games
-🕹️ Sessions ~12 min — bottom 39% (Roblox: 13.5 typical, 25.8 top-10%)
-📈 Forecast: past its peak
-⏳ all games hits usually keep half their peak players ~10 days
-🧠 Promotion chance next 7 days: **6%** · weak spot: session length
+_Did you mean: [ENGINEER/PAYLOAD] Blox Fortre · Storm Fruits [DOUGH]_
