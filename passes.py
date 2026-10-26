@@ -23,7 +23,10 @@ CREATE TABLE IF NOT EXISTS passes (uid TEXT PRIMARY KEY, day TEXT, n INTEGER, pr
 KINDS = [("VIP", r"\bvip\b"), ("2x / multiplier", r"\b(2x|x2|3x|double|triple|multiplier|boost)\b"),
          ("auto / skip", r"\b(auto|skip|instant|faster|speed)\b"), ("extra slots / storage", r"\b(slot|storage|backpack|inventory|capacity)\b"),
          ("luck", r"\b(luck|lucky)\b"), ("cosmetic / trail", r"\b(trail|skin|cosmetic|title|tag|chat|color|colour|aura)\b"),
-         ("admin / commands", r"\b(admin|command|cmds?)\b"), ("teleport / unlock area", r"\b(teleport|tp|unlock|area|world)\b")]
+         ("admin / commands", r"\b(admin|command|cmds?)\b"), ("teleport / unlock area", r"\b(teleport|tp|unlock|area|world)\b"),
+         ("do-it-anywhere convenience", r"\b(anywhere|remote|portable|everywhere)\b"),
+         ("emotes / radio / social", r"\b(emotes?|radio|boombox|music|dance)\b"),
+         ("supporter / donation", r"\b(supporter|donat\w*|tip)\b")]
 
 
 def log(m):
@@ -137,6 +140,8 @@ def lines(rows, ps):
            "Most common prices: " + ", ".join(f"R${p}" for p, _ in a["points"][:5])]
     if a["kinds"]:
         out.append("What they sell: " + ", ".join(f"{k} ({v * 100:.0f}%)" for k, v in a["kinds"][:4]))
+    out.append("Passes are only ~1/5 of a top game's money — developer products (bundles R$799–1,499, currency packs) "
+               "make ~3/4 but aren't public")
     return out
 
 

@@ -321,8 +321,8 @@ def report_lines(db, state, today, fmt, name_of, link):
     sess = [v["session"] for v in st.values() if v.get("session")]
     if sess:
         lines.append(f"• Estimated session length this week: median game **{median(sess):.1f} min** "
-                     f"(GameAnalytics: median 9.8 min, top 5% 16.6, top 1% 21.1 — their sample is bigger games, "
-                     f"and ours is an estimate, so compare games with each other first).")
+                     f"(Roblox Creator Hub benchmark: 13.5 min typical, 25.8 min top-10%; "
+                     f"{sum(1 for x in sess if x >= 25.8)} of our games are in the top 10%).")
     young = state.get("_young_ids") or set()
     top = sorted(((v["score"], u, v) for u, v in st.items() if v.get("score") is not None and u in young), reverse=True)[:6]
     if top:

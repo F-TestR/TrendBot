@@ -17,6 +17,7 @@ import io
 from datetime import datetime, timedelta
 from statistics import median
 
+import benchmarks as BM
 import config as C
 
 SIZE_BANDS = [(400, 1000, "400–1K"), (1000, 5000, "1K–5K"), (5000, 20000, "5K–20K"),
@@ -76,10 +77,12 @@ def table(db, state, today, mechanics_of):
                 age = None
         dau = (badges.get(uid) or {}).get("dau")
         monthly = daily * 30.4
+        rc = BM.reality_check(monthly, dau) if dau else None
         out.append({"uid": uid, "name": name, "genre": (m["genre"] if m else None) or "Unknown",
                     "subgenre": (m["subgenre"] if m else None) or "", "mech": (mechanics_of(name) or ["Other"])[0],
                     "ccu": ccu, "monthly": monthly, "per_player": monthly / ccu if ccu else 0,
                     "per_1k_daily": (monthly / (dau / 1000)) if dau else None, "age": age,
+                    "mon_pct": rc["pct"] if rc and not rc["suspect"] else None,
                     "size": band(ccu, SIZE_BANDS), "age_band": band(age, AGE_BANDS) if age is not None else "unknown"})
     out.sort(key=lambda r: -r["monthly"])
     return out
@@ -114,7 +117,7 @@ def usd(v):
     return f"${v:.0f}"
 
 
-def report_lines(rows, fmt, link=None, n_top=8):
+def report_lines(rows, fmt, link=None, n_top=8, bench=True):
     if not rows:
         return ["Not enough revenue data yet — it builds up over the first week."]
     lk = (lambda r: f"[{r['name'][:30]}]({link(r['uid'])})") if link else (lambda r: r["name"][:30])
@@ -141,12 +144,21 @@ def report_lines(rows, fmt, link=None, n_top=8):
         lines.append("**Best earners per player** (1K+ players):")
         for r in eff:
             lines.append(f"• {lk(r)} — **{usd(r['per_player'])}**/player · {usd(r['monthly'])}/month · {fmt(r['ccu'])} players · {r['genre']}")
+    mon = sorted([r for r in rows if r.get("mon_pct") and r["ccu"] >= 1000], key=lambda r: -r["per_1k_daily"])[:n_top]
+    if mon:
+        lines.append("")
+        lines.append("**Best monetisers per daily player** (vs Roblox's own benchmarks):")
+        for r in mon:
+            lines.append(f"• {lk(r)} — **{usd(r['per_1k_daily'])}** per 1K daily players/month · {BM.tier(r['mon_pct'])} · {r['genre']} · {r['mech']}")
     small = sorted([r for r in rows if r["ccu"] < 5000], key=lambda r: -r["monthly"])[:n_top]
     if small:
         lines.append("")
         lines.append("**Top earners under 5K players** (realistic for a small studio):")
         for r in small:
             lines.append(f"• {lk(r)} — **{usd(r['monthly'])}/month** · {fmt(r['ccu'])} players · {r['genre']} · {r['mech']}")
+    if bench:
+        lines.append("")
+        lines += BM.report_lines()
     return lines
 
 
@@ -154,10 +166,10 @@ def to_csv(rows):
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["universe_id", "name", "genre", "subgenre", "mechanic", "avg_players_7d", "monthly_revenue_usd",
-                "usd_per_player_month", "usd_per_1k_daily_players", "age_days", "size_band", "age_band"])
+                "usd_per_player_month", "usd_per_1k_daily_players", "monetisation_percentile", "age_days", "size_band", "age_band"])
     for r in rows:
         w.writerow([r["uid"], r["name"], r["genre"], r["subgenre"], r["mech"], round(r["ccu"]), round(r["monthly"]),
-                    round(r["per_player"], 2), round(r["per_1k_daily"], 2) if r["per_1k_daily"] else "",
+                    round(r["per_player"], 2), round(r["per_1k_daily"], 2) if r["per_1k_daily"] else "", r.get("mon_pct") or "",
                     r["age"] if r["age"] is not None else "", r["size"], r["age_band"]])
     return buf.getvalue()
 

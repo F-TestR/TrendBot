@@ -178,6 +178,22 @@ def game_card(db, state, uid, ctx, compact=False):
             bits.append(f"{b['streak7'][1] * 100:.1f}% reach a {b['streak7'][0]}-day streak")
         lines.append("⏱ " + " · ".join(bits))
     try:
+        import benchmarks as BM
+        rv = db.execute("SELECT AVG(rev_usd) a, COUNT(*) n FROM daily WHERE uid=? AND day>=? AND day<? AND rev_usd IS NOT NULL",
+                        (uid, _s(_d(today) - timedelta(days=7)), today)).fetchone()
+        if rv and rv["n"] and rv["n"] >= 3 and rv["a"]:
+            monthly = rv["a"] * 30.4
+            bits = [f"💰 ~**{ctx['MO'].usd(monthly)}/month** (estimate)"]
+            rc = BM.reality_check(monthly, b.get("dau")) if b.get("dau") else None
+            if rc and not rc["suspect"]:
+                bits.append(f"{ctx['MO'].usd(monthly / b['dau'] * 1000)} per 1K daily players — {BM.tier(rc['pct'])} of Roblox games")
+            lines.append(" · ".join(bits))
+        sess = ((state.get("stick") or {}).get(uid) or {}).get("session")
+        if sess:
+            lines.append(f"🕹️ Sessions ~{sess:.0f} min — {BM.tier(BM.percentile('session_min', sess))} (Roblox: 13.5 typical, 25.8 top-10%)")
+    except Exception:
+        pass
+    try:
         f = ctx["FC"]
         series = f.load_series(db, _s(_d(today) - timedelta(days=30)), _s(_d(today) - timedelta(days=1)))
         v = series.get(uid)
@@ -360,7 +376,7 @@ def answer(db, state, question, ctx):
         words = [w for w in norm(question).split() if w not in STOP and not re.match(
             r"(money|revenue|earn\w*|profit\w*|income|robux|monetis\w*|monetiz\w*|most|highest|which|genre|genres|best)$", w)]
         sub = [r for r in rows if words and all(w in norm(r["name"] + " " + r["genre"] + " " + r["mech"]) for w in words)]
-        lines = M.report_lines(sub or rows, ctx["fmt"], lambda u: ctx["link"](u, state).strip("<>"), n_top=6)
+        lines = M.report_lines(sub or rows, ctx["fmt"], lambda u: ctx["link"](u, state).strip("<>"), n_top=5, bench=False)
         try:
             import passes as PA
             lines += [""] + PA.lines(sub or rows, PA.load(db))
