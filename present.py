@@ -9,6 +9,7 @@ Rules: one line per item, the name is the link, numbers before words, at most 4 
 line, a legend in the footer. Detail lives in the dashboard and the attached full report.
 """
 import json
+import re
 import math
 from datetime import datetime, timedelta
 from statistics import median
@@ -41,6 +42,11 @@ def name_link(name, url, n=34):
     nm = (name or "?").replace("[", "(").replace("]", ")")
     nm = nm[:n - 1] + "…" if len(nm) > n else nm
     return f"[{nm}]({url})" if url else nm
+
+
+def _short(name, n):
+    nm = re.sub(r"\s*\[[^\]]*\]?\s*$", "", name or "").strip() or (name or "")
+    return nm if len(nm) <= n else nm[:n - 1] + "…"
 
 
 def card(title, lines, color=BLUE, footer=None, max_lines=10, more=None, optional=False):
@@ -183,7 +189,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     x = pick(allb, "ts", 50)
     if x:
         why = f" ({', '.join(x['why'][:2])})" if x.get("why") else ""
-        head.append(f"🚀 **Highest Trend Score:** {name_link(x['name'], lk(x['gid']))} — **{x['ts']}**{why}")
+        head.append(f"⭐ **Highest Trend Score:** {name_link(x['name'], lk(x['gid']))} — **{x['ts']}**{why}")
     x = pick(allb, "ratio", 1.5)
     if x:
         head.append(f"🚀 **Biggest riser:** {name_link(x['name'], lk(x['gid']))} — ×{x['ratio']:.1f} to {fmt(x['players'])}")
@@ -251,7 +257,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
         pct = f"**{_pct(p)}**" if p is not None else f"{sc} signal{'s' if sc != 1 else ''}"
         tl.append(f"🌱 \"{T.display(k, state)}\" · {pct} · {r['games']} games, {r['new7']} new · {fmt(r['ccu'])} players")
     for kw, rs in _copy_clusters(state, today, ctx)[:3]:
-        tl.append(f"🧬 \"{kw}\" in {len(rs)} new titles: " + ", ".join(x["name"][:20] for x in rs[:3]))
+        tl.append(f"🧬 \"{kw}\" in {len(rs)} new titles: " + ", ".join(_short(x["name"], 24) for x in rs[:3]))
     brs = state.get("_bridges") or []
     if brs:
         tl.append("🌉 Reaching Roblox from outside: " + ", ".join(f"\"{w}\" ({row['new7']})" for w, _, row in brs[:4]))
