@@ -1,17 +1,19 @@
 # Latest question
 
-**Q:** how is adopt me doing
+**Q:** how is dress to impress doing
 
-## 🔎 [🎃] Adopt Me!
+## 🔎 [🎃 NEW QUEST] Dress To Impress
 
-**240.5K** playing · 3393 days old · Roleplay & Avatar Sim · Care / baby / pets
-📊 Wed 198.5K avg vs 150.9K a week before (**+32%**)
-Last 14 days: `▅▆█▆▂▁▁▃▃▆▃▃▂▃`
-🔁 weekday hold **0.93×** typical · stickiness **54**/100
-💰 ~**$1.1M/month** (estimate)
-🕹️ Sessions ~26 min — top 10% (Roblox: 13.5 typical, 25.8 top-10%)
+**86.5K** playing · 1106 days old · Roleplay & Avatar Sim · Fashion / makeup
+📊 Wed 62.0K avg vs 74.0K a week before (**-16%**)
+Last 14 days: `▁▁▇█▄▃▃▄▃█▆▃▃▂`
+🔁 weekday hold: still growing · stickiness **77**/100
+⏱ 1.8M players/day · ~60 min each
+💰 ~**$693K/month** (estimate) · $393 per 1K daily players — 75th percentile of Roblox games
+🕹️ Sessions ~17 min — 67th percentile (Roblox: 13.5 typical, 25.8 top-10%)
 📈 Forecast: past its peak
-⏳ Care / baby / pets hits usually keep half their peak players ~14 days
-🧠 Promotion chance next 7 days: **19%** · weak spot: weekday hold vs a typical game
+⏳ Roleplay & Avatar Sim hits usually keep half their peak players ~23 days
+🧠 Promotion chance next 7 days: **10%**
+🌍 Charting abroad first: ID #4
 
-_Did you mean: Adopt Your Animal! · 👶ADOPT FAMILY!❤️Seaboard City _
+_Did you mean: Would You Rather: Dress To Imp · Drive To Impress_
