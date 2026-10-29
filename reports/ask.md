@@ -1,10 +1,12 @@
 # Latest question
 
-**Q:** is pirate trending
+**Q:** how is boats go boom doing
 
-## 🌱 Theme: "pirate"
+## 🔎 Math or Boom
 
-**2** games with "pirate" in the title · **4.3K** players
-🆕 0 new this week (vs 0 the week before) · 0 studios · 1 with 2.0K+ players
-▫️ Not trending right now
-Top games: [Be a Pirate](https://www.roblox.com/games/78265060714011) 3.5K, [Pilfering Pirates](https://rowatcher.com/games/2220495353) 3.0K, [🏴‍☠️ PIRATE MODE PRISON RUN!](https://rowatcher.com/games/10769088244) 826
+**323** playing · 758 days old · Party & Casual
+💰 ~**$913/month** (estimate)
+📈 Forecast: past its peak
+⏳ Party & Casual hits usually keep half their peak players ~7 days
+
+_Did you mean: City Goes BOOM! 💥 · HATCHERS GO!_
