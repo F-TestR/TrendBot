@@ -146,7 +146,9 @@ def reasons(contrib, info, fmt, n=3):
         elif name == "accel" and info.get("cp"):
             txt = "growth just accelerated"
         elif name == "headroom" and info.get("peak"):
-            txt = f"forecast to reach ~{fmt(info['peak'])}"
+            import forecast as FC
+            txt = f"forecast to reach ~{fmt(info['peak'])}" if FC.TRUST["peak"] else \
+                f"forecast: {FC.rough(info['peak'], info.get('players') or 0)}"
         elif name == "promo" and info.get("promo"):
             txt = f"Roblox likely to push it ({info['promo'] * 100:.0f}%)"
         elif name == "breakout" and info.get("breakout"):

@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS engage_weekly (uid TEXT, week TEXT, avg_ccu REAL, ses
 CREATE INDEX IF NOT EXISTS engage_weekly_week ON engage_weekly(week);
 """
 
-WEIGHTS = {"hold_rel": 0.25, "playtime": 0.20, "session_min": 0.10, "level_kept": 0.15, "returning": 0.10,
+# weekday hold and session length carry the most: they are what the algorithm mirror finds Roblox rewarding.
+# returning share is 0 — the badge-based measure proved wrong against Fisch's real numbers (see badges.py).
+WEIGHTS = {"hold_rel": 0.30, "playtime": 0.20, "session_min": 0.15, "level_kept": 0.15, "returning": 0.0,
            "fav_conv": 0.10, "rev_per_ccu": 0.10}
 LABELS = {"hold_rel": "weekday hold", "playtime": "playtime per player per day (badges)", "session_min": "session length",
           "level_kept": "players kept vs best week", "returning": "returning-player share (badges)",
@@ -315,8 +317,8 @@ def heat_points(state, gid):
 
 
 def report_lines(db, state, today, fmt, name_of, link):
-    lines = ["📏 **Stickiness** (weekday hold 25% · playtime per player 20% · players kept vs best week 15% · "
-             "session length 10% · returning players 10% · favourite rate 10% · revenue per player 10%)"]
+    lines = ["📏 **Stickiness** (weekday hold 30% · playtime per player 20% · players kept vs best week 15% · "
+             "session length 15% · favourite rate 10% · revenue per player 10%)"]
     st = state.get("stick") or {}
     sess = [v["session"] for v in st.values() if v.get("session")]
     if sess:

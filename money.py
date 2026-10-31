@@ -83,6 +83,7 @@ def table(db, state, today, mechanics_of):
                     "ccu": ccu, "monthly": monthly, "per_player": monthly / ccu if ccu else 0,
                     "per_1k_daily": (monthly / (dau / 1000)) if dau else None, "age": age,
                     "mon_pct": rc["pct"] if rc and not rc["suspect"] else None,
+                    "suspect": (monthly / ccu if ccu else 0) > C.MONEY_SUSPECT_PER_PLAYER or bool(rc and rc["suspect"]),
                     "size": band(ccu, SIZE_BANDS), "age_band": band(age, AGE_BANDS) if age is not None else "unknown"})
     out.sort(key=lambda r: -r["monthly"])
     return out
@@ -139,7 +140,7 @@ def report_lines(rows, fmt, link=None, n_top=8, bench=True):
     for g in sorted(groups(rows, "size"), key=lambda g: order.index(g["group"])):
         lines.append(f"• **{g['group']}** — {usd(g['median'])} typical · {usd(g['top25'])} top-quartile · {usd(g['per_player'])}/player ({g['n']})")
     lines.append("")
-    eff = sorted([r for r in rows if r["ccu"] >= 1000], key=lambda r: -r["per_player"])[:n_top]
+    eff = sorted([r for r in rows if r["ccu"] >= 1000 and not r.get("suspect")], key=lambda r: -r["per_player"])[:n_top]
     if eff:
         lines.append("**Best earners per player** (1K+ players):")
         for r in eff:
@@ -150,7 +151,7 @@ def report_lines(rows, fmt, link=None, n_top=8, bench=True):
         lines.append("**Best monetisers per daily player** (vs Roblox's own benchmarks):")
         for r in mon:
             lines.append(f"• {lk(r)} — **{usd(r['per_1k_daily'])}** per 1K daily players/month · {BM.tier(r['mon_pct'])} · {r['genre']} · {r['mech']}")
-    small = sorted([r for r in rows if r["ccu"] < 5000], key=lambda r: -r["monthly"])[:n_top]
+    small = sorted([r for r in rows if r["ccu"] < 5000 and not r.get("suspect")], key=lambda r: -r["monthly"])[:n_top]
     if small:
         lines.append("")
         lines.append("**Top earners under 5K players** (realistic for a small studio):")
@@ -166,10 +167,10 @@ def to_csv(rows):
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["universe_id", "name", "genre", "subgenre", "mechanic", "avg_players_7d", "monthly_revenue_usd",
-                "usd_per_player_month", "usd_per_1k_daily_players", "monetisation_percentile", "age_days", "size_band", "age_band"])
+                "usd_per_player_month", "usd_per_1k_daily_players", "monetisation_percentile", "estimate_suspect", "age_days", "size_band", "age_band"])
     for r in rows:
         w.writerow([r["uid"], r["name"], r["genre"], r["subgenre"], r["mech"], round(r["ccu"]), round(r["monthly"]),
-                    round(r["per_player"], 2), round(r["per_1k_daily"], 2) if r["per_1k_daily"] else "", r.get("mon_pct") or "",
+                    round(r["per_player"], 2), round(r["per_1k_daily"], 2) if r["per_1k_daily"] else "", r.get("mon_pct") or "", "yes" if r.get("suspect") else "",
                     r["age"] if r["age"] is not None else "", r["size"], r["age_band"]])
     return buf.getvalue()
 

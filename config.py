@@ -27,6 +27,7 @@ WATCHLIST = {
     "10769516701": "Facecard: Makeup Showdown",
     "10767138232": "Kukirin Life",
     "10155360168": "Illegal Soccer",
+    "9167377564": "100 Days at Sea",          # closest comparison for the pirate game: best streak retention seen
 }
 
 # Words ignored when spotting copy waves in titles
@@ -214,6 +215,8 @@ THEME_MIN_GAME_CCU = 100         # games below this never count towards a theme
 THEME_MIN_CCU = 300              # themes smaller than this (with no new games) are ignored
 THEME_HIT_CCU = 2000             # a theme's game "hits" at this many players...
 THEME_BREAKOUT_GAMES = 3         # ...and a theme "breaks out" when it goes from <=1 hit to this many
+THEME_YOUNG_DAYS = 45            # ...counting only games younger than this (new games succeeding, not old hits)
+THEME_VERSION = 2                # bump when the breakout definition changes: theme history is rebuilt once
 THEME_HISTORY_DAYS = 60          # how far back to rebuild theme history the first time
 THEME_KEEP_DAYS = 150
 THEME_MIN_EXAMPLES = 200         # theme-days needed before the theme model trains...
@@ -276,6 +279,9 @@ PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 reque
 # =====================================================================
 # Engagement: session length, stickiness score, backtest, features, opportunity map
 # =====================================================================
+SEASON_SKEW_SHARE = 0.08         # flag a seasonal event in the digest once 8%+ of games (400+ players) run one
+BADGE_RETURNING = False          # "returning players" from welcome badges: off — checked against Fisch's real Creator Hub
+                                 # numbers (91% returning) it read ~12%, so welcome-badge win rates don't mean what we assumed
 SESSION_MIN_MIN = 0.5            # estimated sessions outside this range (minutes) are treated as noise
 SESSION_MAX_MIN = 240
 ENGAGE_MIN_AVG_CCU = 300         # games averaging fewer players in a week aren't scored
@@ -402,6 +408,10 @@ CP_MIN_GROWTH = 0.12             # ...the new regime grows 12%+ a day...
 CP_MIN_JUMP = 0.10               # ...and is 10+ points/day faster than before
 CP_MIN_PLAYERS = 200             # ignore tiny games
 CP_BACKTEST_GAMES = 400          # games sampled for the back-test
+CP_TRUST_MIN_N = 20              # once the back-test has this many firings...
+CP_TRUST_LIFT = 1.3              # ..."breakout starting" alerts only go out if they beat a random young game by 1.3x
+FC_TRUST_MIN_N = 30              # once this many peak forecasts are checked...
+FC_TRUST_WITHIN2X = 0.6          # ...numbers are only quoted if 60%+ landed within 2x of the real peak
 SURV_MIN_PEAK = 1000             # lifespans are measured for games that peaked above this
 SURV_MIN_GROUP = 8               # groups smaller than this aren't reported
 
@@ -423,6 +433,7 @@ MERGE_ALERTS = True              # several alerts about one game in the same run
 MONEY_DAYS = 7                   # revenue averaged over the last 7 complete days
 MONEY_MIN_DAYS = 3               # a game needs revenue readings on at least 3 of them
 MONEY_MIN_CCU = 400              # only games averaging 400+ concurrent players
+MONEY_SUSPECT_PER_PLAYER = 60.0  # $/player/month above this (~7x the median) is treated as a bad estimate in top lists
 MONEY_MIN_GROUP = 6              # groups smaller than this aren't shown
 PUBLISH_REPORTS = True           # write digest/weekly/money reports to the repo's "reports" branch
 REPORTS_BRANCH = "reports"

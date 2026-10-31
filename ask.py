@@ -5,6 +5,7 @@ No AI service (so no tokens): the question is matched to one of these kinds, by 
   game      "how is Wash the Car doing?"  "tell me about be a pirate"        -> one game in detail
   compare   "Wash the Car vs Clean Everything"  "compare X and Y"          -> two games side by side
   theme     "is chocolate trending?"  "cleaning games"  "theme pirate"     -> a title word / theme
+  themes    "is there an influx of sea/boat/pirate games?"                 -> several related words as one theme
   mechanic  "how are tycoon games doing?"  "horror"                        -> a mechanic or genre
   top       "what's rising?"  "top games"  "what should I watch?"          -> today's board
   longterm  "long term games"  "what lasts?"                               -> long-term list and genres
@@ -27,6 +28,16 @@ STOP = {"how", "is", "are", "the", "a", "an", "doing", "about", "tell", "me", "w
         "of", "on", "in", "for", "and", "to", "do", "does", "it", "its", "it's", "right", "now", "today", "this", "week",
         "show", "give", "info", "stats", "please", "roblox", "any", "there", "be", "will", "going", "doing?", "trend",
         "trending", "theme", "with", "my", "our", "can", "you", "i", "should", "look", "at", "like", "much", "many"}
+
+# Theme words widened with close relatives, so "pirate games" also finds ship and sea titles.
+RELATED = {"pirate": ["pirate", "plunder", "buccaneer", "treasure", "captain"], "boat": ["boat", "ship", "raft", "sail", "yacht", "canoe"],
+           "sea": ["sea", "ocean", "shark", "underwater", "naval"], "fish": ["fish", "fishing", "fisch"],
+           "horror": ["horror", "scary", "monster", "creepy"], "car": ["car", "drive", "driving", "racing"],
+           "clean": ["clean", "cleaning", "wash"], "cook": ["cook", "cooking", "chef", "kitchen"]}
+FILLER = {"influx", "surrounding", "around", "related", "lots", "lot", "more", "seeing", "see", "seen", "popular", "rising",
+          "new", "kind", "kinds", "type", "types", "genre", "people", "making", "made", "anyone", "trends", "themes",
+          "or", "also", "these", "those", "some", "got", "get", "being", "been", "has", "have", "was", "were", "would"}
+THEME_ASK = r"\b(influx|surrounding|wave|flood|lots of|trending|trend|theme|themes|popular|rising|any)\b|/"
 
 KINDS = [
     ("money", r"\b(money|revenue|earn|earns|earning|earnings|profit|profitable|income|robux|monetis|monetiz)"),
@@ -98,10 +109,15 @@ def classify(q, state, db):
     m = re.match(r"compare (.+?) (?:and|with|to) (.+)", ql)
     if m:
         return "compare", (m.group(1), m.group(2).rstrip("?"))
+    words = [w for w in norm(ql.replace("/", " ")).split() if w not in STOP]
+    tw = [w for w in words if w not in FILLER and len(w) > 2]
+    if re.search(THEME_ASK, ql) and 2 <= len(tw) <= 6 and not re.search(KINDS[0][1], ql):
+        best = find_games(state, db, ql, 1)
+        if not best or best[0][0] < 0.9:
+            return "themes", tw
     for kind, rx in KINDS:
         if re.search(rx, ql):
             return kind, None
-    words = [w for w in norm(ql).split() if w not in STOP]
     for mech, kws in C.MECHANICS.items():
         if any(w in kws or w.rstrip("s") in kws for w in words) and len(words) <= 2 and \
                 re.search(r"\b(games?|genre|mechanic|type)\b", ql):
@@ -200,10 +216,10 @@ def game_card(db, state, uid, ctx, compact=False):
         wf = (state.get("fc_meta") or {}).get("wf") or [1] * 7
         if v:
             fc = f.forecast_game(v, wf)
-            pt = f.peak_text(fc, fmt) if fc else None
+            pt = f.peak_text(fc, fmt, now) if fc else None
             cp = f.changepoint(v, wf)
             if pt:
-                lines.append(f"📈 Forecast: {pt}" + (" · 🧭 breakout just started" if cp and cp["fire"] else ""))
+                lines.append(f"📈 Forecast: {pt}" + (" · 🧭 breakout just started" if cp and cp["fire"] and f.TRUST["cp"] else ""))
         surv = {(x["kind"], x["label"]): x for x in state.get("fc_surv") or []}
         for kind, label in (("mech", mech[0] if mech else None), ("genre", g["genre"] if g else None), ("all", "all games")):
             x = surv.get((kind, label))
@@ -288,6 +304,86 @@ def theme_answer(db, state, word, ctx):
     return {"title": f"🌱 Theme: \"{w}\"", "description": "\n".join(lines)[:4000], "color": 0x2ECC71}
 
 
+def _stem(w):
+    """Plural -> singular, so a title-prefix match finds both ("boats" -> "boat" matches boat and boats)."""
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith("s") and not w.endswith("ss") and len(w) > 3:
+        return w[:-1]
+    return w
+
+
+def themes_answer(db, state, words, ctx):
+    """Several related title words treated as one theme: how big, how fast it's moving, who's new, what it earns."""
+    fmt, today = ctx["fmt"], ctx["today"]
+    roots = []
+    for w in words:
+        st = _stem(w)
+        for k, rel in RELATED.items():
+            if st == k or w in rel or st in rel:
+                roots += rel
+        roots.append(st)
+    roots = list(dict.fromkeys(r for r in roots if len(r) >= 3))
+    rx = re.compile(r"\b(" + "|".join(re.escape(r) for r in roots) + r")")
+    y = _s(_d(today) - timedelta(days=1))
+    wk = _s(_d(today) - timedelta(days=8))
+    young_cut = _s(_d(today) - timedelta(days=60))
+    def avg(r):
+        return (r["sum_ccu"] / r["n"]) if r["n"] and r["n"] >= 3 else (r["peak"] or 0) * 0.75
+    now, before, hits, per_word = {}, {}, {}, {}
+    for r in db.execute("""SELECT g.uid, g.name, g.created, d.day, d.peak, d.sum_ccu, d.n, d.rev_usd FROM daily d
+                           JOIN games g ON g.uid=d.uid WHERE d.day IN (?, ?)""", (y, wk)):
+        m = rx.search(norm(r["name"]))
+        if not m:
+            continue
+        (now if r["day"] == y else before)[r["uid"]] = avg(r)
+        if r["day"] == y:
+            hits[r["uid"]] = r
+            per_word.setdefault(m.group(1), []).append(avg(r))
+    if not now:
+        return {"title": "🌱 Theme: " + " / ".join(words), "color": 0x2ECC71,
+                "description": "No games with those words in the title in the bot's database yet."}
+    tot, tot_b = sum(now.values()), sum(v for u, v in before.items() if u in now)
+    both = [u for u in now if u in before]
+    chg = (sum(now[u] for u in both) / sum(before[u] for u in both) - 1) * 100 if both and sum(before[u] for u in both) else None
+    young = [u for u in now if (hits[u]["created"] or "")[:10] >= young_cut]
+    new7 = [u for u in now if (hits[u]["created"] or "")[:10] >= _s(_d(today) - timedelta(days=7))]
+    lines = [f"Title words: {', '.join(roots[:14])}",
+             f"**{len(now)}** games · **{fmt(tot)}** players on average yesterday"
+             + (f" · **{chg:+.0f}%** vs a week before (same games)" if chg is not None else ""),
+             f"🆕 {len(new7)} launched this week · {len(young)} under 2 months old · "
+             f"{sum(1 for u in young if now[u] >= 1000)} of those have 1K+ players"]
+    if chg is not None:
+        verdict = ("🔥 **Influx** — new games arriving and players growing" if len(new7) >= 5 and chg > 10
+                   else "📈 Players growing, but few new games yet — early" if chg > 10
+                   else "🧬 New games arriving, players flat — crowding" if len(new7) >= 5
+                   else "▫️ **No influx** — steady, few new games")
+        lines.append(verdict)
+    pw = sorted(per_word.items(), key=lambda kv: -sum(kv[1]))[:6]
+    lines.append("By word: " + " · ".join(f"\"{w}\" {len(v)} games, {fmt(sum(v))}" for w, v in pw))
+    link = lambda u: ctx["link"](u, state).strip("<>")
+    top = sorted(now, key=lambda u: -now[u])[:5]
+    lines.append("")
+    lines.append("**Biggest:** " + ", ".join(f"[{hits[u]['name'][:28]}]({link(u)}) {fmt(now[u])}" for u in top))
+    risers = sorted([u for u in young if before.get(u) and now[u] >= 300 and now[u] >= 1.2 * before[u]],
+                    key=lambda u: -(now[u] / before[u]))[:5]
+    if risers:
+        lines.append("**Young and rising:** " + ", ".join(f"[{hits[u]['name'][:28]}]({link(u)}) ×{now[u] / before[u]:.1f}" for u in risers))
+    try:
+        rev = []
+        for r in db.execute("SELECT uid, AVG(rev_usd) a FROM daily WHERE day>=? AND day<? AND rev_usd IS NOT NULL GROUP BY uid",
+                            (_s(_d(today) - timedelta(days=7)), today)):
+            if r["uid"] in now and now[r["uid"]] >= 400:
+                rev.append((r["a"] * 30.4, r["a"] * 30.4 / now[r["uid"]]))
+        if len(rev) >= 4:
+            lines.append(f"💰 {len(rev)} with earnings estimates · typical **{ctx['MO'].usd(median(m for m, _ in rev))}/month** · "
+                         f"**{ctx['MO'].usd(median(p for _, p in rev))}** per player")
+    except Exception:
+        pass
+    return {"title": "🌱 Theme: " + " / ".join(words[:5]), "description": "\n".join(lines)[:4000], "color": 0x2ECC71,
+            "footer": {"text": "players = average online yesterday · change = same games vs 8 days ago"}}
+
+
 def mechanic_answer(state, mech, ctx):
     fmt = ctx["fmt"]
     tab = ctx["I"].mechanic_table(state, ctx["today"])
@@ -318,7 +414,7 @@ def genre_answer(db, state, genre, ctx):
 
 
 def help_card(hint=None):
-    ex = ["`how is Wash the Car doing`", "`Be a Pirate vs Pilfering Pirates`", "`is chocolate trending`",
+    ex = ["`how is Wash the Car doing`", "`Be a Pirate vs Pilfering Pirates`", "`is chocolate trending`", "`any sea/boat/pirate games trending`",
           "`tycoon games`", "`what's rising`", "`which genres earn the most`", "`tycoon money`", "`long term games`", "`what is roblox rewarding`", "`what's coming up`"]
     d = (f"I couldn't match \"{hint}\" to a game or theme.\n\n" if hint else "") + "Try:\n" + "\n".join("• " + e for e in ex)
     return {"title": "❓ Ask the trend bot", "description": d, "color": 0x95A5A6}
@@ -328,6 +424,8 @@ def answer(db, state, question, ctx):
     """Returns (content line, [cards])."""
     kind, arg = classify(question, state, db)
     q = f"**Q:** {question[:200]}"
+    if kind == "themes":
+        return q, [themes_answer(db, state, arg, ctx)]
     if kind == "game":
         if not arg:
             return q, [help_card(question)]

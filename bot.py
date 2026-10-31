@@ -280,6 +280,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if restored:
         print(restored)
     state = load_state()
+    FC.set_trust(state)
     t = now_utc()
     today = day_str(t)
     api = RoWatcher(api_key, state, today)
@@ -882,11 +883,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 print(f"forecasts: {nf} peak forecasts, {ncp} breakout starts")
                 for gid, c in (state.get("_cp") or {}).items():
                     rec = games.get(gid)
-                    if not c["fire"] or not rec or not is_young(rec, today) or not cooled(state, "cp:" + gid, today, 14):
+                    if not FC.TRUST["cp"] or not c["fire"] or not rec or not is_young(rec, today) or not cooled(state, "cp:" + gid, today, 14):
                         continue
                     f = (state.get("_fc") or {}).get(gid)
                     lf = (state.get("_life") or {}).get(gid)
-                    pt = FC.peak_text(f, fmt)
+                    pt = FC.peak_text(f, fmt, c.get("players"))
                     add("cp", gid, f"🧭 Breakout starting: {rec['name'][:70]}",
                         f"Growth just switched to about **{(math.exp(c['growth']) - 1) * 100:.0f}% a day** "
                         f"(was {(math.exp(c['old']) - 1) * 100:+.0f}%) · {c['prob'] * 100:.0f}% sure the change is real."
@@ -1425,6 +1426,7 @@ def build_digest(state, today, cutoff, t=None):
 
 def run_ask(question, dry_run=False):
     state = load_state()
+    FC.set_trust(state)
     if not state.get("games"):
         post_discord(os.environ.get("DISCORD_DIGEST_WEBHOOK"), "The bot has no data yet — ask again after a few runs.", dry_run, "ask")
         return

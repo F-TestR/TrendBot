@@ -349,6 +349,7 @@ def update(db, state, today, young_ids, mechanics_of):
     if state.get("fc_bt_day") is None or (_d(today) - _d(state["fc_bt_day"])).days >= 6:
         try:
             state["fc_bt"] = {"scurve": backtest_scurve(series, wf, today), "cp": backtest_cp(series, wf)}
+            set_trust(state)
             state["fc_bt_day"] = today
         except Exception as e:
             print(f"forecast backtest failed: {e}")
@@ -358,9 +359,30 @@ def update(db, state, today, young_ids, mechanics_of):
     return len(fc), sum(1 for c in cp.values() if c["fire"])
 
 
-def peak_text(f, fmt):
+# Self-trust: a forecast or signal is only shown as a number / alert once its own back-test says it works.
+TRUST = {"peak": True, "cp": True}
+
+
+def set_trust(state):
+    """Read the latest back-test into TRUST. Untested = trusted for now; tested and weak = hidden."""
+    bt = state.get("fc_bt") or {}
+    s, c = bt.get("scurve") or {}, bt.get("cp") or {}
+    TRUST["peak"] = not (s.get("n", 0) >= C.FC_TRUST_MIN_N and (s.get("within2x") or 0) < C.FC_TRUST_WITHIN2X)
+    TRUST["cp"] = not (c.get("n", 0) >= C.CP_TRUST_MIN_N and (c.get("hit") or 0) < C.CP_TRUST_LIFT * (c.get("base") or 0))
+    return TRUST
+
+
+def rough(peak, now):
+    """Forecast in words when the numbers aren't accurate enough yet."""
+    r = peak / max(now, 1)
+    return "big rise ahead" if r >= 5 else "more growth ahead" if r >= 2 else "close to its peak"
+
+
+def peak_text(f, fmt, now=None):
     if not f:
         return None
+    if not TRUST["peak"] and f["status"] in ("rising", "early") and now:
+        return rough(f["peak"], now) + " (rough — forecasts still being tuned)"
     if f["status"] == "past peak":
         return "past its peak"
     if f["status"] == "steady":
@@ -380,10 +402,14 @@ def weekly_lines(state, fmt):
     if s.get("median_err") is not None:
         lines.append(f"📈 Peak forecasts (made on day {C.FC_BACKTEST_DAYS}): typically off by **{s['median_err'] * 100:.0f}%**; "
                      f"{s['within2x'] * 100:.0f}% within 2× of the real peak ({s['n']} games)")
+    if s.get("median_err") is not None and not TRUST["peak"]:
+        lines.append(f"   ↳ not accurate enough to quote numbers yet (needs {C.FC_TRUST_WITHIN2X * 100:.0f}% within 2×): "
+                     "the bot says \"big rise ahead / more growth / near its peak\" instead")
     c = bt.get("cp") or {}
     if c.get("hit") is not None:
         lines.append(f"🧭 Breakout-start signal: followed by 2× players within 2 weeks **{c['hit'] * 100:.0f}%** of the time "
-                     f"vs {c['base'] * 100:.0f}% for any young game ({c['n']} firings)")
+                     f"vs {c['base'] * 100:.0f}% for any young game ({c['n']} firings)"
+                     + ("" if TRUST["cp"] else " · **alerts paused** until it beats that"))
     surv = state.get("fc_surv") or []
     allg = next((x for x in surv if x["kind"] == "all"), None)
     if allg and allg["median"] is not None:

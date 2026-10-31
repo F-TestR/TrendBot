@@ -16,6 +16,7 @@ from statistics import median
 
 import config as C
 import discord_out as DO
+import forecast as FC
 
 BLUE, RED, GREEN, PINK, AMBER, PURPLE, TEAL = 0x5865F2, 0xED4245, 0x2ECC71, 0xE91E63, 0xFAA61A, 0x8E7CC3, 0x1ABC9C
 LEGEND = ("Trend Score = chance (%) its players double within 2 weeks, combining every signal · "
@@ -128,7 +129,7 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
         pm, pr = preds.get(gid), (promo.get(gid) or {}).get("p")
         pt = (badges.get(gid) or {}).get("playtime")
         fc = (state.get("_fc") or {}).get(gid) or {}
-        cpf = ((state.get("_cp") or {}).get(gid) or {}).get("fire")
+        cpf = ((state.get("_cp") or {}).get(gid) or {}).get("fire") and FC.TRUST["cp"]
         fpeak = fc.get("peak") if fc.get("status") in ("rising", "early") and fc.get("peak", 0) >= 1.5 * max(players, 1) else None
         new = r["first_seen"] in (today, yday) and not ctx["is_base"](state, r)
         y = yts.get(gid) or {}
@@ -140,7 +141,7 @@ def watch_board(state, today, cutoff, t, ctx, limit=8):
         if cpf:
             tags.append("🧭")
         if fpeak:
-            tags.append(f"📈{ctx['fmt'](fpeak)}")
+            tags.append(f"📈{ctx['fmt'](fpeak)}" if FC.TRUST["peak"] else "📈")
         if pr is not None and pr >= 0.15:
             tags.append(f"🧠{pr * 100:.0f}%")
         if h["score"] >= 25:
@@ -180,6 +181,28 @@ def board_line(x, ctx, state):
 
 # ---------------------------------------------------------------- digest ---
 
+SEASONS = [("Halloween", "🎃", r"🎃|👻|🦇|🕸|\bhalloween\b|\bspooky\b|\btrick or treat\b"),
+           ("Christmas", "🎄", r"🎄|🎅|❄️|☃|⛄|\bchristmas\b|\bxmas\b|\bwinter\b|\bholiday\b"),
+           ("Thanksgiving", "🦃", r"🦃|\bthanksgiving\b"), ("Valentine's", "💘", r"💘|💝|\bvalentine"),
+           ("Easter", "🐰", r"🐰|🥚🐣|\beaster\b"), ("Summer", "☀️", r"\bsummer\b|🏖")]
+
+
+def season_line(state, min_players=400):
+    """'🎃 Halloween events in 24% of games' when a seasonal event is big enough to skew the numbers."""
+    names = [(r.get("name") or "") for r in state["games"].values() if (r.get("last") or 0) >= min_players]
+    if len(names) < 100:
+        return None
+    best = None
+    for label, icon, rx in SEASONS:
+        share = sum(1 for n in names if re.search(rx, n, re.I)) / len(names)
+        if share >= C.SEASON_SKEW_SHARE and (not best or share > best[2]):
+            best = (label, icon, share)
+    if not best:
+        return None
+    return (f"{best[1]} **{best[0]} season:** {best[2] * 100:.0f}% of games are running {best[0]} events — growth, earnings "
+            f"and \"trending\" numbers are inflated by them; expect a broad dip when it ends")
+
+
 def digest_cards(db, state, today, cutoff, t, ctx):
     S, T, FUT, fmt = ctx["S"], ctx["T"], ctx["FUT"], ctx["fmt"]
     games = state["games"]
@@ -214,7 +237,8 @@ def digest_cards(db, state, today, cutoff, t, ctx):
             used.add(x["gid"])
             when = f" by {_d(x['fc']['peak_day']).strftime('%a')}" if x["fc"].get("peak_day") else ""
             head.append(f"📈 **Biggest forecast:** {name_link(x['name'], lk(x['gid']))} — {fmt(x['players'])} now, "
-                        f"on track for ~{fmt(x['fc']['peak'])}{when}")
+                        + (f"on track for ~{fmt(x['fc']['peak'])}{when}" if FC.TRUST["peak"]
+                           else FC.rough(x["fc"]["peak"], x["players"]) + " (rough)"))
     x = pick(allb, "heat", 30)
     if x:
         head.append(f"🔥 **Hottest across platforms:** {name_link(x['name'], lk(x['gid']))} — heat {x['heat']}")
@@ -250,6 +274,9 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     if ov:
         head.append(f"📥 **Also flagged** (kept out of #alerts to stay readable): " + "; ".join(o for o in ov[:5])
                     + (f" (+{len(ov) - 5} more)" if len(ov) > 5 else ""))
+    sl = season_line(state)
+    if sl:
+        head.append(sl)
     if not head:
         head.append("Quiet day — nothing crossed the alert thresholds. Full tables are in the dashboard.")
     dbs = state.get("_dbstats") or {}
@@ -325,7 +352,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
         wl.append(f"{arrow} **{name_link(w['label'], lk(w['gid']))}** · " + " · ".join(bits))
     yu = state["requests"].get(yday, 0)
     c5 = card("👀 Watchlist", wl, AMBER, max_lines=12,
-              footer=f"vs same day last week · ↩ returning players · RoWatcher {yu}/1,000 requests yesterday · "
+              footer=f"vs same day last week · RoWatcher {yu}/1,000 requests yesterday · "
                      + (f"live dashboard: {_pages()}" if _pages() else "full tables in dashboard.html")) if wl else None
     state["_head"] = head
     state["_board"] = board
@@ -483,7 +510,7 @@ def weekly_cards(db, state, today, ctx, table):
     if sk:
         el.append("🔁 Best 7-day streak retention: " + ", ".join(f"{name_link(nm(u), lk(u), 22)} {_pct(s, 1)}" for s, u in sk))
     c_en = card("⏱ Engagement (from badges)", el, AMBER, optional=True,
-                footer="players/day from badge win rates · ↩ returning players · streak = share of new players reaching it")
+                footer="players/day from badge win rates · streak = share of new players reaching it")
 
     # what lasting games share + survival check
     sl = []
@@ -538,6 +565,9 @@ def weekly_cards(db, state, today, ctx, table):
     c_fc = card("📈 Forecasts & how long hits last", fl, TEAL, optional=True,
                 footer="peak = S-curve fitted to each game's rise · start signal = Bayesian change-point detection · "
                        "lifespan = Kaplan-Meier half-life (days until below half the peak)")
+    sl = season_line(state)
+    if sl:
+        head.insert(0, sl)
     if not head:
         head.append("Still building history — most sections fill in over the first 2–3 weeks.")
     c0 = card(f"🗓️ Weekly report · week to {_d(today).strftime('%a %d %b')}", head[:7], BLUE,

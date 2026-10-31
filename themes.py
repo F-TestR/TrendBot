@@ -17,8 +17,10 @@ Every day the bot works out, for every theme:
   upstream   whether it is rising on Steam / YouTube trending / Wikipedia / Twitch,
              or is in season
 
-A theme "breaks out" when it goes from at most 1 game with 2K+ players to at least
-THEME_BREAKOUT_GAMES such games within LABEL_DAYS days. The model learns, from every
+A theme "breaks out" when it goes from at most 1 YOUNG game (under THEME_YOUNG_DAYS days old) with 2K+
+players to at least THEME_BREAKOUT_GAMES such young games within LABEL_DAYS days. (Counting every 2K+
+game made 97% of theme-days "breakouts": old hits and the bot discovering more games over time
+both look like growth. Young games only measures what we care about: new games succeeding.) The model learns, from every
 past theme-day, which of the numbers above came before breakouts. The indicator
 report tests each signal on its own: how often it was followed by a breakout and
 how many days of warning it gave.
@@ -98,7 +100,7 @@ def ensure(db):
     cols = {r[1] for r in db.execute("PRAGMA table_info(theme_daily)")}
     if "up_future" not in cols:
         db.execute("ALTER TABLE theme_daily ADD COLUMN up_future REAL")
-    for c in ("sh3", "sh3_prev"):
+    for c in ("sh3", "sh3_prev", "yhits"):
         if c not in cols:
             db.execute(f"ALTER TABLE theme_daily ADD COLUMN {c} INTEGER")
 
@@ -168,6 +170,7 @@ def compute_days(db, days, rw_trends):
     for day in sorted(days):
         agg = {}
         d7, d14 = _s(_d(day) - timedelta(days=7)), _s(_d(day) - timedelta(days=14))
+        young_cut = _s(_d(day) - timedelta(days=C.THEME_YOUNG_DAYS))
         for uid, ps in peaks.items():
             g = games.get(uid)
             if not g:
@@ -182,13 +185,15 @@ def compute_days(db, days, rw_trends):
             if best < C.THEME_MIN_GAME_CCU:
                 continue
             for k in keys.get(uid, ()):
-                a = agg.setdefault(k, {"ccu": 0, "games": 0, "hits": 0, "new7": 0, "new7_prev": 0,
+                a = agg.setdefault(k, {"ccu": 0, "games": 0, "hits": 0, "yhits": 0, "new7": 0, "new7_prev": 0,
                                        "tiny7": 0, "studios": set(), "charts": 0})
                 if p:
                     a["ccu"] += p
                     a["games"] += 1
                     if p >= C.THEME_HIT_CCU:
                         a["hits"] += 1
+                        if created and created >= young_cut:
+                            a["yhits"] += 1
                     if uid in charts.get(day, ()):
                         a["charts"] += 1
                 if is_new:
@@ -215,10 +220,10 @@ def compute_days(db, days, rw_trends):
                          len(a["studios"]), rn, a["charts"], int(yt3), int(yt3p),
                          upscore(k, "steam", day), upscore(k, "wikipedia", day), upscore(k, "yt_trending", day),
                          upscore(k, "twitch_top", day), upscore(k, "season", day), upscore(k, "future", day),
-                         int(sh3), int(sh3p)))
+                         int(sh3), int(sh3p), a["yhits"]))
         db.executemany("""INSERT OR REPLACE INTO theme_daily(theme, day, ccu, games, hits, new7, new7_prev, tiny7, studios7,
-                          renames7, charts, yt3, yt3_prev, up_steam, up_wiki, up_ytt, up_tw, season, up_future, sh3, sh3_prev)
-                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
+                          renames7, charts, yt3, yt3_prev, up_steam, up_wiki, up_ytt, up_tw, season, up_future, sh3, sh3_prev, yhits)
+                          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", rows)
         written += len(rows)
     return written
 
@@ -233,11 +238,14 @@ def update(db, state, today):
         return 0
     start = max(_d(first) + timedelta(days=7), _d(today) - timedelta(days=C.THEME_HISTORY_DAYS))
     days, d = [], start
+    redo = W.meta_get(db, "theme_version") != C.THEME_VERSION   # breakout definition changed -> rebuild history
     while _s(d) <= yday:
-        if _s(d) not in have or _s(d) >= _s(_d(yday) - timedelta(days=2)):  # refresh last few days
+        if redo or _s(d) not in have or _s(d) >= _s(_d(yday) - timedelta(days=2)):  # refresh last few days
             days.append(_s(d))
         d += timedelta(days=1)
     n = compute_days(db, days, state.get("rw_trends", []))
+    if redo:
+        W.meta_set(db, "theme_version", C.THEME_VERSION)
     cut = _s(_d(today) - timedelta(days=C.THEME_KEEP_DAYS))
     db.execute("DELETE FROM theme_daily WHERE day < ?", (cut,))
     db.execute("DELETE FROM renames WHERE day < ?", (cut,))
@@ -298,10 +306,12 @@ def _features(r, hist, day):
 
 
 def breakout_day(hist):
-    """First day a theme reached THEME_BREAKOUT_GAMES hits after having <= 1."""
+    """First day a theme reached THEME_BREAKOUT_GAMES young hits after having <= 1."""
     was_small = False
     for day in sorted(hist):
-        h = hist[day]["hits"]
+        h = hist[day].get("yhits")
+        if h is None:
+            continue
         if h <= 1:
             was_small = True
         elif h >= C.THEME_BREAKOUT_GAMES and was_small:
@@ -317,7 +327,7 @@ def examples(db, today, predict_only=False):
         ds = sorted(hist)
         for i, day in enumerate(ds):
             r = hist[day]
-            if r["hits"] > 1 or (bday and day >= bday):
+            if (r.get("yhits") or 0) > 1 or (bday and day >= bday):
                 if bday and day >= bday:
                     break
                 continue
@@ -461,8 +471,8 @@ def indicator_report(db, today):
 
 def report_lines(db, today, fmt):
     st = W.meta_get(db, "theme_model_status", {}) or {}
-    lines = [f"🌱 **Theme model** (a theme \"breaks out\" when {C.THEME_BREAKOUT_GAMES}+ of its games pass "
-             f"{fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days)"]
+    lines = [f"🌱 **Theme model** (a theme \"breaks out\" when {C.THEME_BREAKOUT_GAMES}+ of its games under "
+             f"{C.THEME_YOUNG_DAYS} days old pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days)"]
     if not st.get("trained"):
         lines.append(f"• Still collecting — {st.get('why', 'not trained yet')}.")
     else:

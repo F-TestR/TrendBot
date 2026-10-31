@@ -18,6 +18,8 @@ So for any game with a badge earned by at least ~1% of players:
 And when the game has a "welcome / you played" badge (awarded on first join):
   new players per day          = its past-day count
   new-player share             = its win rate          -> returning share = 1 - win rate
+                                 (DISABLED: against Fisch's real dashboard this read 12% returning vs 91%
+                                  real — welcome badges are often re-made for events, so everyone re-earns them)
   lifetime playtime per player = minutes played per day / new players per day   (steady state)
   funnels                      = other badges' past-day count / new players per day
                                  e.g. "7-day streak": share of new players who ever hit a 7-day streak
@@ -331,7 +333,7 @@ def collect(db, state, t):
         streak7 = next((s for s in m["streaks"] if 5 <= s[0] <= 10 and s[2] is not None), None)
         bstate[uid] = {"day": today, "dau": m["dau"], "playtime": round(m["minutes_per_dau"], 1) if m["minutes_per_dau"] else None,
                        "sessions": round(m["sessions_per_dau"], 2) if m["sessions_per_dau"] else None,
-                       "returning": round(1 - m["new_share"], 3) if m["new_share"] is not None else None,
+                       "returning": round(1 - m["new_share"], 3) if m["new_share"] is not None and C.BADGE_RETURNING else None,
                        "new": m["new_per_day"], "lifetime": round(m["lifetime_min"]) if m["lifetime_min"] else None,
                        "first_step": round(m["first_step_share"], 3) if m["first_step_share"] is not None else None,
                        "streak7": (streak7[0], round(streak7[2], 4)) if streak7 else None,
@@ -357,7 +359,7 @@ def week_medians(db, wed):
         x = by.setdefault(r["uid"], {"p": [], "r": []})
         if r["minutes_per_dau"] is not None:
             x["p"].append(r["minutes_per_dau"])
-        if r["new_share"] is not None:
+        if r["new_share"] is not None and C.BADGE_RETURNING:
             x["r"].append(1 - r["new_share"])
     return {u: {"playtime": median(x["p"]) if x["p"] else None, "returning": median(x["r"]) if x["r"] else None}
             for u, x in by.items()}
@@ -389,7 +391,7 @@ def funnel_lines(db, uid, name_of):
         bits.append(f"~{r['minutes_per_dau']:.0f} min each per day")
     if r["sessions_per_dau"]:
         bits.append(f"{r['sessions_per_dau']:.1f} sessions each")
-    if r["new_share"] is not None:
+    if r["new_share"] is not None and C.BADGE_RETURNING:
         bits.append(f"{_pct(1 - r['new_share'])} returning")
     out = ["• " + " · ".join(bits)]
     steps = []
