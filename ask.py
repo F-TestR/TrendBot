@@ -36,8 +36,10 @@ RELATED = {"pirate": ["pirate", "plunder", "buccaneer", "treasure", "captain"], 
            "clean": ["clean", "cleaning", "wash"], "cook": ["cook", "cooking", "chef", "kitchen"]}
 FILLER = {"influx", "surrounding", "around", "related", "lots", "lot", "more", "seeing", "see", "seen", "popular", "rising",
           "new", "kind", "kinds", "type", "types", "genre", "people", "making", "made", "anyone", "trends", "themes",
-          "or", "also", "these", "those", "some", "got", "get", "being", "been", "has", "have", "was", "were", "would"}
-THEME_ASK = r"\b(influx|surrounding|wave|flood|lots of|trending|trend|theme|themes|popular|rising|any)\b|/"
+          "or", "also", "these", "those", "some", "got", "get", "being", "been", "has", "have", "was", "were", "would",
+          "taking", "off", "blowing", "catching", "becoming", "picking", "getting", "big", "thing", "hype", "viral", "yet"}
+THEME_ASK = (r"\b(influx|surrounding|wave|flood|lots of|trending|trend|theme|themes|popular|rising|any|taking off|"
+             r"blowing up|catching on|becoming|picking up|getting big|a thing|hype|viral)\b|/")
 
 KINDS = [
     ("money", r"\b(money|revenue|earn|earns|earning|earnings|profit|profitable|income|robux|monetis|monetiz)"),
@@ -111,10 +113,11 @@ def classify(q, state, db):
         return "compare", (m.group(1), m.group(2).rstrip("?"))
     words = [w for w in norm(ql.replace("/", " ")).split() if w not in STOP]
     tw = [w for w in words if w not in FILLER and len(w) > 2]
-    if re.search(THEME_ASK, ql) and 2 <= len(tw) <= 6 and not re.search(KINDS[0][1], ql):
+    if re.search(THEME_ASK, ql) and 1 <= len(tw) <= 6 and not re.search(KINDS[0][1], ql):
         best = find_games(state, db, ql, 1)
         if not best or best[0][0] < 0.9:
-            return "themes", tw
+            # "sea/boats/pirates" = alternatives; "code rot" = one phrase
+            return "themes", (tw if re.search(r"[/,]|\bor\b", ql) or len(tw) == 1 else [" ".join(tw)])
     for kind, rx in KINDS:
         if re.search(rx, ql):
             return kind, None
@@ -324,6 +327,8 @@ def themes_answer(db, state, words, ctx):
                 roots += rel
         roots.append(st)
     roots = list(dict.fromkeys(r for r in roots if len(r) >= 3))
+    if any(" " in r for r in roots):   # phrase: also catch the joined spelling ("code rot" -> "coderot")
+        roots += [r.replace(" ", "") for r in roots if " " in r]
     rx = re.compile(r"\b(" + "|".join(re.escape(r) for r in roots) + r")")
     y = _s(_d(today) - timedelta(days=1))
     wk = _s(_d(today) - timedelta(days=8))
