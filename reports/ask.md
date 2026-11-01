@@ -1,17 +1,16 @@
 # Latest question
 
-**Q:** is code rot taking off
+**Q:** any new pirate games?
 
-## 🔎 Off-Roading Epic
+## 🌱 Theme: pirate
 
-**4.1K** playing · 2091 days old · Simulation
-📊 Sun 3.1K avg vs 3.8K a week before (**-20%**)
-Last 14 days: `▃▃█▃▃▂▃▃▄▄▁`
-🔁 weekday hold **1.19×** typical · stickiness **70**/100 · promising
-💰 ~**$8.3K/month** (estimate)
-🕹️ Sessions ~17 min — 68th percentile (Roblox: 13.5 typical, 25.8 top-10%)
-📈 Forecast: steady
-⏳ Simulation hits usually keep half their peak players ~9 days
-🧠 Promotion chance next 7 days: **9%** · weak spot: revenue per player
+Title words: pirate, plunder, buccaneer, treasure, captain
+**7** games · **25.6K** players on average yesterday · **-32%** vs a week before (same games)
+🆕 0 launched this week · 2 under 2 months old · 2 of those have 1K+ players
+▫️ **No influx** — steady, few new games
+By word: "treasure" 5 games, 20.2K · "pirate" 2 games, 5.4K
 
-_Did you mean: code[durr] Hot's RNG _
+**Biggest:** [Build A Boat For Treasure](https://rowatcher.com/games/210851291) 13.8K, [[UPD] +1 Lift Rock for Treas](https://www.roblox.com/games/102555956950143) 3.2K, [Be a Pirate](https://www.roblox.com/games/78265060714011) 2.7K, [Pilfering Pirates](https://rowatcher.com/games/2220495353) 2.7K, [[W7] +1 Chop Trees for Treas](https://www.roblox.com/games/110730550789828) 2.1K
+💰 6 with earnings estimates · typical **$36K/month** · **$11** per player
+
+_players = average online yesterday · change = same games vs 8 days ago_
