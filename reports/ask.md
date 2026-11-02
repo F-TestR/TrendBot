@@ -1,6 +1,6 @@
 # Latest question
 
-**Q:** how is Voyagers doing
+**Q:** how is VOYAGERS doing
 
 ## 🌱 Theme: "voyager"
 
