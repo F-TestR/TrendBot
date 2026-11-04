@@ -1,54 +1,54 @@
-# Daily digest · 2026-11-03
+# Daily digest · 2026-11-04
 
-## 📊 Daily digest · Tue 03 Nov
+## 📊 Daily digest · Wed 04 Nov
 
-⭐ **Highest Trend Score:** [(🎃) Ragdoll Sandbox](https://www.roblox.com/games/113398609378596) — **95** (players ×30.1 vs last week, forecast: big rise ahead)
-🚀 **Biggest riser:** [+1 Spider Arm🕷️](https://www.roblox.com/games/117734411290994) — ×87.7 to 17.2K
-🧠 **Roblox likely to push next:** [(🎃) Clean the Moon!](https://www.roblox.com/games/76678170614451) — 59%
-📈 **Biggest forecast:** [📸 Say Cheese! (STORY)](https://www.roblox.com/games/100453542816833) — 7.6K now, more growth ahead (rough)
-🔥 **Hottest across platforms:** [Run For Eggs](https://rowatcher.com/games/10767735339) — heat 48
+⭐ **Highest Trend Score:** [Chop and Steal an Egg](https://www.roblox.com/games/135361740992269) — **97** (players ×15.9 vs last week, forecast: big rise ahead)
+🚀 **Biggest riser:** [Evermore High 🦢](https://www.roblox.com/games/138636753681976) — ×70.8 to 10.1K
+🧠 **Roblox likely to push next:** [(🎙️) Closing Shift](https://www.roblox.com/games/118297934142609) — 83%
+📈 **Biggest forecast:** [Tesla Roadster Chase](https://www.roblox.com/games/122379697375766) — 10.0K now, more growth ahead (rough)
+🔥 **Hottest across platforms:** [(🎃) Clean the Moon!](https://www.roblox.com/games/76678170614451) — heat 71
 ⏱ **Most playtime per player:** [🎤 Build Your Own Idol Group! ⭐ TH…](https://www.roblox.com/games/100472910374513) — 90 min/day
 🌱 **Theme to watch:** "fish" — 95%, 0 new games this week
-🔮 **Coming up:** Ray's Hotel Adventures (out now) — 🌉 1 new Roblox game already
-⚠️ **Watchlist falling:** Eat Everything In A Grocery Store -52% week on week
-📥 **Also flagged** (kept out of #alerts to stay readable): 🚀 Surging: [🎃] Clean the Moon!; 🚀 Surging: [🛠️🗺️] Ragdoll Physics 2 🩸; 🌍 Climbing abroad first: [🎃] Bike For Egg!; 🌍 Climbing abroad first: 📱 Fix a Phone!; 🌍 Climbing abroad first: 1v1 Minigame Duel (+114 more)
+🔮 **Coming up:** The Last Trophy (out now) — 🌉 1 new Roblox game already
+⚠️ **Watchlist falling:** Cat Battles -59% week on week
+📥 **Also flagged** (kept out of #alerts to stay readable): 🌍 Climbing abroad first: [🎃] Airport Security (Anomaly) ✈️; 🌍 Climbing abroad first: [🌾] Farming Incremental; 🌍 Climbing abroad first: Punch Walls to Escape; 🌍 Climbing abroad first: HUGE UPDATE GoFaster [BETA]; 🌍 Climbing abroad first: Chop and Steal an Egg (+143 more)
 _…and 1 more_
 
-_7,702 games tracked · 83,017 game-days stored · comparing Monday with the same kind of day last week_
+_7,765 games tracked · 88,037 game-days stored · comparing Tuesday with the same kind of day last week_
 
 ## 🎮 Games to watch · ranked by Trend Score
 
-**95** · **[(🎃) Ragdoll Sandbox](https://www.roblox.com/games/113398609378596)** — 11.8K playing · 18d old · players ×30.1 vs last week · forecast: big rise ahead
-**95** · **[Can You Pass A Driving Test?](https://www.roblox.com/games/91652462379782)** — 5.7K playing · 16d old · players ×44.2 vs last week · forecast: big rise ahead
-**94** · **[Chop and Steal an Egg](https://www.roblox.com/games/135361740992269)** — 4.3K playing · 16d old · players ×12.9 vs last week · forecast: big rise ahead
-**94** · **[Evermore High 🦢](https://www.roblox.com/games/138636753681976)** — 9.7K playing · 43d old · players ×71.6 vs last week · forecast: big rise ahead
-**94** · **[🎬 Make a Cartoon!](https://www.roblox.com/games/139611482808453)** — 6.7K playing · 24d old · players ×41.1 vs last week · forecast: big rise ahead
-**89** · **[Punch Out Of Prison](https://www.roblox.com/games/87263150662976)** — 4.4K playing · 18d old · players ×8.8 vs last week · forecast: big rise ahead
-**88** · **[blind but dangerous](https://www.roblox.com/games/112270456220062)** — 2.3K playing · 15d old · players ×6.8 vs last week · forecast: big rise ahead
-**88** · **[🥀Drain All Life](https://rowatcher.com/games/10770784203)** — 1.1K playing · 20d old · players ×8.5 vs last week · forecast: big rise ahead
+**97** · **[Chop and Steal an Egg](https://www.roblox.com/games/135361740992269)** — 4.1K playing · 17d old · players ×15.9 vs last week · forecast: big rise ahead
+**95** · **[Can You Pass A Driving Test?](https://www.roblox.com/games/91652462379782)** — 8.3K playing · 17d old · players ×10.5 vs last week · forecast: big rise ahead
+**93** · **[(BETA) Anime vs Anime!](https://www.roblox.com/games/80007766855741)** — 4.2K playing · 38d old · players ×15.1 vs last week · forecast: big rise ahead
+**92** · **[الشايب (رعب)](https://www.roblox.com/games/105392365120750)** — 3.6K playing · 19d old · players ×21.8 vs last week · forecast: big rise ahead
+**90** · **[Ride Level 1-100 Pets](https://rowatcher.com/games/10769541433)** — 1.9K playing · 30d old · players ×11.1 vs last week · forecast: big rise ahead
+**89** · **[Steal A Balut](https://www.roblox.com/games/90773083590844)** — 9.9K playing · 17d old · players ×11.0 vs last week · forecast: big rise ahead
+**89** · **[Evermore High 🦢](https://www.roblox.com/games/138636753681976)** — 10.1K playing · 44d old · players ×70.8 vs last week · forecast: big rise ahead
+**87** · **[Ragdoll Sandbox](https://www.roblox.com/games/113398609378596)** — 13.0K playing · 19d old · players ×24.8 vs last week · forecast: big rise ahead
 
 _Trend Score = chance (%) its players double within 2 weeks, combining every signal · reasons = what pushed it up most · starting formula_
 
 ## 🌱 Trends
 
-🌱 "fish" · **95%** · 15 games, 0 new · 96.2K players
-🌱 "blox" · **95%** · 7 games, 0 new · 421.7K players
-🌱 "Base Defense & Tower Building" · **95%** · 23 games, 0 new · 128.5K players
-🌱 "Weather & Tornado Mechanics" · **95%** · 24 games, 0 new · 61.6K players
-🧬 "steal" in 21 new titles: [🎃] Steal A Monkey Egg, Steal An Exu, Build a Raft & Steal Fi…
-🧬 "escape" in 14 new titles: Punch Walls to Escape, [UPD] Escape Prison wit…, [PETS] +1 Fish Keyboard…
-🧬 "egg" in 13 new titles: [🎃] Steal A Monkey Egg, Dig and Steal an Egg, Mog to Steal an Egg
-🖼️ Icon copies: Dressmaker's Dream ≈ [UPD] Something is Wr…
-🌉 Reaching Roblox from outside: "pokemon" (1), "splash" (1)
+🌱 "fish" · **95%** · 13 games, 0 new · 94.8K players
+🌱 "town" · **95%** · 9 games, 0 new · 11.0K players
+🌱 "survival" · **95%** · 17 games, 0 new · 39.5K players
+🌱 "Weather & Tornado Mechanics" · **95%** · 24 games, 0 new · 53.5K players
+🧬 "steal" in 20 new titles: Build a Raft & Steal Fi…, Dig and Steal an Egg, Steal A Balut
+🧬 "egg" in 15 new titles: Dig and Steal an Egg, Mog to Steal an Egg, Mine and Steal an Egg
+🧬 "escape" in 14 new titles: [UPD] Escape Prison wit…, +1 Fish Keyboard Escape, [CH3] Punch Walls To Es…
+🌉 Reaching Roblox from outside: "call" (1), "don splash" (1), "last" (1), "splash" (1)
+🎬 Rising in YouTube Shorts: "alien", "ufo", "#youtubeshorts", "alien mutation", "run"
 _…and 1 more_
 
 _🌱 theme model chance · 🧬 copy wave · 🌉 outside-Roblox word now in new games_
 
 ## 🔮 Coming up & outside Roblox
 
-🔮 **Drive - The Pretenders** · out now · 13 older Roblox games
+🔮 **Drive - The Pretenders** · out now · 12 older Roblox games
 🔮 **Collision Course** · out now · ✨ not on Roblox yet
-🔮 **Dead-End Job** · out now · 5 older Roblox games
+🔮 **Dead-End Job** · out now · 4 older Roblox games
 🔮 **The Mongoose** · out now · ✨ not on Roblox yet
 🔮 **ArcanoPlay** · date tbc · ✨ not on Roblox yet
 🔮 **Plunder Bay** · date tbc · ✨ not on Roblox yet
@@ -60,14 +60,14 @@ _✨ not on Roblox yet = first-mover chance · 🌉 already appearing in new Rob
 
 ## 👀 Watchlist
 
-🔻 **[Sell Fries! (Anomaly)](https://www.roblox.com/games/94891079210424)** · 39.8K · -24% · ⏱62m
-🔻 **[Cat Battles](https://www.roblox.com/games/130906410042392)** · 22.0K · -51%
-🔻 **[Eat Everything In A Grocery Store](https://www.roblox.com/games/128201586883489)** · 6.3K · -52% · ⏱38m
-🔺 **[Clone Baby Care (Anomaly)](https://www.roblox.com/games/87346021451395)** · 19.7K · +20%
-🔺 **[What If Disasters](https://www.roblox.com/games/109440485612336)** · 17.3K · +7% · ⏱61m
-🔻 **[Facecard: Makeup Showdown](https://www.roblox.com/games/72293101527469)** · 9.4K · -41% · ⏱55m
-▫️ **[Kukirin Life](https://www.roblox.com/games/122840796290491)** · 46.4K · -2%
-🔺 **[Illegal Soccer](https://www.roblox.com/games/126987974021910)** · 54.1K · +6% · ⏱52m
-🔻 **[100 Days at Sea](https://www.roblox.com/games/70411440483149)** · 16.1K · -17% · ⏱61m
+🔻 **[Sell Fries! (Anomaly)](https://www.roblox.com/games/94891079210424)** · 32.6K · -28% · ⏱61m
+🔻 **[Cat Battles](https://www.roblox.com/games/130906410042392)** · 17.4K · -59%
+🔻 **[Eat Everything In A Grocery Store](https://www.roblox.com/games/128201586883489)** · 4.6K · -58% · ⏱39m
+🔻 **[Clone Baby Care (Anomaly)](https://www.roblox.com/games/87346021451395)** · 13.4K · -9%
+🔻 **[What If Disasters](https://www.roblox.com/games/109440485612336)** · 12.7K · -24% · ⏱59m
+🔻 **[Facecard: Makeup Showdown](https://www.roblox.com/games/72293101527469)** · 8.4K · -42% · ⏱55m
+🔻 **[Kukirin Life](https://www.roblox.com/games/122840796290491)** · 41.5K · -6%
+▫️ **[Illegal Soccer](https://www.roblox.com/games/126987974021910)** · 47.5K · +1% · ⏱50m
+🔻 **[100 Days at Sea](https://www.roblox.com/games/70411440483149)** · 13.2K · -21% · ⏱64m
 
-_vs same day last week · RoWatcher 298/1,000 requests yesterday · live dashboard: https://f-testr.github.io/TrendBot/_
+_vs same day last week · RoWatcher 287/1,000 requests yesterday · live dashboard: https://f-testr.github.io/TrendBot/_
