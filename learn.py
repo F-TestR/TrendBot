@@ -271,13 +271,14 @@ def scorecard(db, today):
         seen.add((a["kind"], a["uid"]))
         hit, _ = _outcome(db, a["uid"], a["day"], a["players"])
         done = _s(_d(a["day"]) + timedelta(days=C.LABEL_DAYS)) < today
-        r = rows.setdefault(a["kind"], {"hit": 0, "miss": 0, "pending": 0})
-        if hit:
-            r["hit"] += 1
-        elif done:
-            r["miss"] += 1
+        r = rows.setdefault(a["kind"], {"hit": 0, "miss": 0, "pending": 0, "early": 0})
+        # Only alerts whose 21-day window has ENDED are scored: counting early explosions before the
+        # misses are known made every signal look 100% right.
+        if done:
+            r["hit" if hit else "miss"] += 1
         else:
             r["pending"] += 1
+            r["early"] += 1 if hit else 0
     seen = set()
     for p in db.execute("SELECT * FROM predictions ORDER BY day"):
         if p["uid"] in seen or (p["players"] or 0) >= C.EXPLODE_CCU:
@@ -287,13 +288,12 @@ def scorecard(db, today):
             else "model < {:.0f}%".format(C.PREDICT_ALERT_PROB * 100)
         hit, _ = _outcome(db, p["uid"], p["day"], p["players"])
         done = _s(_d(p["day"]) + timedelta(days=C.LABEL_DAYS)) < today
-        r = rows.setdefault(kind, {"hit": 0, "miss": 0, "pending": 0})
-        if hit:
-            r["hit"] += 1
-        elif done:
-            r["miss"] += 1
+        r = rows.setdefault(kind, {"hit": 0, "miss": 0, "pending": 0, "early": 0})
+        if done:
+            r["hit" if hit else "miss"] += 1
         else:
             r["pending"] += 1
+            r["early"] += 1 if hit else 0
     return rows
 
 
@@ -322,7 +322,9 @@ def report_lines(db, today, fmt):
         for kind, r in sorted(sc.items(), key=lambda kv: -(kv[1]["hit"] + kv[1]["miss"])):
             done = r["hit"] + r["miss"]
             rate = f"**{r['hit']}/{done}** ({r['hit']/done*100:.0f}%)" if done else "—"
-            lines.append(f"• {LABELS.get(kind, kind)}: {rate}" + (f" · {r['pending']} still in their {C.LABEL_DAYS}-day window" if r["pending"] else ""))
+            lines.append(f"• {LABELS.get(kind, kind)}: {rate}" + (f" · {r['pending']} still in their {C.LABEL_DAYS}-day window"
+                                                                  + (f" ({r['early']} already exploded)" if r.get("early") else "") if r["pending"] else ""))
+        lines.append(f"_Only signals whose {C.LABEL_DAYS} days are up are scored, so early wins don't flatter the rate._")
     else:
         lines.append("• Nothing to score yet")
     return lines

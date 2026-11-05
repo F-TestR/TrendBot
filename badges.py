@@ -246,6 +246,11 @@ def metrics_from(rows, avg_ccu, visits_day):
             m["streaks"].append((days, r["win_rate"] or 0, (r["past_day"] / base) if base else None, r["name"]))
     m["playtime_reach"].sort()
     m["streaks"].sort()
+    # Sanity: login streaks can only thin out as they get longer, and even top games keep ~9% of players to day 7.
+    # "Day N" badges that break this are in-game days (100 Days at Sea: 0% "3 days" but 53% "5 days") — drop them.
+    sh = [(d, x) for d, _, x, _ in m["streaks"] if x is not None]
+    if any(b > a * 1.5 + 0.005 for (_, a), (_, b) in zip(sh, sh[1:])) or any(d >= 5 and x > C.BADGE_STREAK_MAX for d, x in sh):
+        m["streaks"] = []
     # the game's main numbered ladder ("Drive # Miles", "Level #", "Survived # Disasters"...)
     groups = {}
     for r in rows:
@@ -415,7 +420,7 @@ def report_lines(db, state, fmt, name_of, link):
         return lines + ["• Collecting — badges are read for the top tracked games each day."]
     pts = [v["playtime"] for v in b.values() if v.get("playtime")]
     ses = [v["sessions"] for v in b.values() if v.get("sessions")]
-    ret = [v["returning"] for v in b.values() if v.get("returning") is not None]
+    ret = [v["returning"] for v in b.values() if v.get("returning") is not None] if C.BADGE_RETURNING else []
     summ = [f"{len(b)} games measured"]
     if pts:
         summ.append(f"median **{median(pts):.0f} min** played per player per day")
@@ -430,7 +435,7 @@ def report_lines(db, state, fmt, name_of, link):
     if top:
         lines.append("Young games with the most playtime per player (Roblox's top ranking signal):")
         for pt, u, v in top:
-            extra = f", {_pct(v['returning'])} returning" if v.get("returning") is not None else ""
+            extra = f", {_pct(v['returning'])} returning" if v.get("returning") is not None and C.BADGE_RETURNING else ""
             lines.append(f"• {name_of(u)[:36]} — **{pt:.0f} min/day** · {fmt(v['dau'])} players/day{extra} {link(u)}")
     st = sorted(((v["streak7"][1], u, v) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"),
                 reverse=True)[:5]

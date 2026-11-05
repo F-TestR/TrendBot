@@ -280,6 +280,7 @@ PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 reque
 # Engagement: session length, stickiness score, backtest, features, opportunity map
 # =====================================================================
 SEASON_SKEW_SHARE = 0.08         # flag a seasonal event in the digest once 8%+ of games (400+ players) run one
+BADGE_STREAK_MAX = 0.30          # a 5+ day streak reached by more than 30% of new players isn't a login streak
 BADGE_RETURNING = False          # "returning players" from welcome badges: off — checked against Fisch's real Creator Hub
                                  # numbers (91% returning) it read ~12%, so welcome-badge win rates don't mean what we assumed
 SESSION_MIN_MIN = 0.5            # estimated sessions outside this range (minutes) are treated as noise

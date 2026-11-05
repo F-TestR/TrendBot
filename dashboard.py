@@ -34,7 +34,8 @@ def _fc_tds(x, fmt):
 
 def _badge_tds(state, uid):
     b = (state.get("badges") or {}).get(uid) or {}
-    pt, dau, ret = b.get("playtime"), b.get("dau"), b.get("returning")
+    pt, dau = b.get("playtime"), b.get("dau")
+    ret = b.get("returning") if C.BADGE_RETURNING else None
     return (f'<td data-v="{pt or -1}">{(str(round(pt)) + " min") if pt else "—"}</td>'
             f'<td data-v="{dau or -1}">{HOOKS["fmt"](dau) if dau else "—"}</td>'
             f'<td data-v="{ret if ret is not None else -1}">{(str(round(ret * 100)) + "%") if ret is not None else "—"}</td>')
@@ -311,7 +312,7 @@ def build(state, today, cutoff):
                     "g": genre_of.get(gid) or "", "m": (I.mechanics_of(r.get("name", "")) or [""])[0],
                     "d": [r["days"].get(d, 0) for d in dlist], "h": round(hrel, 2) if hrel else None,
                     "s": round(stv) if stv is not None else None, "pt": b.get("playtime"), "dau": b.get("dau"),
-                    "rt": b.get("returning"), "lt": ((state.get("longterm") or {}).get(gid) or {}).get("status"),
+                    "rt": b.get("returning") if C.BADGE_RETURNING else None, "lt": ((state.get("longterm") or {}).get(gid) or {}).get("status"),
                     "fp": round(fc["peak"]) if fc.get("status") in ("rising", "early") else None,
                     "u": (S.roblox_link(state, gid) or f"https://rowatcher.com/games/{gid}").strip("<>")})
     idx.sort(key=lambda x: -x["p"])

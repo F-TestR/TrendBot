@@ -347,7 +347,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
         b = (state.get("badges") or {}).get(w["gid"]) or {}
         if b.get("playtime"):
             bits.append(f"⏱{b['playtime']:.0f}m")
-        if b.get("returning") is not None:
+        if b.get("returning") is not None and C.BADGE_RETURNING:
             bits.append(f"↩{_pct(b['returning'])}")
         wl.append(f"{arrow} **{name_link(w['label'], lk(w['gid']))}** · " + " · ".join(bits))
     yu = state["requests"].get(yday, 0)
@@ -496,14 +496,14 @@ def weekly_cards(db, state, today, ctx, table):
     el = []
     pts = [v["playtime"] for v in b.values() if v.get("playtime")]
     if pts:
-        rets = [v["returning"] for v in b.values() if v.get("returning") is not None]
+        rets = [v["returning"] for v in b.values() if v.get("returning") is not None] if C.BADGE_RETURNING else []
         el.append(f"Typical game: **{median(pts):.0f} min** per player per day"
                   + (f" · {_pct(median(rets))} returning" if rets else "") + f" ({len(b)} games measured)")
     tp = sorted(((v["playtime"], u, v) for u, v in b.items() if v.get("playtime") and u in young and (v.get("dau") or 0) >= 2000),
                 reverse=True)[:4]
     for p, u, v in tp:
         el.append(f"⏱ {name_link(nm(u), lk(u))} · **{p:.0f} min** · {fmt(v['dau'])}/day"
-                  + (f" · ↩{_pct(v['returning'])}" if v.get("returning") is not None else ""))
+                  + (f" · ↩{_pct(v['returning'])}" if v.get("returning") is not None and C.BADGE_RETURNING else ""))
     if tp:
         head.append(f"⏱ **Most playtime (young):** {name_link(nm(tp[0][1]), lk(tp[0][1]))} — {tp[0][0]:.0f} min/player/day")
     sk = sorted(((v["streak7"][1], u) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"), reverse=True)[:3]

@@ -99,10 +99,71 @@ def find_games(state, db, text, n=3):
     return out[:n]
 
 
+URL_RBX = re.compile(r"roblox\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?games/(\d+)(?:/([^\s/?#]+))?", re.I)
+URL_RW = re.compile(r"rowatcher\.com/games/(\d+)", re.I)
+
+
+def from_url(q, state, db):
+    """A pasted Roblox / RoWatcher game link -> ('game', [(score, uid, name)]) or ('live', info) or None."""
+    m = URL_RW.search(q)
+    if m and m.group(1) in state["games"]:
+        return "game", [(2.0, m.group(1), state["games"][m.group(1)].get("name") or m.group(1))]
+    m = URL_RBX.search(q)
+    if not m:
+        return None
+    place = m.group(1)
+    try:
+        from sources import src_state
+        for gid, x in src_state(state)["rbx"].items():
+            if str(x.get("place")) == place and gid in state["games"]:
+                return "game", [(2.0, gid, state["games"][gid].get("name") or gid)]
+    except Exception:
+        pass
+    r = db.execute("SELECT uid, name FROM games WHERE place=?", (place,)).fetchone()
+    if r:
+        return "game", [(2.0, r["uid"], r["name"])]
+    return "live", place
+
+
+def live_card(place):
+    """A game the bot doesn't track yet: read it straight from Roblox."""
+    import urllib.request
+    def get(u):
+        req = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read().decode())
+    try:
+        uni = get(f"https://apis.roblox.com/universes/v1/places/{place}/universe").get("universeId")
+        g = (get(f"https://games.roblox.com/v1/games?universeIds={uni}").get("data") or [None])[0]
+    except Exception as e:
+        return {"title": "🔎 Game link", "color": 0x95A5A6,
+                "description": f"The bot doesn't track this game yet and couldn't read it from Roblox ({e.__class__.__name__})."}
+    if not g:
+        return {"title": "🔎 Game link", "description": "Roblox didn't return a game for that link.", "color": 0x95A5A6}
+    age = None
+    try:
+        age = (datetime.utcnow() - datetime.strptime(g["created"][:10], "%Y-%m-%d")).days
+    except Exception:
+        pass
+    lines = [f"**{g.get('playing', 0):,}** playing now · {g.get('visits', 0):,} visits · {g.get('favoritedCount', 0):,} favourites",
+             " · ".join(x for x in [f"{age} days old" if age is not None else None, g.get("genre_l1") or g.get("genre"),
+                                     (g.get("creator") or {}).get("name") and f"by {g['creator']['name']}"] if x),
+             "",
+             "Not in the bot's tracking yet (it follows games with ~100+ players). It'll start building history "
+             "automatically once the game shows up in Roblox's charts or RoWatcher's top list."]
+    return {"title": f"🔎 {g.get('name', 'Game')[:80]}", "url": f"https://www.roblox.com/games/{place}",
+            "description": "\n".join(lines), "color": 0x5865F2}
+
+
 def classify(q, state, db):
     ql = q.lower().strip()
     if not ql or ql in ("help", "?"):
         return "help", None
+    if "roblox.com/" in ql or "rowatcher.com/" in ql:
+        hit = from_url(q, state, db)
+        if hit:
+            return hit
+        ql = re.sub(r"https?://\S+", " ", ql).strip()
     for sep in (" vs ", " versus ", " or "):
         if sep in ql:
             a, b = ql.split(sep, 1)
@@ -191,7 +252,7 @@ def game_card(db, state, uid, ctx, compact=False):
         bits = [f"{fmt(b['dau'])} players/day"]
         if b.get("playtime"):
             bits.append(f"~{b['playtime']:.0f} min each")
-        if b.get("returning") is not None:
+        if b.get("returning") is not None and C.BADGE_RETURNING:
             bits.append(f"{_pct(b['returning'])} returning")
         if b.get("streak7"):
             bits.append(f"{b['streak7'][1] * 100:.1f}% reach a {b['streak7'][0]}-day streak")
@@ -429,6 +490,8 @@ def answer(db, state, question, ctx):
     """Returns (content line, [cards])."""
     kind, arg = classify(question, state, db)
     q = f"**Q:** {question[:200]}"
+    if kind == "live":
+        return q, [live_card(arg)]
     if kind == "themes":
         return q, [themes_answer(db, state, arg, ctx)]
     if kind == "game":

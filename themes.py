@@ -339,9 +339,9 @@ def examples(db, today, predict_only=False):
             else:
                 if i % 3 and not (bday and _d(bday) - _d(day) <= timedelta(days=C.LABEL_DAYS)):
                     continue  # thin out non-event days so one theme doesn't dominate
+                if end >= today:
+                    continue  # window not over: keeping only the early breakouts here made recent data ~90% "yes"
                 hit = bool(bday and day < bday <= end)
-                if not hit and end >= today:
-                    continue
                 y = 1 if hit else 0
             out.append({"theme": k, "day": day, "x": _features(r, hist, day), "y": y, "row": r})
     out.sort(key=lambda e: e["day"])
