@@ -368,6 +368,7 @@ def train(db, today):
         k = max(1, len(te) // 20)
         st["test_top5_hit"] = sum(l for _, l in sorted(zip(sc, lab), reverse=True)[:k]) / k
     model = L.fit(ex, names=names)
+    model = L.attach_champion(model, ex, names, st)
     st["trained"] = True
     st["drivers"] = sorted(zip(model["names"], model["w"]), key=lambda x: -abs(x[1]))[:6]
     W.meta_set(db, "theme_model", model)
@@ -480,6 +481,9 @@ def report_lines(db, today, fmt):
         if st.get("test_auc") is not None:
             lines.append(f"• On the newest data it hadn't seen: AUC **{st['test_auc']:.2f}**; its top 5% picks broke out "
                          f"**{st['test_top5_hit']*100:.0f}%** of the time vs {st['base_rate']*100:.1f}% on average.")
+        cl = L.champion_line(st)
+        if cl:
+            lines.append("• " + cl)
         names = dict(FEATURES)
         lines.append("• Biggest drivers: " + ", ".join(f"{names[f]} ({'+' if w > 0 else '−'})" for f, w in st.get("drivers", [])[:5]))
     rows, nb, base = indicator_report(db, today)

@@ -285,6 +285,9 @@ def train(db, today):
         st["hi_n"] = len(hi)
         st["base_rate"] = sum(lab) / len(lab)
     model = L.fit(ex, names=names, iters=400, l2=0.02)
+    model = L.attach_champion(model, ex, names, st, iters=400, l2=0.02)
+    if model.get("gbm") and model.get("oof"):   # calibrate the trees on their own walk-forward predictions
+        iso = platt([a for a, _ in model["oof"]], [b for _, b in model["oof"]])
     model["median"] = med
     model["iso"] = iso
     st["trained"] = True
@@ -361,6 +364,9 @@ def weekly_lines(db, state, today):
         lines.append(f"🚀 Trend Score ({mode}): accuracy **{st['test_auc']:.2f}** on unseen days"
                      + (f" · games scored 50+ took off {st['hi_hit'] * 100:.0f}% of the time vs {st['base_rate'] * 100:.0f}% overall"
                         if st.get("hi_hit") is not None else ""))
+        cl = L.champion_line(st)
+        if cl:
+            lines.append(cl)
     else:
         lines.append(f"🚀 Trend Score: using its starting formula — {st.get('why', 'collecting outcomes')}")
     lc = live_check(db, today)

@@ -128,10 +128,79 @@ def _pct_ranks(values):
     return {k: i / (n - 1) for i, (_, k) in enumerate(items)}
 
 
+COLS = {"hold_rel": "hold_rel", "playtime": "playtime", "session_min": "session_min", "level_kept": "level_kept",
+        "fav_conv": "fav_conv", "rev_per_ccu": "rev_per_ccu"}
+
+
+def learn_weights(db):
+    """Let the data set the stickiness weights: for every past game-week, how well did each signal's rank
+    predict the players it still had 4 weeks later (Spearman)? Signals that predicted better weigh more.
+    Blended with the starting weights until there's plenty of history, so one odd month can't swing it."""
+    import warehouse as W
+    rows = {}
+    for r in db.execute("SELECT * FROM engage_weekly"):
+        rows.setdefault(r["week"], {})[r["uid"]] = dict(r)
+    xs = {k: [] for k in COLS}
+    n = 0
+    for w, games in rows.items():
+        later = rows.get(_s(_d(w) + timedelta(days=28)))
+        if not later:
+            continue
+        ranks = {k: _pct_ranks({u: g[c] for u, g in games.items()}) for k, c in COLS.items()}
+        for uid, g in games.items():
+            a, f = g["avg_ccu"], (later.get(uid) or {}).get("avg_ccu")
+            if not a or a < C.HOLD_MIN_PLAYERS or f is None:
+                continue
+            out = math.log(max(f, 1) / a)
+            n += 1
+            for k in COLS:
+                if uid in ranks[k]:
+                    xs[k].append((ranks[k][uid], out))
+    prior = {k: WEIGHTS[k] for k in COLS}
+    ps = sum(prior.values())
+    prior = {k: v / ps for k, v in prior.items()}
+    res = {"n": n, "rho": {}, "weights": prior, "learned": False}
+    if n < C.STICK_LEARN_MIN:
+        W.meta_set(db, "stick_weights", res)
+        return res
+    for k, pairs in xs.items():
+        if len(pairs) >= 50:
+            res["rho"][k] = round(_spearman([a for a, _ in pairs], [b for _, b in pairs]), 3)
+    pos = {k: max(0.0, v) for k, v in res["rho"].items()}
+    tot = sum(pos.values())
+    if tot <= 0:
+        W.meta_set(db, "stick_weights", res)
+        return res
+    learned = {k: pos.get(k, 0.0) / tot for k in COLS}
+    a = min(1.0, n / C.STICK_LEARN_FULL)
+    res["weights"] = {k: round(a * learned[k] + (1 - a) * prior[k], 4) for k in COLS}
+    res["learned"], res["blend"] = True, round(a, 2)
+    W.meta_set(db, "stick_weights", res)
+    return res
+
+
+def current_weights(db):
+    import warehouse as W
+    sw = W.meta_get(db, "stick_weights") or {}
+    return sw.get("weights") or {k: v for k, v in WEIGHTS.items() if v}
+
+
+def weights_label(db):
+    w = current_weights(db)
+    short = {"hold_rel": "weekday hold", "playtime": "playtime per player", "session_min": "session length",
+             "level_kept": "players kept vs best week", "fav_conv": "favourite rate", "rev_per_ccu": "revenue per player"}
+    return " · ".join(f"{short[k]} {v * 100:.0f}%" for k, v in sorted(w.items(), key=lambda kv: -kv[1]) if v >= 0.005)
+
+
 def update(db, state, today):
     """Rebuild engagement for the last weeks, score them, keep latest scores in state['stick']."""
     import hold as HOLD
     ensure(db)
+    try:
+        learn_weights(db)
+    except Exception as e:
+        print(f"stickiness weight learning failed: {e}")
+    wts = current_weights(db)
     wed0 = HOLD.latest_wed(today)
     weeks = [_s(_d(wed0) - timedelta(days=7 * i)) for i in range(C.HOLD_HISTORY_WEEKS)][::-1]
     history = {}
@@ -147,11 +216,11 @@ def update(db, state, today):
             prev = [history[p][uid]["avg_ccu"] for p in weeks[max(0, i - 5):i] if p in history and uid in history[p]]
             best = max(prev + [x["avg_ccu"]])
             x["level_kept"] = x["avg_ccu"] / best if prev else None
-        ranks = {k: _pct_ranks({u: x[k] for u, x in history[w].items()}) for k in WEIGHTS}
+        ranks = {k: _pct_ranks({u: x[k] for u, x in history[w].items()}) for k in wts}
         rows = []
         for uid, x in history[w].items():
             tot = wsum = 0.0
-            for k, wt in WEIGHTS.items():
+            for k, wt in wts.items():
                 if uid in ranks[k]:
                     tot += wt * ranks[k][uid]
                     wsum += wt
@@ -317,8 +386,9 @@ def heat_points(state, gid):
 
 
 def report_lines(db, state, today, fmt, name_of, link):
-    lines = ["📏 **Stickiness** (weekday hold 30% · playtime per player 20% · players kept vs best week 15% · "
-             "session length 15% · favourite rate 10% · revenue per player 10%)"]
+    sw = __import__("warehouse").meta_get(db, "stick_weights") or {}
+    lines = [f"📏 **Stickiness** ({weights_label(db)})"
+             + (f" — weights learned from {sw['n']:,} game-weeks of what actually survived" if sw.get("learned") else "")]
     st = state.get("stick") or {}
     sess = [v["session"] for v in st.values() if v.get("session")]
     if sess:

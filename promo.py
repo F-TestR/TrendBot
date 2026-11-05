@@ -237,6 +237,7 @@ def _fit_one(examples):
         st["top10_hit"] = sum(l for _, l in sorted(zip(sc, lab), reverse=True)[:k]) / k
         st["base_rate"] = sum(lab) / len(lab)
     m = L.fit(examples, names=usable, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+    m = L.attach_champion(m, examples, usable, st, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
     m["median"] = med
     st["trained"] = True
     st["weights"] = {f: w for f, w in zip(m["names"], m["w"])}
@@ -378,6 +379,9 @@ def report_lines(db, today):
             lines.append(f"• Model for *{desc}*: accuracy {s['test_auc']:.2f} on days it hadn't seen "
                          f"(0.5 = coin flip); its top 10% were promoted {s['top10_hit']*100:.0f}% of the time vs "
                          f"{s['base_rate']*100:.0f}% for all games ({s['examples']} examples).")
+            cl = L.champion_line(s)
+            if cl:
+                lines.append("  " + cl)
     sh = shifts(db)
     if sh and sh[0]:
         moves, old = sh

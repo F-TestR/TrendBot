@@ -94,7 +94,10 @@ if os.environ.get("VERBOSE"):
     print("\n".join(seen.values()))
     print("\n".join(err[-15:]))
 print(f"{days} simulated days · {len(CAP['digest'])} digests · {len(CAP['weekly'])} weekly · {len(CAP.get('ask', []))} answers")
-shutil.rmtree(TMP, ignore_errors=True)
+if not os.environ.get("KEEP_TMP"):
+    shutil.rmtree(TMP, ignore_errors=True)
+else:
+    print("kept", TMP)
 if problems:
     print("FAILED:\n- " + "\n- ".join(problems))
     sys.exit(1)

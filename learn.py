@@ -14,7 +14,15 @@ How it works, in plain terms:
      test it on the most recent ones it didn't train on, and report how accurate it
      is. Then score today's young games: "X% chance this explodes".
 
-Pure Python, no extra libraries. Retrains once a day.
+Retrains once a day.
+
+Champion / challenger (every model in the bot uses this, via attach_champion):
+  The simple logistic regression is always trained — it explains WHY (the bars and reasons).
+  A gradient-boosted tree model (scikit-learn, free) challenges it: trees catch thresholds and
+  combinations ("young AND same-mechanic hits AND climbing late") a straight line can't.
+  Both are judged by walk-forward testing — train on the past, predict the next slice of time, slide
+  forward, repeat — the same way they're used live. The trees only take over when they beat the
+  simple model on that test by a clear margin; otherwise nothing changes.
 """
 import math
 from datetime import datetime, timedelta
@@ -173,6 +181,19 @@ def fit(examples, l2=None, iters=None, lr=0.3, names=None):
     neg = (n - sum(y)) or 1
     wpos, wneg = n / (2 * pos), n / (2 * neg)  # balance rare explosions
     w, b = [0.0] * k, 0.0
+    try:   # same maths with numpy when it's there (~100x faster); pure Python otherwise
+        import numpy as np
+        Za, ya = np.array(Z, dtype=float).reshape(n, k), np.array(y, dtype=float)
+        cw = np.where(ya > 0, wpos, wneg)
+        wa, b = np.zeros(k), 0.0
+        for _ in range(iters):
+            p = 1 / (1 + np.exp(-np.clip(b + Za @ wa, -30, 30)))
+            err = (p - ya) * cw
+            b -= lr * err.sum() / n
+            wa -= lr * (Za.T @ err / n + l2 * wa)
+        w, iters = wa.tolist(), 0
+    except ImportError:
+        pass
     for _ in range(iters):
         gw, gb = [0.0] * k, 0.0
         for zi, yi in zip(Z, y):
@@ -191,8 +212,122 @@ def fit(examples, l2=None, iters=None, lr=0.3, names=None):
 
 
 def predict(model, x):
+    if model.get("gbm"):
+        p = _gbm_predict(model, x)
+        if p is not None:
+            return p
     z = model["b"] + sum(w * (x[f] - m) / s for f, w, m, s in zip(model["names"], model["w"], model["mu"], model["sd"]))
     return _sigmoid(z)
+
+
+# ------------------------------------------------------ champion / challenger ---
+
+_GBM_CACHE = {}
+
+
+def _gbm_new():
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    return HistGradientBoostingClassifier(max_iter=C.GBM_TREES, learning_rate=0.05, max_leaf_nodes=15,
+                                          min_samples_leaf=C.GBM_MIN_LEAF, l2_regularization=1.0, random_state=7)
+
+
+def _matrix(examples, names):
+    return [[float(e["x"].get(f) if e["x"].get(f) is not None else float("nan")) for f in names] for e in examples]
+
+
+def _gbm_predict(model, x):
+    try:
+        key = model["gbm"][:64] + str(len(model["gbm"]))
+        clf = _GBM_CACHE.get(key)
+        if clf is None:
+            import base64
+            import pickle
+            clf = _GBM_CACHE[key] = pickle.loads(base64.b64decode(model["gbm"]))
+        row = [[float(x.get(f) if x.get(f) is not None else float("nan")) for f in model["gbm_names"]]]
+        return float(clf.predict_proba(row)[0][1])
+    except Exception:
+        return None   # library missing or model unreadable -> the simple model answers
+
+
+def brier(scores, labels):
+    return sum((s - l) ** 2 for s, l in zip(scores, labels)) / len(labels) if labels else None
+
+
+def walk_forward(examples, names, lr_kw, folds=None):
+    """Time-ordered test: for each cut, train on everything before it and predict the next slice.
+    Returns {'lr': {'auc', 'brier'}, 'gbm': {...}, 'oof': {'lr': [(score, y)], 'gbm': [...]}}."""
+    folds = folds or C.WF_FOLDS
+    n = len(examples)
+    start = int(n * 0.5)
+    step = max(1, (n - start) // folds)
+    oof = {"lr": [], "gbm": []}
+    try:
+        import sklearn  # noqa: F401
+        have_gbm = True
+    except ImportError:
+        have_gbm = False
+    for i in range(folds):
+        a, b = start + i * step, (start + (i + 1) * step) if i < folds - 1 else n
+        tr, te = examples[:a], examples[a:b]
+        if not te or sum(e["y"] for e in tr) < 5 or len({e["y"] for e in tr}) < 2:
+            continue
+        m = fit(tr, names=names, **lr_kw)
+        oof["lr"] += [(predict(m, e["x"]), e["y"]) for e in te]
+        if have_gbm:
+            clf = _gbm_new().fit(_matrix(tr, names), [e["y"] for e in tr])
+            oof["gbm"] += list(zip(clf.predict_proba(_matrix(te, names))[:, 1].tolist(), [e["y"] for e in te]))
+    res = {"oof": oof}
+    for k, v in oof.items():
+        if v and 0 < sum(l for _, l in v) < len(v):
+            res[k] = {"auc": auc([s for s, _ in v], [l for _, l in v]), "brier": brier([s for s, _ in v], [l for _, l in v]),
+                      "n": len(v)}
+    return res
+
+
+def attach_champion(model, examples, names, status, **lr_kw):
+    """Walk-forward test the simple model vs boosted trees; if the trees clearly win, store them in `model`
+    (predict() then uses them). Writes the comparison into `status`. `examples` must be oldest-first."""
+    n, pos = len(examples), sum(e["y"] for e in examples)
+    if n < C.GBM_MIN_EXAMPLES or pos < C.GBM_MIN_POSITIVES or pos == n:
+        status["champion"] = "simple"
+        status["champion_why"] = f"boosted trees need {C.GBM_MIN_EXAMPLES}+ examples with {C.GBM_MIN_POSITIVES}+ positives"
+        return model
+    try:
+        wf = walk_forward(examples, names, lr_kw)
+    except Exception as e:
+        status["champion"], status["champion_why"] = "simple", f"walk-forward failed: {e}"
+        return model
+    lr, gb = wf.get("lr"), wf.get("gbm")
+    status["wf"] = {k: {kk: round(vv, 4) for kk, vv in v.items()} for k, v in (("lr", lr), ("gbm", gb)) if v}
+    if gb and lr and gb["auc"] is not None and lr["auc"] is not None and gb["auc"] >= lr["auc"] + C.GBM_MARGIN \
+            and gb["auc"] >= C.GBM_MIN_AUC:
+        import base64
+        import pickle
+        clf = _gbm_new().fit(_matrix(examples, names), [e["y"] for e in examples])
+        model["gbm"] = base64.b64encode(pickle.dumps(clf)).decode()
+        model["gbm_names"] = list(names)
+        status["champion"] = "boosted trees"
+        model["oof"] = wf["oof"]["gbm"][-3000:]
+    else:
+        model.pop("gbm", None)
+        status["champion"] = "simple"
+        model["oof"] = wf["oof"]["lr"][-3000:] if wf["oof"]["lr"] else []
+    return model
+
+
+def champion_line(status):
+    """One line for reports: which model won the walk-forward test and by how much."""
+    wf = (status or {}).get("wf") or {}
+    lr, gb = wf.get("lr"), wf.get("gbm")
+    if not lr:
+        return None
+    if status.get("champion") == "boosted trees":
+        return (f"⚙️ Using **boosted trees**: walk-forward accuracy **{gb['auc']:.2f}** vs {lr['auc']:.2f} for the simple model "
+                f"({gb['n']:,} predictions tested in time order)")
+    if gb:
+        return (f"⚙️ Simple model kept: walk-forward accuracy {lr['auc']:.2f} vs {gb['auc']:.2f} for boosted trees "
+                f"(trees must win by {C.GBM_MARGIN:.2f}+)")
+    return f"⚙️ Walk-forward accuracy {lr['auc']:.2f} ({lr['n']:,} predictions tested in time order)"
 
 
 def auc(scores, labels):
@@ -230,6 +365,7 @@ def train(db, today):
         status["test_flagged"] = len(flagged)
         status["test_flagged_hit"] = (sum(l for _, l in flagged) / len(flagged)) if flagged else None
     model = fit(ex)
+    model = attach_champion(model, ex, model["names"], status)
     status["trained"] = True
     status["drivers"] = sorted(((f, w) for f, w in zip(model["names"], model["w"])), key=lambda x: -abs(x[1]))[:6]
     W.meta_set(db, "model", model)
@@ -308,6 +444,9 @@ def report_lines(db, today, fmt):
         lines.append(f"• Still collecting examples — {st.get('why', 'not trained yet')}.")
     else:
         lines.append(f"• Trained on {st['examples']} young games, {st['positives']} of which exploded.")
+        cl = champion_line(st)
+        if cl:
+            lines.append("• " + cl)
         if st.get("test_auc") is not None:
             lines.append(f"• Tested on the newest {st['test_n']} games it hadn't seen: ranking accuracy (AUC) "
                          f"**{st['test_auc']:.2f}** (0.5 = coin flip, 1.0 = perfect). Its top 10% picks exploded "

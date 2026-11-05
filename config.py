@@ -194,6 +194,13 @@ BACKUP_TO_RELEASES = True        # daily backup to the repo's Releases page (pri
 BACKUP_TAG = "trendbot-db"
 
 # ---- Learning ----
+GBM_TREES = 200                  # boosted-tree challenger: number of trees...
+GBM_MIN_LEAF = 30                # ...smallest group a leaf may describe (bigger = less overfitting)
+GBM_MIN_EXAMPLES = 300           # trees only challenge once a model has this many examples...
+GBM_MIN_POSITIVES = 30           # ...and this many positives
+GBM_MARGIN = 0.01                # ...and only take over when they beat the simple model by this much (walk-forward AUC)
+GBM_MIN_AUC = 0.6                # ...and are genuinely useful themselves
+WF_FOLDS = 4                     # walk-forward: number of train-on-past / test-on-next slices
 EXPLODE_CCU = 25000              # "exploded" = reached this many players...
 LABEL_DAYS = 21                  # ...within this many days of first being noticed
 LEARN_ENTRY_CCU = 600            # a game is "noticed" the first day it reaches this many players (inside the top 2,000)
@@ -280,6 +287,8 @@ PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 reque
 # Engagement: session length, stickiness score, backtest, features, opportunity map
 # =====================================================================
 SEASON_SKEW_SHARE = 0.08         # flag a seasonal event in the digest once 8%+ of games (400+ players) run one
+STICK_LEARN_MIN = 300            # stickiness weights start learning from survival after this many game-weeks...
+STICK_LEARN_FULL = 1500          # ...and fully trust the data from this many (blended with the starting weights before)
 BADGE_STREAK_MAX = 0.30          # a 5+ day streak reached by more than 30% of new players isn't a login streak
 BADGE_RETURNING = False          # "returning players" from welcome badges: off — checked against Fisch's real Creator Hub
                                  # numbers (91% returning) it read ~12%, so welcome-badge win rates don't mean what we assumed

@@ -1,3 +1,4 @@
 # Optional helpers (the bot runs without them, with fewer features)
 matplotlib==3.9.2   # charts
 pillow==10.4.0      # icon fingerprints (copy detection)
+scikit-learn==1.5.2   # boosted-tree challenger models (falls back to the simple models without it)
