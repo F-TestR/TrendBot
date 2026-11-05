@@ -1,0 +1,2 @@
+game,period_start,period_end,source,daily_players,concurrent_players,robux_per_day,day1_retention,day7_retention,session_min,payer_conversion,robux_per_payer,notes
+Fisch,2025-02-17,2025-02-19,Creator Hub screenshots (owner's video),4330916,280364,29167354,0.1443,0.0652,23.8,0.0182,433.7,robux_per_day = 72-hour total 87.5M / 3; DAU = 7-day snapshot

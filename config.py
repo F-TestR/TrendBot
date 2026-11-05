@@ -182,8 +182,8 @@ DEEP_PAGES_PER_RUN = 5           # ...5 per run, so each is refreshed about ever
 DISCOVERY_FIRST_PAGE = 31        # once a day, pages 31-60 (~350 down to ~150 players)
 DISCOVERY_LAST_PAGE = 60         # to find tiny young games for the model
 CHARTS_EVERY_MIN = 60            # Roblox's algorithm charts (via RoWatcher)
-BACKFILL_PER_RUN = 2             # past-history downloads per run (for the model)
-BACKFILL_MAX_AGE_DAYS = 75       # only backfill games created within this many days
+BACKFILL_PER_RUN = 8             # past-history downloads per run (for the model) — uses spare daily quota, still paced under the cap
+BACKFILL_MAX_AGE_DAYS = 150      # only backfill games created within this many days
 COPY_WAVE_MIN_PLAYERS = 500      # copies smaller than this don't count towards a copy wave
 
 # ---- Database ----
@@ -279,7 +279,7 @@ LONGTERM_MIN_WEEKS = 2           # ...with at least this many weeks rated...
 LONGTERM_WINDOW_WEEKS = 6        # ...looking back this many weeks
 LONGTERM_PROMISING_REL = 1.15    # one strong week at this level = "promising"
 GENRE_MIN_GAMES = 5              # genres with fewer rated games are left out of the genre table
-BACKFILL_ESTABLISHED_PER_RUN = 1 # past-history downloads per run for older games (for long-term ratings)
+BACKFILL_ESTABLISHED_PER_RUN = 3 # past-history downloads per run for older games (for long-term ratings)
 BACKFILL_ESTABLISHED_MIN_PLAYERS = 1500
 PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 request each)
 

@@ -133,8 +133,8 @@ def build_examples(db, today, for_prediction=False):
                 continue
             y = None
         else:
-            if not hit and not complete:
-                continue
+            if not complete:
+                continue  # wait for the full window either way: early explosions alone inflated the hit rate
             y = 1 if hit else 0
         g = games.get(uid) or {}
         mechs = mech_of.get(uid) or []

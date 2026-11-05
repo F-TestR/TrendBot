@@ -160,6 +160,9 @@ def report_lines(rows, fmt, link=None, n_top=8, bench=True):
     if bench:
         lines.append("")
         lines += BM.report_lines()
+        tl = BM.truth_lines(rows)
+        if tl:
+            lines += [""] + tl
     return lines
 
 

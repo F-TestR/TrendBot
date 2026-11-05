@@ -110,6 +110,73 @@ def reality_check(monthly_usd, dau):
     return {"pct": p, "rpd": rpd, "suspect": rpd > 60 or rpd < 0.05}
 
 
+TRUTH_PATH = __import__("os").path.join(__import__("os").path.dirname(__import__("os").path.abspath(__file__)),
+                                        "data", "ground_truth.csv")
+
+
+def load_truth(path=None):
+    """Real numbers from Creator Hub dashboards (data/ground_truth.csv — add a row whenever you see one)."""
+    import csv
+    try:
+        with open(path or TRUTH_PATH, newline="", encoding="utf-8") as f:
+            rows = []
+            for r in csv.DictReader(f):
+                for k, v in list(r.items()):
+                    if k not in ("game", "period_start", "period_end", "source", "notes"):
+                        try:
+                            r[k] = float(v) if v not in ("", None) else None
+                        except ValueError:
+                            r[k] = None
+                rows.append(r)
+            return rows
+    except OSError:
+        return []
+
+
+def _key(name):
+    import re
+    return re.sub(r"[^a-z0-9]+", " ", re.sub(r"\[.*?\]|\(.*?\)", " ", (name or "").lower())).strip()
+
+
+def truth_check(money_rows):
+    """Compare the bot's estimates with real dashboards, game by game.
+    Returns [{'game', 'real_per_1k', 'est_per_1k', 'ratio', 'real_session', 'pct'...}]."""
+    by = {_key(r["name"]): r for r in money_rows}
+    out = []
+    for t in load_truth():
+        x = {"game": t["game"], "period": t.get("period_end") or t.get("period_start") or "?"}
+        if t.get("robux_per_day") and t.get("daily_players"):
+            x["real_per_1k"] = t["robux_per_day"] / t["daily_players"] * 1000 * 30.4 * DEVEX_USD
+            x["real_pct"] = percentile("monetisation", t["robux_per_day"] / t["daily_players"])
+        m = by.get(_key(t["game"])) or next((r for k, r in by.items() if _key(t["game"]) and k.startswith(_key(t["game"]))), None)
+        if m and m.get("per_1k_daily") and x.get("real_per_1k"):
+            x["est_per_1k"] = m["per_1k_daily"]
+            x["ratio"] = m["per_1k_daily"] / x["real_per_1k"]
+        for k in ("session_min", "day1_retention", "day7_retention"):
+            if t.get(k):
+                x[k] = t[k]
+        out.append(x)
+    return out
+
+
+def truth_lines(money_rows):
+    rows = truth_check(money_rows)
+    if not rows:
+        return []
+    rs = [r["ratio"] for r in rows if r.get("ratio")]
+    out = [f"**Checked against real dashboards** ({len(rows)} in data/ground_truth.csv):"]
+    for r in rows[:6]:
+        if r.get("ratio"):
+            out.append(f"• {r['game']} — real ${r['real_per_1k']:,.0f} vs estimated ${r['est_per_1k']:,.0f} per 1K daily players/month "
+                       f"({(r['ratio'] - 1) * 100:+.0f}%, real figures from {r['period']})")
+        elif r.get("real_per_1k"):
+            out.append(f"• {r['game']} — real ${r['real_per_1k']:,.0f} per 1K daily players/month (not in today's estimates to compare)")
+    if len(rs) >= 3:
+        rs.sort()
+        out.append(f"• Typical gap: estimates {(rs[len(rs) // 2] - 1) * 100:+.0f}% vs reality across {len(rs)} games")
+    return out
+
+
 def report_lines():
     """Static 'what real games look like' notes for the money report."""
     b = monthly_band(1000)
