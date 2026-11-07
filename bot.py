@@ -1024,6 +1024,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                              + PA.markdown_section(state.get("_money") or [], PA.load(db)),
                              "reports/money.csv": MO.to_csv(state.get("_money") or []),
                              "reports/board.csv": board_csv(board_rows)}
+                try:
+                    import ask as ASK
+                    rep_files["reports/models.md"] = "# Model check\n\n" + "\n".join(ASK.models_lines(db, state, today, fmt))
+                except Exception as e:
+                    print(f"model report failed: {e}", file=sys.stderr)
                 if cards:
                     rep_files["reports/digest.md"] = PUB.cards_md(f"Daily digest · {today}", cards)
                 if C.PAGES_DASHBOARD:

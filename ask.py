@@ -42,6 +42,7 @@ THEME_ASK = (r"\b(influx|surrounding|wave|flood|lots of|trending|trend|theme|the
              r"blowing up|catching on|becoming|picking up|getting big|a thing|hype|viral)\b|/")
 
 KINDS = [
+    ("models", r"\b(accura\w*|scorecard|how good is (the|this|my) bot|how well is (the|this|my) bot|models?|learning|learned|confidence)\b"),
     ("money", r"\b(money|revenue|earn|earns|earning|earnings|profit|profitable|income|robux|monetis|monetiz)"),
     ("algorithm", r"\b(algorithm|rewarding|reward|promot|recommend)"),
     ("longterm", r"\b(long[ -]?term|lasting|lasts|sticky|stickiest|habit)"),
@@ -450,6 +451,55 @@ def themes_answer(db, state, words, ctx):
             "footer": {"text": "players = average online yesterday · change = same games vs 8 days ago"}}
 
 
+def models_lines(db, state, today, fmt):
+    """Every model's track record in one place: which algorithm won its walk-forward test, accuracy, scorecard."""
+    import engage as E
+    import forecast as FC
+    import learn as L
+    import promo as P
+    import themes as T
+    import trend as TS
+    import warehouse as W
+    out = [f"_Model check · {today}_", ""]
+    for title, fn in (("🧠 Algorithm mirror", lambda: P.report_lines(db, today)),
+                      ("⭐ Trend Score", lambda: TS.weekly_lines(db, state, today)),
+                      ("💥 Explosion model + alert scorecard", lambda: L.report_lines(db, today, fmt)),
+                      ("🌱 Theme model", lambda: T.report_lines(db, today, fmt)),
+                      ("📈 Forecasts", lambda: FC.weekly_lines(state, fmt))):
+        try:
+            ls = [l for l in fn() if l is not None]
+        except Exception as e:
+            ls = [f"(couldn't build: {e.__class__.__name__})"]
+        if ls:
+            out += [f"**{title}**"] + ls + [""]
+    try:
+        sw = W.meta_get(db, "stick_weights") or {}
+        out += ["**📏 Stickiness weights**", E.weights_label(db)
+                + (f" — learned from {sw['n']:,} game-weeks" if sw.get("learned") else
+                   f" — starting weights ({sw.get('n', 0):,} of {C.STICK_LEARN_MIN} game-weeks needed to learn)"), ""]
+    except Exception:
+        pass
+    try:
+        bf = db.execute("SELECT COUNT(*) n, SUM(status LIKE 'ok%') ok FROM backfill").fetchone()
+        out.append(f"📥 Past histories downloaded: **{bf['ok'] or 0:,}** games ({bf['n']:,} tried)")
+    except Exception:
+        pass
+    return out
+
+
+def models_cards(db, state, today, fmt):
+    cards, cur = [], []
+    for l in models_lines(db, state, today, fmt):
+        if sum(len(x) + 1 for x in cur) + len(l) > 3800:
+            cards.append(cur)
+            cur = []
+        cur.append(l)
+    if cur:
+        cards.append(cur)
+    return [{"title": "🎯 How accurate is the bot" + (f" ({i + 1}/{len(cards)})" if len(cards) > 1 else ""),
+             "description": "\n".join(c), "color": 0x9B59B6} for i, c in enumerate(cards)]
+
+
 def mechanic_answer(state, mech, ctx):
     fmt = ctx["fmt"]
     tab = ctx["I"].mechanic_table(state, ctx["today"])
@@ -480,7 +530,7 @@ def genre_answer(db, state, genre, ctx):
 
 
 def help_card(hint=None):
-    ex = ["`how is Wash the Car doing`", "`Be a Pirate vs Pilfering Pirates`", "`is chocolate trending`", "`any sea/boat/pirate games trending`",
+    ex = ["`how is Wash the Car doing`", "`Be a Pirate vs Pilfering Pirates`", "`is chocolate trending`", "`any sea/boat/pirate games trending`", "`how accurate is the bot`",
           "`tycoon games`", "`what's rising`", "`which genres earn the most`", "`tycoon money`", "`long term games`", "`what is roblox rewarding`", "`what's coming up`"]
     d = (f"I couldn't match \"{hint}\" to a game or theme.\n\n" if hint else "") + "Try:\n" + "\n".join("• " + e for e in ex)
     return {"title": "❓ Ask the trend bot", "description": d, "color": 0x95A5A6}
@@ -490,6 +540,8 @@ def answer(db, state, question, ctx):
     """Returns (content line, [cards])."""
     kind, arg = classify(question, state, db)
     q = f"**Q:** {question[:200]}"
+    if kind == "models":
+        return q, models_cards(db, state, ctx["today"], ctx["fmt"])
     if kind == "live":
         return q, [live_card(arg)]
     if kind == "themes":

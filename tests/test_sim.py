@@ -56,6 +56,7 @@ with redirect_stdout(out), redirect_stderr(errors):
             traceback.print_exc()
         world.NOW[0] += timedelta(hours=3)
     for q in ("how is cat battles doing", "is chocolate trending", "which genres earn the most", "what's rising",
+              "how accurate is the bot",
               "is there an influx of games surrounding the sea/boats/ pirates?"):
         try:
             bot.run_ask(q)
@@ -74,12 +75,15 @@ if len(CAP["digest"]) < days - 2:
     problems.append(f"only {len(CAP['digest'])} digests for {days} days")
 if not CAP["weekly"]:
     problems.append("no weekly report")
-if len(CAP.get("ask", [])) < 5:
+if len(CAP.get("ask", [])) >= 6 and not any("accurate" in (c or {}).get("title", "") for c in CAP["ask"][-2]["cards"]):
+    problems.append("model accuracy question not answered")
+if len(CAP.get("ask", [])) < 6:
     problems.append("ask answers missing")
 elif not any("Theme" in (c or {}).get("title", "") for c in CAP["ask"][-1]["cards"]):
     problems.append("sea/boats/pirates question wasn't answered as a theme: " + str([c["title"] for c in CAP["ask"][-1]["cards"]]))
 elif os.environ.get("VERBOSE"):
     print(CAP["ask"][-1]["cards"][0]["description"])
+    print(CAP["ask"][-2]["cards"][0]["description"])
 titles = [c["title"] for d in CAP["digest"][-1:] for c in d["cards"] if c]
 for need in ("Daily digest", "Games to watch"):
     if not any(need in t for t in titles):
