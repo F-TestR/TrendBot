@@ -154,7 +154,7 @@ def features(uid, day, data):
     if b:
         _, mpd, new_share, fs, spd = b
         x["playtime"] = math.log(mpd) if mpd else None
-        x["returning"] = (1 - new_share) if new_share is not None else None
+        x["returning"] = (1 - new_share) if new_share is not None and C.BADGE_RETURNING else None  # off: proved wrong vs Fisch
         x["first_step"] = fs
         x["sessions"] = math.log(spd) if spd else None
     x["has_badges"] = 1.0 if b else 0.0
