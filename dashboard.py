@@ -256,18 +256,25 @@ def build(state, today, cutoff):
         import promo as PR, warehouse as WH
         _db = WH.connect()
         pst = WH.meta_get(_db, "promo_status", {}) or {}
-        rw = PR.rewarded(pst)
+        rw = PR.rewarded_detail(pst)
         if rw:
-            mx = max(abs(w) for _, w in rw) or 1
+            mx = max(abs(r["w"]) for r in rw) or 1
+            # Only rows that have held their direction for several days running are findings: the rest are drawn grey.
             algo_rows = "".join(
-                f'<tr><td><b>{_e(PR.LABEL[f])}</b></td><td data-v="{w}">{w:+.2f}</td>'
-                f'<td><div style="height:10px;width:{int(abs(w) / mx * 100)}%;background:{"#2ea043" if w > 0 else "#d1242f"};border-radius:3px"></div></td></tr>'
-                for f, w in rw)
+                f'<tr><td><b>{_e(PR.LABEL[r["f"]])}</b>'
+                + (f'<br><span class=muted>{_e(PR.NOTES[r["f"]])}</span>' if r["stable"] and r["f"] in PR.NOTES else "")
+                + f'</td><td data-v="{r["w"]}">{r["w"]:+.2f}</td>'
+                f'<td><div style="height:10px;width:{int(abs(r["w"]) / mx * 100)}%;background:'
+                f'{("#2ea043" if r["w"] > 0 else "#d1242f") if r["stable"] else "#8b949e"};border-radius:3px"></div>'
+                f'<span class=muted>{"finding" if r["stable"] else ("passed today, not yet confirmed" if r["today"] else "unclear")}</span></td></tr>'
+                for r in rw)
             accs = [f"{PR.TARGETS[t]}: accuracy {(pst.get(t) or {}).get('test_auc'):.2f}"
                     for t in PR.TARGETS if (pst.get(t) or {}).get("test_auc") is not None]
             algo_note = (f"Trained {pst.get('day')} on which games Roblox promoted the following week. "
                          + (" · ".join(accs) + " (0.5 = coin flip). " if accs else "")
-                         + "Weights are per standard step, after allowing for size, momentum and age.")
+                         + "Weights are per standard step, after allowing for size, momentum and age. Coloured rows are "
+                           "findings (they kept their direction on 3 of the last 4 days when the model was refitted on "
+                           "resampled games); grey rows are not.")
         pr = state.get("_promo") or {}
         top = sorted(((v["p"], u, v) for u, v in pr.items() if not v.get("charted")), reverse=True)[:40]
         cand_rows = "".join(

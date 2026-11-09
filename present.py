@@ -508,8 +508,9 @@ def weekly_cards(db, state, today, ctx, table):
             if top2:
                 head.append(f"🧠 **Roblox is reliably rewarding:** {' and '.join(top2)}")
         else:
-            al.append("No quality signal is reliably rewarded or penalised right now — the weights flip direction when the "
-                      "model is refitted on resampled games, so none is reported as a finding.")
+            al.append("No quality signal is reliably rewarded or penalised right now — none has held its direction for "
+                      f"{C.PROMO_CONFIRM_DAYS} of the last {C.PROMO_CONFIRM_WINDOW} days when the model is refitted on "
+                      "resampled games, so none is reported as a finding.")
         try:
             sc = P.scorecard(db, today) or {}
         except Exception:

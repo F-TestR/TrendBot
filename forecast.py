@@ -266,7 +266,8 @@ def hold_band(m):
 
 
 def survival(db, series, wf, today, groups, live=None, hold_weeks=None):
-    """Half-life (days from peak until below 50% of peak) per group. groups: uid -> {kind: label}.
+    """Half-life (days from peak until below 50% of peak) per group, for games that at least doubled on the way
+    to that peak (SURV_MIN_RISE x their level one to two weeks earlier). groups: uid -> {kind: label}.
     live: only games that PEAKED on/after this day are counted. A game that peaked earlier is only in the
     database if it was still around when the bot started - so older peaks are all long-lived by selection,
     and counting them stretched every half-life."""
@@ -282,6 +283,11 @@ def survival(db, series, wf, today, groups, live=None, hold_weeks=None):
         if live and adj[i][0] < live:
             continue  # peaked before the bot was watching
         pk = ys[i]
+        # It has to be a hit: a game that ROSE to this peak. A steady, years-old game also has a best day in the
+        # window, but nothing rose and nothing fades; counting those made "a typical hit" mostly not hits at all.
+        base = ys[max(0, i - 14):max(1, i - 6)]
+        if pk < C.SURV_MIN_RISE * (sum(base) / len(base)):
+            continue
         event, dur = 0, len(ys) - 1 - i
         for j in range(i + 1, len(ys) - 2):
             if sum(ys[j:j + 3]) / 3 < 0.5 * pk:
@@ -366,7 +372,8 @@ def update(db, state, today, young_ids, mechanics_of):
     state["_life"] = life
     state["fc_meta"] = {"day": today, "wf": [round(x, 3) for x in wf]}
     # back-tests are slower: refresh weekly
-    if state.get("fc_bt_day") is None or (_d(today) - _d(state["fc_bt_day"])).days >= 6:
+    stale = "live" not in (state.get("fc_bt") or {})     # made by the old method (counted survivors): redo it now
+    if stale or state.get("fc_bt_day") is None or (_d(today) - _d(state["fc_bt_day"])).days >= 6:
         try:
             state["fc_bt"] = {"scurve": backtest_scurve(series, wf, today, live), "cp": backtest_cp(series, wf, live),
                               "live": live}
@@ -442,11 +449,13 @@ def weekly_lines(state, fmt):
     allg = next((x for x in surv if x["kind"] == "all"), None)
     seen = " that peaked while the bot was watching" if bt.get("live") else ""
     if allg and allg["median"] is not None:
-        lines.append(f"⏳ A typical hit keeps half its peak players for **{allg['median']} days** ({allg['n']} games{seen}; "
-                     f"{allg['events']} have dropped below half so far)")
+        lines.append(f"⏳ A typical hit (a game that at least doubled on the way to its peak) keeps half its peak players "
+                     f"for **{allg['median']} days** ({allg['n']} games{seen}; {allg['events']} have dropped below half so far)")
     elif allg:
         lines.append(f"⏳ Lifespans: most of the {allg['n']} hits{seen} are still above half their peak — "
                      f"half-lives appear as they age")
+    else:
+        lines.append("⏳ Lifespans: too few games have risen to a peak and aged while the bot was watching — they appear as hits age")
     for kind, title in (("hold", "By weekday hold in the weeks BEFORE the peak"), ("mech", "By mechanic"), ("genre", "By genre")):
         xs = [x for x in surv if x["kind"] == kind and x["median"] is not None]
         xs.sort(key=lambda x: -x["median"])

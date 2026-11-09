@@ -27,6 +27,7 @@ quality signal pulling its score down the most.
 """
 import math
 import random
+import zlib
 from datetime import datetime, timedelta
 from statistics import median
 
@@ -203,13 +204,14 @@ def build(db, today):
     data = _load(db, _s(_d(lo) - timedelta(days=10)), today)
     cs = chart_start(db)
     chart_from = _s(_d(cs) + timedelta(days=2)) if cs else None   # the 3-day "already charting?" look-back needs data too
-    rng = random.Random(7)
     ex = {"chart": [], "growth": []}
     day = _d(lo)
     while _s(day) <= hi:
         d = _s(day)
-        uids = [u for u, ds in data[0].items() if d in ds]
-        rng.shuffle(uids)
+        # Which games stand for a day is fixed by a hash of (game, day), not by a shuffle: the same day always gets
+        # the same sample, so two runs on the same data agree. (A shuffle depended on the order rows came back from
+        # the database, so the sample - and with it the "findings" - changed from one run to the next.)
+        uids = sorted((u for u, ds in data[0].items() if d in ds), key=lambda u: zlib.crc32(f"{u}:{d}".encode()))
         for uid in uids[:C.PROMO_GAMES_PER_DAY]:
             x = features(uid, d, data)
             if not x:
@@ -279,6 +281,14 @@ def train(db, today):
         status[t] = st
         if m:
             models[t] = m
+    # A signal is only reported as a finding once it has held up on several days running, not just today.
+    held = W.meta_get(db, "promo_stable", {}) or {}
+    held[today] = [r["f"] for r in rewarded_detail(status, confirm=False) if r["stable"]]
+    for k in sorted(held)[:-10]:
+        del held[k]
+    W.meta_set(db, "promo_stable", held)
+    recent = [held[d] for d in sorted(held)[-C.PROMO_CONFIRM_WINDOW:]]
+    status["confirmed"] = [f for f in held[today] if sum(1 for s in recent if f in s) >= C.PROMO_CONFIRM_DAYS]
     W.meta_set(db, "promo_models", models)
     W.meta_set(db, "promo_status", status)
     hist = W.meta_get(db, "promo_history", {}) or {}
@@ -376,10 +386,14 @@ def rewarded(status):
     return [(r["f"], r["w"]) for r in rewarded_detail(status)]
 
 
-def rewarded_detail(status):
-    """[{f, w, stable, share}] — w = average weight over the two targets. `stable` = the weight keeps its sign
-    when the model is refitted on resampled games (PROMO_STABLE_SHARE of the time, in every target that has it)
-    AND the signal is measured for enough game-days to mean something (PROMO_MIN_COVERAGE)."""
+def rewarded_detail(status, confirm=True):
+    """[{f, w, stable, today, share}] — w = average weight over the two targets.
+
+    `today` = it passes today's test: the weight keeps its sign when the model is refitted on resampled games
+    (PROMO_STABLE_SHARE of the time, in every target that has it), its 90% range doesn't include zero, and the
+    signal is measured for enough game-days to mean something (PROMO_MIN_COVERAGE).
+    `stable` = a finding worth reporting: it passed on PROMO_CONFIRM_DAYS of the last PROMO_CONFIRM_WINDOW days too.
+    One day's pass is not enough - signals used to appear one day and vanish the next."""
     ws, signs, cov = {}, {}, {}
     for t in TARGETS:
         st = status.get(t) or {}
@@ -389,7 +403,8 @@ def rewarded_detail(status):
                 continue
             ws.setdefault(f, []).append(w)
             if f in stab:
-                signs.setdefault(f, []).append((stab[f]["sign"], stab[f]["w"]))
+                clear = stab[f]["lo"] * stab[f]["hi"] > 0          # the 90% range is all on one side of zero
+                signs.setdefault(f, []).append((stab[f]["sign"] if clear else 0.0, stab[f]["w"]))
             cov.setdefault(f, []).append((st.get("coverage") or {}).get(f, 1.0))
     out = []
     for f, v in ws.items():
@@ -397,8 +412,9 @@ def rewarded_detail(status):
         sg = signs.get(f) or []
         same_dir = all((x[1] > 0) == (w > 0) for x in sg) if sg else False
         share = min((x[0] for x in sg), default=None)
-        stable = bool(sg) and same_dir and share >= C.PROMO_STABLE_SHARE and min(cov.get(f, [0])) >= C.PROMO_MIN_COVERAGE
-        out.append({"f": f, "w": w, "stable": stable, "share": share, "coverage": min(cov.get(f, [0]))})
+        ok = bool(sg) and same_dir and share >= C.PROMO_STABLE_SHARE and min(cov.get(f, [0])) >= C.PROMO_MIN_COVERAGE
+        stable = ok and (not confirm or f in (status.get("confirmed") or []))
+        out.append({"f": f, "w": w, "stable": stable, "today": ok, "share": share, "coverage": min(cov.get(f, [0]))})
     return sorted(out, key=lambda r: -r["w"])
 
 
@@ -452,9 +468,13 @@ def report_lines(db, today):
             lines.append(f"{_bar(r['w'], scale)} {LABEL[r['f']]} ({r['w']:+.2f}){note}")
     else:
         lines.append("• No quality signal is reliably rewarded or penalised in this window.")
-    shaky = [LABEL[r["f"]].split(" (")[0] for r in rw if not r["stable"]]
+    pending = [LABEL[r["f"]].split(" (")[0] for r in rw if r["today"] and not r["stable"]]
+    if pending:
+        lines.append(f"⏳ Passed today's test but not yet on {C.PROMO_CONFIRM_DAYS} of the last {C.PROMO_CONFIRM_WINDOW} days "
+                     f"(so not a finding yet): " + ", ".join(pending))
+    shaky = [LABEL[r["f"]].split(" (")[0] for r in rw if not r["today"]]
     if shaky:
-        lines.append("▫️ Unclear this week (direction flips when resampled, or measured for too few games): " + ", ".join(shaky))
+        lines.append("▫️ Unclear (direction flips when resampled, or measured for too few games): " + ", ".join(shaky))
     for t, desc in TARGETS.items():
         s = st.get(t) or {}
         if s.get("trained"):

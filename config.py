@@ -216,7 +216,7 @@ WF_MIN_TRAIN_DAYS = 5            # a walk-forward slice needs at least this many
 WF_MIN_TRAIN_POS = 5             # ...including this many positives
 HONEST_MIN_POS = 10              # an accuracy figure is only reported when the test predictions include this many positives
 BOOT_ROUNDS = 200                # resamples used for accuracy ranges and champion-vs-challenger confidence
-COEF_BOOT_ROUNDS = 60            # resamples used to check which model weights are stable
+COEF_BOOT_ROUNDS = 100           # resamples used to check which model weights are stable
 EXPLODE_CCU = 25000              # "exploded" = reached this many players...
 LABEL_DAYS = 21                  # ...within this many days of first being noticed
 LEARN_ENTRY_CCU = 600            # a game is "noticed" the first day it reaches this many players (inside the top 2,000)
@@ -383,8 +383,10 @@ BADGE_PLAYTIME_REFERENCE = 25    # minutes/day used as "typical" until enough ga
 # =====================================================================
 PROMO_MIN_PLAYERS = 200          # game-days with fewer average players are ignored
 PROMO_HORIZON_DAYS = 8           # an example's outcome is known 8 days later (used to keep the honest test leak-free)
-PROMO_STABLE_SHARE = 0.9         # a weight is a "finding" only if it keeps its sign in 90%+ of refits on resampled games...
+PROMO_STABLE_SHARE = 0.95        # a weight is a "finding" only if it keeps its sign in 95%+ of refits on resampled games...
 PROMO_MIN_COVERAGE = 0.25        # ...and the signal is measured for at least a quarter of game-days
+PROMO_CONFIRM_DAYS = 3           # ...and it passed that test on at least 3...
+PROMO_CONFIRM_WINDOW = 4         # ...of the last 4 daily runs (one day's pass used to appear and vanish)
 PROMO_GROWTH_RATIO = 1.5         # "growth" outcome = next 7 days' average players >= 1.5x the last 7 days'
 PROMO_HISTORY_WEEKS = 5          # train on the last 5 weeks (recent enough to notice algorithm changes)
 PROMO_DAY_STEP = 1               # use every day
@@ -451,7 +453,8 @@ CP_TRUST_MIN_N = 20              # once the back-test has this many firings...
 CP_TRUST_LIFT = 1.3              # ..."breakout starting" alerts only go out if they beat a random young game by 1.3x
 FC_TRUST_MIN_N = 30              # once this many peak forecasts are checked...
 FC_TRUST_WITHIN2X = 0.6          # ...numbers are only quoted if 60%+ landed within 2x of the real peak
-SURV_MIN_PEAK = 1000             # lifespans are measured for games that peaked above this
+SURV_MIN_PEAK = 1000             # lifespans are measured for games that peaked above this...
+SURV_MIN_RISE = 2.0              # ...after at least doubling from their level 1-2 weeks earlier (a real rise, not a steady game's best day)
 SURV_MIN_GROUP = 8               # groups smaller than this aren't reported
 
 # =====================================================================
