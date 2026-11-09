@@ -316,15 +316,19 @@ def _group_of(e):
     return e.get("uid") or e.get("theme") or e.get("group") or _day_of(e)
 
 
-def purged_folds(examples, horizon, folds=None, min_train_days=None):
+def purged_folds(examples, horizon, folds=None, min_train_days=None, test_from=None):
     """[(train, test)] in time order. Each test block is a run of days; its training set is every example
-    whose outcome window (day + horizon) had closed before the block started."""
+    whose outcome window (day + horizon) had closed before the block started.
+    test_from: only days on/after this are ever TESTED on (training may still use earlier ones) - used to
+    test only on games the bot watched live, never on downloaded survivors-only history."""
     folds = folds or C.WF_FOLDS
     min_train_days = C.WF_MIN_TRAIN_DAYS if min_train_days is None else min_train_days
     days = sorted({_day_of(e) for e in examples})
     if len(days) < 3:
         return []
     first_test = _s(_d(days[0]) + timedelta(days=horizon + min_train_days))
+    if test_from and test_from > first_test:
+        first_test = test_from
     tdays = [d for d in days if d >= first_test]
     if len(tdays) < 2:
         return []
@@ -398,7 +402,7 @@ def p_better(oof_a, oof_b):
     return wins / len(diffs), sum(diffs) / len(diffs)
 
 
-def walk_forward(examples, names, lr_kw, horizon=0, want_gbm=True, folds=None):
+def walk_forward(examples, names, lr_kw, horizon=0, want_gbm=True, folds=None, test_from=None):
     """Purged, time-ordered test of the simple model (and boosted trees).
     Returns {'oof': {'lr': [(score, y, group)], 'gbm': [...]}, 'folds': n, 'horizon': days}."""
     oof = {"lr": [], "gbm": []}
@@ -409,7 +413,7 @@ def walk_forward(examples, names, lr_kw, horizon=0, want_gbm=True, folds=None):
             have_gbm = True
         except ImportError:
             pass
-    fs = purged_folds(examples, horizon, folds)
+    fs = purged_folds(examples, horizon, folds, test_from=test_from)
     for tr, te in fs:
         m = fit(tr, names=names, **lr_kw)
         oof["lr"] += [(predict(m, e["x"]), e["y"], _group_of(e)) for e in te]
@@ -420,7 +424,7 @@ def walk_forward(examples, names, lr_kw, horizon=0, want_gbm=True, folds=None):
     return {"oof": oof, "folds": len(fs), "horizon": horizon}
 
 
-def attach_champion(model, examples, names, status, horizon=0, **lr_kw):
+def attach_champion(model, examples, names, status, horizon=0, test_from=None, **lr_kw):
     """The honest check and the champion/challenger choice, in one place for every model.
 
     Runs the purged walk-forward test, stores the champion's honest numbers in status['honest'] (and the
@@ -434,12 +438,12 @@ def attach_champion(model, examples, names, status, horizon=0, **lr_kw):
     model.pop("gbm", None)
     want_gbm = n >= C.GBM_MIN_EXAMPLES and pos >= C.GBM_MIN_POSITIVES and pos < n
     try:
-        wf = walk_forward(examples, names, lr_kw, horizon, want_gbm)
+        wf = walk_forward(examples, names, lr_kw, horizon, want_gbm, test_from=test_from)
     except Exception as e:
         status["champion_why"] = f"walk-forward failed: {e}"
         return model
     lr, gb = honest_metrics(wf["oof"]["lr"]), honest_metrics(wf["oof"]["gbm"])
-    status["wf"] = {"folds": wf["folds"], "horizon": horizon,
+    status["wf"] = {"folds": wf["folds"], "horizon": horizon, "test_from": test_from,
                     **{k: {kk: (round(vv, 4) if isinstance(vv, float) else vv) for kk, vv in v.items()}
                        for k, v in (("lr", lr), ("gbm", gb)) if v}}
     best, kind = lr, "lr"
@@ -469,6 +473,11 @@ def honest_line(status, what="positives"):
     h = (status or {}).get("honest")
     wf = (status or {}).get("wf") or {}
     if not h:
+        tf = wf.get("test_from")
+        if tf and wf.get("horizon") is not None:
+            first = _s(_d(tf) + timedelta(days=int(wf["horizon"]) + 1))
+            return (f"Honest test: not possible yet — it is run only on games the bot watched from the start ({tf} on), and "
+                    f"their {wf['horizon']}-day outcomes only began finishing on {first}. It needs {C.HONEST_MIN_POS}+ {what} among them.")
         return (f"Honest test: not possible yet — it needs enough history to train only on outcomes that were "
                 f"already known ({wf.get('horizon', '?')}-day outcomes).")
     if h.get("auc") is None:
@@ -535,7 +544,12 @@ def train(db, today):
         W.meta_set(db, "model_status", status)
         return status
     model = fit(ex)
-    model = attach_champion(model, ex, model["names"], status, horizon=C.LABEL_DAYS)
+    live = W.live_start(db)
+    status["live_examples"] = sum(1 for e in ex if live and e["t0"] >= live)
+    status["live_positives"] = sum(e["y"] for e in ex if live and e["t0"] >= live)
+    # Trained on everything, but TESTED only on games first noticed while the bot was watching: the
+    # downloaded history holds survivors only, and a model marked on survivors flatters itself.
+    model = attach_champion(model, ex, model["names"], status, horizon=C.LABEL_DAYS, test_from=live)
     h = status.get("honest") or {}
     status["test_n"], status["test_pos"] = h.get("n"), h.get("pos")
     status["test_top10_hit"], status["base_rate"] = h.get("top"), h.get("base", pos / n)
@@ -628,7 +642,9 @@ def report_lines(db, today, fmt):
         lines.append(f"• Still collecting examples — {st.get('why', 'not trained yet')}.")
     else:
         lines.append(f"• Trained on {st['examples']} young games, {st['positives']} of which exploded "
-                     f"({st['positives'] / max(st['examples'], 1) * 100:.0f}%).")
+                     f"({st['positives'] / max(st['examples'], 1) * 100:.0f}%). Only {st.get('live_examples', 0)} of them "
+                     f"({st.get('live_positives', 0)} explosions) were first noticed while the bot was watching — the rest come from "
+                     f"downloaded history, which only contains games that survived, so the test below uses the watched ones only.")
         lines.append("• " + honest_line(st, "explosions"))
         cl = champion_line(st)
         if cl:

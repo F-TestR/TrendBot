@@ -150,8 +150,10 @@ def _pairs(rows, weeks):
         ranks = {k: _pct_ranks({u: g[c] for u, g in games.items()}) for k, c in COLS.items()}
         for uid, g in games.items():
             a, f = g["avg_ccu"], (later.get(uid) or {}).get("avg_ccu")
-            if not a or a < C.HOLD_MIN_PLAYERS or f is None:
+            if not a or a < C.HOLD_MIN_PLAYERS:
                 continue
+            if f is None:
+                f = 0.5 * C.ENGAGE_MIN_AVG_CCU     # dropped out of the scored list: it fell below the floor (not "unknown")
             out = math.log(max(f, 1) / a)
             n += 1
             for k in COLS:
@@ -161,48 +163,69 @@ def _pairs(rows, weeks):
 
 
 def _weights_from(xs, n):
-    """Weights from how well each signal's rank predicted survival, blended with the starting weights."""
+    """Weights from how well each signal's rank predicted the players kept 4 weeks later, blended with the
+    starting weights. A signal with too little data to judge KEEPS its starting weight (it is not zeroed:
+    "not measured yet" is not "doesn't matter")."""
     prior = {k: WEIGHTS[k] for k in COLS}
     ps = sum(prior.values())
     prior = {k: v / ps for k, v in prior.items()}
-    res = {"n": n, "rho": {}, "weights": prior, "learned": False}
+    res = {"n": n, "rho": {}, "weights": prior, "learned": False, "unmeasured": list(COLS)}
     if n < C.STICK_LEARN_MIN:
         return res
     for k, pairs in xs.items():
-        if len(pairs) >= 50:
+        if len(pairs) >= C.STICK_MIN_PAIRS:
             res["rho"][k] = round(_spearman([a for a, _ in pairs], [b for _, b in pairs]), 3)
-    pos = {k: max(0.0, v) for k, v in res["rho"].items()}
+    have = [k for k in COLS if k in res["rho"]]
+    res["unmeasured"] = [k for k in COLS if k not in have]
+    pos = {k: max(0.0, res["rho"][k]) for k in have}
     tot = sum(pos.values())
     if tot <= 0:
         return res
-    learned = {k: pos.get(k, 0.0) / tot for k in COLS}
+    mass = sum(prior[k] for k in have)           # only the measured signals' share is re-divided
     a = min(1.0, n / C.STICK_LEARN_FULL)
-    res["weights"] = {k: round(a * learned[k] + (1 - a) * prior[k], 4) for k in COLS}
+    w = dict(prior)
+    for k in have:
+        w[k] = a * (mass * pos[k] / tot) + (1 - a) * prior[k]
+    res["weights"] = {k: round(v, 4) for k, v in w.items()}
     res["learned"], res["blend"] = True, round(a, 2)
     return res
 
 
+def live_weeks(db, rows):
+    """Weeks (keyed by their Wednesday) that the bot watched live from their first day (Thursday).
+    Only these can say anything about survival: in downloaded history every game is a survivor by construction."""
+    import warehouse as W
+    ls = W.live_start(db)
+    if not ls:
+        return []
+    first = _s(_d(ls) + timedelta(days=6))
+    return sorted(w for w in rows if w >= first)
+
+
 def learn_weights(db):
-    """Let the data set the stickiness weights: for every past game-week, how well did each signal's rank
-    predict the players it still had 4 weeks later (Spearman)? Signals that predicted better weigh more.
-    Blended with the starting weights until there's plenty of history, so one odd month can't swing it.
-    Also runs the out-of-sample check (cv_check) so the report can say how well this really works."""
+    """Let the data set the stickiness weights: for every game-week the bot watched live, how well did each
+    signal's rank predict the players the game still had 4 weeks later (Spearman)? Signals that predicted
+    better weigh more. Blended with the starting weights until there's plenty of history, so one odd month
+    can't swing it. Also runs the out-of-sample check (cv_check) so the report can say how well this works."""
     import warehouse as W
     rows = _week_rows(db)
-    xs, n = _pairs(rows, list(rows))
+    weeks = live_weeks(db, rows)
+    xs, n = _pairs(rows, weeks)
     res = _weights_from(xs, n)
+    res["live_weeks"] = len(weeks)
+    res["first_pair"] = _s(_d(weeks[0]) + timedelta(days=28)) if weeks else None
     try:
-        res["cv"] = cv_check(rows)
+        res["cv"] = cv_check(rows, weeks)
     except Exception as e:
         print(f"stickiness cross-check failed: {e}")
     W.meta_set(db, "stick_weights", res)
     return res
 
 
-def cv_check(rows):
+def cv_check(rows, weeks=None):
     """Honest check of the learned weights: score each week with weights learned from the OTHER weeks only,
     then see how well that score ranked the players kept 4 weeks later. {"rho", "n", "weeks"} or None."""
-    weeks = sorted(w for w in rows if _s(_d(w) + timedelta(days=28)) in rows)
+    weeks = sorted(w for w in (weeks if weeks is not None else rows) if _s(_d(w) + timedelta(days=28)) in rows)
     if len(weeks) < 2:
         return None
     sc, outc = [], []
@@ -213,8 +236,10 @@ def cv_check(rows):
         ranks = {k: _pct_ranks({u: g[c] for u, g in games.items()}) for k, c in COLS.items()}
         for uid, g in games.items():
             a, f = g["avg_ccu"], (later.get(uid) or {}).get("avg_ccu")
-            if not a or a < C.HOLD_MIN_PLAYERS or f is None:
+            if not a or a < C.HOLD_MIN_PLAYERS:
                 continue
+            if f is None:
+                f = 0.5 * C.ENGAGE_MIN_AVG_CCU
             tot = wsum = 0.0
             for k, wt in wts.items():
                 if uid in ranks[k]:
@@ -308,18 +333,25 @@ def _spearman(xs, ys):
 
 
 def backtest(db):
-    """Score in week W vs share of players still there 4 weeks later."""
-    rows = {}
+    """Score in week W vs share of players still there 4 weeks later - for weeks the bot watched live only.
+    A game that left the bot's lists entirely by then counts as having kept 0%: in the live era a missing
+    game really is gone, and leaving those out would count only the survivors."""
+    import warehouse as W
+    ls = W.live_start(db)
+    first = _s(_d(ls) + timedelta(days=6)) if ls else "9999"
+    rows, weeks = {}, set()
     for r in db.execute("SELECT uid, week, avg_ccu, score FROM engage_weekly"):
         rows.setdefault(r["uid"], {})[r["week"]] = (r["avg_ccu"], r["score"])
+        weeks.add(r["week"])
     pairs = []
     for uid, ws in rows.items():
         for w, (a, sc) in ws.items():
-            if sc is None or a < C.HOLD_MIN_PLAYERS:
+            if sc is None or a < C.HOLD_MIN_PLAYERS or w < first:
                 continue
-            later = ws.get(_s(_d(w) + timedelta(days=28)))
-            if later:
-                pairs.append((sc, later[0] / a))
+            w4 = _s(_d(w) + timedelta(days=28))
+            if w4 in weeks:
+                later = ws.get(w4)
+                pairs.append((sc, (later[0] / a) if later else 0.0))
     if len(pairs) < C.BACKTEST_MIN_PAIRS:
         return {"n": len(pairs)}
     bands = {"70+": [], "40–70": [], "under 40": []}
@@ -365,7 +397,8 @@ def feature_report(db, state):
         if x1 and x2 and n2:
             lift = (x1 / n1) / (x2 / n2)
             se = math.sqrt(1 / x1 - 1 / n1 + 1 / x2 - 1 / n2)       # standard error of log risk ratio
-            lo, hi = lift * math.exp(-1.645 * se), lift * math.exp(1.645 * se)
+            z = C.FEATURE_Z                                           # wide range: a dozen+ features are tested at once
+            lo, hi = lift * math.exp(-z * se), lift * math.exp(z * se)
         rows.append({"feature": feat, "games": n1, "in_lt": x1 / n_lt, "in_other": (n1 - x1) / n_other,
                      "lift": lift, "lo": lo, "hi": hi, "sig": bool(lo and (lo > 1 or hi < 1))})
     rows.sort(key=lambda r: -(r["lo"] or 0))
@@ -445,8 +478,18 @@ def heat_points(state, gid):
 
 def report_lines(db, state, today, fmt, name_of, link):
     sw = __import__("warehouse").meta_get(db, "stick_weights") or {}
-    lines = [f"📏 **Stickiness** ({weights_label(db)})"
-             + (f" — weights learned from {sw['n']:,} game-weeks of what actually survived" if sw.get("learned") else "")]
+    short = {"hold_rel": "weekday hold", "playtime": "playtime", "session_min": "session length",
+             "level_kept": "players kept vs best week", "fav_conv": "favourite rate", "rev_per_ccu": "revenue per player"}
+    if sw.get("learned"):
+        how = f" — weights learned from {sw['n']:,} game-weeks the bot watched live"
+        un = [short[k] for k in sw.get("unmeasured") or []]
+        if un:
+            how += f" ({', '.join(un)}: too little data yet, kept at starting weight)"
+    else:
+        how = (" — starting weights. Learning needs games the bot watched from the start AND their numbers 4 weeks later"
+               + (f"; the first such week pairs up on {sw['first_pair']}" if sw.get("first_pair") else "")
+               + ". Earlier \"learned\" weights came from downloaded history, where every game is a survivor.")
+    lines = [f"📏 **Stickiness** ({weights_label(db)}){how}"]
     st = state.get("stick") or {}
     sess = [v["session"] for v in st.values() if v.get("session")]
     if sess:
@@ -477,7 +520,8 @@ def report_lines(db, state, today, fmt, name_of, link):
                          f"**{cv['rho']:+.2f}** over {cv['n']:,} game-weeks in {cv['weeks']} weeks. "
                          + ("A weak but real signal." if cv["rho"] >= 0.1 else "Too weak to rely on yet."))
     else:
-        lines.append(f"• Needs more history ({bt.get('n', 0)} game-weeks so far, needs {C.BACKTEST_MIN_PAIRS}).")
+        lines.append(f"• Not measurable yet ({bt.get('n', 0)} game-weeks the bot watched live that are 4 weeks old; needs "
+                     f"{C.BACKTEST_MIN_PAIRS}). Until then the score is a reasoned guess, not a proven predictor.")
     fr = feature_report(db, state)
     lines += ["", "🧩 **What long-term games do differently** (features mentioned in their descriptions)"]
     sig = [x for x in fr["rows"] if x["sig"]]
@@ -486,7 +530,8 @@ def report_lines(db, state, today, fmt, name_of, link):
             lines.append(f"• {r['feature']}: games mentioning it were **{r['lift']:.1f}×** as likely to be long-term "
                          f"(likely {r['lo']:.1f}–{r['hi']:.1f}×; in {r['in_lt']*100:.0f}% of long-term games vs "
                          f"{r['in_other']*100:.0f}% of others; {r['games']} games)")
-        lines.append(f"_{fr['checked']} features were checked; with that many, about one can pass by luck. "
+        lines.append(f"_{fr['checked']} features were checked, so the ranges are deliberately wide (99%). Long-term here means high "
+                     "weekday hold, which idle / AFK-friendly games get partly because players leave them running. "
                      "Descriptions are marketing and this is correlation, not proof._")
     elif fr["rows"]:
         lines.append(f"• None of the {fr['checked']} features checked is reliably more (or less) common in long-term games "

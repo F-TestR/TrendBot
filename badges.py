@@ -433,12 +433,12 @@ def report_lines(db, state, fmt, name_of, link):
     top = sorted(((v["playtime"], u, v) for u, v in b.items() if v.get("playtime") and u in young and (v.get("dau") or 0) >= 2000),
                  reverse=True)[:6]
     if top:
-        lines.append("Young games with the most playtime per player (Roblox's top ranking signal):")
+        lines.append("Young games with the most playtime per player (a signal Roblox says it ranks on):")
         for pt, u, v in top:
             extra = f", {_pct(v['returning'])} returning" if v.get("returning") is not None and C.BADGE_RETURNING else ""
             lines.append(f"• {name_of(u)[:36]} — **{pt:.0f} min/day** · {fmt(v['dau'])} players/day{extra} {link(u)}")
-    st = sorted(((v["streak7"][1], u, v) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"),
-                reverse=True)[:5]
+    st = sorted(((v["streak7"][1], u, v) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"
+                 and v["streak7"][1] >= 0.01), reverse=True)[:5]     # under 1% is a badge almost nobody earns, not a "best"
     if st:
         lines.append("Best streak retention (share of new players who ever hit a ~7-day streak; GameAnalytics top 1% D7 = 9.1%):")
         for s, u, v in st:

@@ -189,10 +189,20 @@ def _impute(rows, med):
     return out
 
 
+def chart_start(db):
+    """First day the bot has Roblox chart positions for. Before it nobody was recording charts, so "did it enter
+    a chart?" is unknowable - NOT "no". (Counting those days as "no" taught the chart model that whatever
+    distinguishes downloaded history from live days predicts charting.)"""
+    r = db.execute("SELECT MIN(day) AS m FROM daily WHERE chart_best IS NOT NULL").fetchone()
+    return r["m"] if r else None
+
+
 def build(db, today):
     hi = _s(_d(today) - timedelta(days=8))
     lo = _s(_d(today) - timedelta(days=7 * C.PROMO_HISTORY_WEEKS))
     data = _load(db, _s(_d(lo) - timedelta(days=10)), today)
+    cs = chart_start(db)
+    chart_from = _s(_d(cs) + timedelta(days=2)) if cs else None   # the 3-day "already charting?" look-back needs data too
     rng = random.Random(7)
     ex = {"chart": [], "growth": []}
     day = _d(lo)
@@ -208,22 +218,23 @@ def build(db, today):
             if not y:
                 continue
             ex["growth"].append({"x": x, "y": y["growth"], "day": d, "uid": uid})
-            if not charted_recently(uid, d, data):  # "enters a chart" only makes sense for games not on one
+            if chart_from and d >= chart_from and not charted_recently(uid, d, data):
+                # "enters a chart" only makes sense for games not on one, on days charts were being recorded
                 ex["chart"].append({"x": dict(x), "y": y["chart"], "day": d, "uid": uid})
         day += timedelta(days=C.PROMO_DAY_STEP)
     return ex, data
 
 
-def _fit_one(examples):
+def _fit_one(examples, live=None):
     n, pos = len(examples), sum(e["y"] for e in examples)
     st = {"examples": n, "positives": pos, "trained": False}
     if n < C.PROMO_MIN_EXAMPLES or pos < C.PROMO_MIN_POSITIVES or pos == n:
         st["why"] = f"needs {C.PROMO_MIN_EXAMPLES}+ examples with {C.PROMO_MIN_POSITIVES}+ promotions (has {n} / {pos})"
         return None, st
     examples.sort(key=lambda e: e["day"])
+    raw = [dict(e["x"]) for e in examples]          # before filling gaps: which signals were really measured
     med = {f: (median([e["x"][f] for e in examples if e["x"][f] is not None])
                if any(e["x"][f] is not None for e in examples) else 0.0) for f in NAMES}
-    st["coverage"] = {f: round(sum(1 for e in examples if e["x"][f] is not None) / n, 3) for f in NAMES}
     for e in examples:
         e["x"] = {f: (e["x"][f] if e["x"][f] is not None else med[f]) for f in NAMES}
     usable = [f for f in NAMES if len({round(e["x"][f], 6) for e in examples}) > 1]
@@ -235,12 +246,26 @@ def _fit_one(examples):
     st["top10_hit"], st["base_rate"] = h.get("top"), h.get("base", pos / n)
     m["median"] = med
     st["trained"] = True
-    st["weights"] = {f: w for f, w in zip(m["names"], m["w"])}
-    try:
-        st["stability"] = L.coef_stability(examples, usable, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
-    except Exception as e:
-        st["stability"] = {}
-        print(f"promo weight stability failed: {e}")
+    # "What is rewarded" is read from days the bot watched live only: likes, favourites, revenue and badges
+    # don't exist in downloaded history, so on older days those signals are just filled-in averages.
+    sub = [(e, r) for e, r in zip(examples, raw) if not live or e["day"] >= live]
+    spos = sum(e["y"] for e, _ in sub)
+    st["weights_n"], st["weights_pos"] = len(sub), spos
+    if len(sub) >= C.PROMO_MIN_EXAMPLES and C.PROMO_MIN_POSITIVES <= spos < len(sub):
+        se = [e for e, _ in sub]
+        su = [f for f in usable if len({round(e["x"][f], 6) for e in se}) > 1]
+        st["coverage"] = {f: round(sum(1 for _, r in sub if r[f] is not None) / len(sub), 3) for f in NAMES}
+        wm = L.fit(se, names=su, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+        st["weights"] = {f: w for f, w in zip(wm["names"], wm["w"])}
+        try:
+            st["stability"] = L.coef_stability(se, su, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+        except Exception as e:
+            st["stability"] = {}
+            print(f"promo weight stability failed: {e}")
+    else:
+        st["weights"], st["stability"], st["coverage"] = {}, {}, {}
+        st["weights_why"] = (f"needs {C.PROMO_MIN_EXAMPLES}+ live game-days with {C.PROMO_MIN_POSITIVES}+ promotions "
+                             f"(has {len(sub)} / {spos})")
     return m, st
 
 
@@ -248,8 +273,9 @@ def train(db, today):
     ensure(db)
     ex, _ = build(db, today)
     models, status = {}, {"day": today}
+    live = W.live_start(db)
     for t in TARGETS:
-        m, st = _fit_one(ex[t])
+        m, st = _fit_one(ex[t], live)
         status[t] = st
         if m:
             models[t] = m
@@ -265,11 +291,26 @@ def train(db, today):
 
 # ------------------------------------------------------------- scoring ---
 
+def proven(db, today):
+    """{target: True/False} — has this target's model shown it works? Either on the honest test, or (better) on
+    the live check: predictions the bot really made, scored once their outcome was known."""
+    st = W.meta_get(db, "promo_status", {}) or {}
+    try:
+        sc = scorecard(db, today) or {}
+    except Exception:
+        sc = {}
+    return {t: bool(((st.get(t) or {}).get("test_auc") or 0) >= C.MODEL_TRUST_AUC
+                    or ((sc.get(t) or {}).get("auc") or 0) >= C.MODEL_TRUST_AUC) for t in TARGETS}
+
+
 def score(db, today, uids):
-    """{uid: {"p": promotion score, "chart": p, "growth": p, "weak": (feature, contribution)}}"""
+    """{uid: {"p": promotion score, "chart": p, "growth": p, "weak": (feature, contribution)}}
+    Every prediction is stored (so it can be checked later), but only targets that have proven themselves
+    count towards the score that is shown and used; if none has, nothing is returned."""
     models = W.meta_get(db, "promo_models", {}) or {}
     if not models:
         return {}
+    ok = proven(db, today)
     data = _load(db, _s(_d(today) - timedelta(days=12)), today)
     out = []
     for uid in uids:
@@ -283,17 +324,17 @@ def score(db, today, uids):
             for f, w, mu, sd in zip(m["names"], m["w"], m["mu"], m["sd"]):
                 if f in dict(QUALITY) and x.get(f) is not None:
                     contrib[f] = contrib.get(f, 0) + w * (x[f] - mu) / sd
-        ps = [res[t] for t in res]
+        ps = [res[t] for t in res if ok.get(t)]
         weak = min(contrib.items(), key=lambda kv: kv[1]) if contrib else None
         strong = max(contrib.items(), key=lambda kv: kv[1]) if contrib else None
-        out.append((uid, {"p": sum(ps) / len(ps), "chart": res.get("chart"), "growth": res.get("growth"),
+        out.append((uid, {"p": (sum(ps) / len(ps)) if ps else None, "chart": res.get("chart"), "growth": res.get("growth"),
                           "weak": weak if weak and weak[1] < 0 else None,
                           "strong": strong if strong and strong[1] > 0 else None,
                           "avg": 10 ** x["size"] - 1, "charted": charted_recently(uid, today, data, 0)}))
     rows = [(today, u, v["chart"], v["growth"], v["avg"], 1 if v["charted"] else 0) for u, v in out]
     db.executemany("INSERT OR REPLACE INTO promo_preds VALUES(?,?,?,?,?,?)", rows)
     db.execute("DELETE FROM promo_preds WHERE day < ?", (_s(_d(today) - timedelta(days=60)),))
-    return dict(out)
+    return {u: v for u, v in out if v["p"] is not None}
 
 
 def scorecard(db, today):
@@ -400,7 +441,10 @@ def report_lines(db, today):
     rw = rewarded_detail(st)
     solid = [r for r in rw if r["stable"]]
     scale = max((abs(r["w"]) for r in solid), default=1) or 1
-    if solid:
+    if not rw:
+        why = "; ".join(sorted({(st.get(t) or {}).get("weights_why", "") for t in TARGETS} - {""}))
+        lines.append(f"• Which signals are rewarded: not enough live days yet — {why}.")
+    elif solid:
         for r in solid:
             note = f" — {NOTES[r['f']]}" if r["f"] in NOTES else ""
             lines.append(f"{_bar(r['w'], scale)} {LABEL[r['f']]} ({r['w']:+.2f}){note}")

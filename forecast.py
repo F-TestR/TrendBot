@@ -142,8 +142,9 @@ def forecast_game(v, wf):
             "peak_day": _s(last_day + timedelta(days=round(f["days_to_90"]))), "now": ys[-1], "rmse": f["rmse"]}
 
 
-def backtest_scurve(series, wf, today):
-    """Fit on each rising game's first FC_BACKTEST_DAYS days; compare with its real peak over the next 3 weeks."""
+def backtest_scurve(series, wf, today, live=None):
+    """Fit on each rising game's first FC_BACKTEST_DAYS days; compare with its real peak over the next 3 weeks.
+    live: only rises that began on/after this day (watched by the bot, not survivors from downloaded history)."""
     errs = []
     for uid, v in series.items():
         if len(v) < C.FC_BACKTEST_DAYS + 10:
@@ -152,6 +153,8 @@ def backtest_scurve(series, wf, today):
         start = next((i for i, (_, a) in enumerate(adj) if a >= C.FC_MIN_PLAYERS), None)
         if start is None or start + C.FC_BACKTEST_DAYS + 10 > len(adj):
             continue
+        if live and (adj[start][0] < live or start == 0):
+            continue  # the rise began before the bot was watching (or before this game's data starts)
         head = [a for _, a in adj[start:start + C.FC_BACKTEST_DAYS]]
         tail = [a for _, a in adj[start + C.FC_BACKTEST_DAYS:start + C.FC_BACKTEST_DAYS + 21]]
         if head[-1] < 1.3 * head[0]:
@@ -217,15 +220,17 @@ def changepoint(v, wf):
             "fire": p_recent >= C.CP_MIN_PROB and new_g >= C.CP_MIN_GROWTH and new_g - old_g >= C.CP_MIN_JUMP}
 
 
-def backtest_cp(series, wf):
-    """How often a firing was followed by 2x players within 14 days, vs random young game-days."""
+def backtest_cp(series, wf, live=None):
+    """How often a firing was followed by 2x players within 14 days, vs random young game-days.
+    live: only decision days on/after this day are scored (see backtest_scurve)."""
     fired, base = [], []
-    cands = [v for v in series.values() if len(v) >= 20 and max(a for _, a in v) >= 2 * C.CP_MIN_PLAYERS]
+    cands = [v for v in series.values() if len(v) >= 20 and max(a for _, a in v) >= 2 * C.CP_MIN_PLAYERS
+             and (not live or v[-15][0] >= live)]
     cands = cands[:C.CP_BACKTEST_GAMES]
     for v in cands:
         for end in range(8, len(v) - 14, 2):
             seg = v[:end]
-            if seg[-1][1] < C.CP_MIN_PLAYERS:
+            if seg[-1][1] < C.CP_MIN_PLAYERS or (live and seg[-1][0] < live):
                 continue
             fut = max(a for _, a in v[end:end + 14])
             hit = fut >= 2 * seg[-1][1]
@@ -256,8 +261,15 @@ def kaplan_meier_median(rows):
     return None
 
 
-def survival(db, series, wf, today, groups):
-    """Half-life (days from peak until below 50% of peak) per group. groups: uid -> {kind: label}."""
+def hold_band(m):
+    return "holds weekday players well" if m >= 1.1 else ("holds them poorly" if m < 0.9 else "average weekday hold")
+
+
+def survival(db, series, wf, today, groups, live=None, hold_weeks=None):
+    """Half-life (days from peak until below 50% of peak) per group. groups: uid -> {kind: label}.
+    live: only games that PEAKED on/after this day are counted. A game that peaked earlier is only in the
+    database if it was still around when the bot started - so older peaks are all long-lived by selection,
+    and counting them stretched every half-life."""
     rows = {}
     for uid, v in series.items():
         adj = adjust(v, wf)
@@ -267,6 +279,8 @@ def survival(db, series, wf, today, groups):
         i = ys.index(max(ys))
         if i >= len(ys) - 3 or i < 2:
             continue  # peak too recent to judge, or peak before the window
+        if live and adj[i][0] < live:
+            continue  # peaked before the bot was watching
         pk = ys[i]
         event, dur = 0, len(ys) - 1 - i
         for j in range(i + 1, len(ys) - 2):
@@ -274,6 +288,11 @@ def survival(db, series, wf, today, groups):
                 event, dur = 1, j - i
                 break
         g = dict(groups.get(uid, {}))
+        if hold_weeks is not None:
+            # Weekday hold as it was BEFORE the peak. Using weeks after the peak is circular: a game that is
+            # collapsing has a poor weekday hold by definition, so "poor hold -> short life" proved nothing.
+            prior = [rel for wk, rel in hold_weeks.get(uid, []) if wk < adj[i][0]]
+            g["hold"] = hold_band(median(prior)) if prior else None
         g["all"] = "all games"
         for kind, label in g.items():
             if label:
@@ -321,20 +340,21 @@ def update(db, state, today, young_ids, mechanics_of):
                    [(today, u, c["players"], c["prob"], c["growth"]) for u, c in cp.items() if c["fire"]])
     # groups for lifespans
     meta = {r["uid"]: (r["name"] or "", r["genre"]) for r in db.execute("SELECT uid, name, genre FROM games")}
-    holds = {}
-    for r in db.execute("SELECT uid, rel FROM hold_weekly WHERE rel IS NOT NULL"):
-        holds.setdefault(r["uid"], []).append(r["rel"])
+    hold_weeks = {}
+    for r in db.execute("SELECT uid, week, rel FROM hold_weekly WHERE rel IS NOT NULL"):
+        hold_weeks.setdefault(r["uid"], []).append((r["week"], r["rel"]))
     groups = {}
     for uid in series:
         nm, genre = meta.get(uid, ("", None))
         mechs = mechanics_of(nm) if nm else []
-        hv = holds.get(uid)
-        band = None
-        if hv:
-            m = median(hv)
-            band = "holds weekday players well" if m >= 1.1 else ("holds them poorly" if m < 0.9 else "average weekday hold")
-        groups[uid] = {"genre": genre, "mech": mechs[0] if mechs else None, "hold": band}
-    surv = survival(db, series, wf, today, groups)
+        hv = [rel for _, rel in hold_weeks.get(uid, [])]
+        groups[uid] = {"genre": genre, "mech": mechs[0] if mechs else None, "hold": hold_band(median(hv)) if hv else None}
+    try:
+        import warehouse as W
+        live = W.live_start(db)
+    except Exception:
+        live = None
+    surv = survival(db, series, wf, today, groups, live=live, hold_weeks=hold_weeks)
     life = {}
     for uid in young_ids:
         if uid in groups or uid in fc:
@@ -348,7 +368,8 @@ def update(db, state, today, young_ids, mechanics_of):
     # back-tests are slower: refresh weekly
     if state.get("fc_bt_day") is None or (_d(today) - _d(state["fc_bt_day"])).days >= 6:
         try:
-            state["fc_bt"] = {"scurve": backtest_scurve(series, wf, today), "cp": backtest_cp(series, wf)}
+            state["fc_bt"] = {"scurve": backtest_scurve(series, wf, today, live), "cp": backtest_cp(series, wf, live),
+                              "live": live}
             set_trust(state)
             state["fc_bt_day"] = today
         except Exception as e:
@@ -360,15 +381,16 @@ def update(db, state, today, young_ids, mechanics_of):
 
 
 # Self-trust: a forecast or signal is only shown as a number / alert once its own back-test says it works.
-TRUST = {"peak": True, "cp": True}
+# Untested counts as unproven (numbers hidden, alert paused): a back-test on too few games proves nothing.
+TRUST = {"peak": False, "cp": False}
 
 
 def set_trust(state):
-    """Read the latest back-test into TRUST. Untested = trusted for now; tested and weak = hidden."""
+    """Read the latest back-test into TRUST."""
     bt = state.get("fc_bt") or {}
     s, c = bt.get("scurve") or {}, bt.get("cp") or {}
-    TRUST["peak"] = not (s.get("n", 0) >= C.FC_TRUST_MIN_N and (s.get("within2x") or 0) < C.FC_TRUST_WITHIN2X)
-    TRUST["cp"] = not (c.get("n", 0) >= C.CP_TRUST_MIN_N and (c.get("hit") or 0) < C.CP_TRUST_LIFT * (c.get("base") or 0))
+    TRUST["peak"] = s.get("n", 0) >= C.FC_TRUST_MIN_N and (s.get("within2x") or 0) >= C.FC_TRUST_WITHIN2X
+    TRUST["cp"] = c.get("n", 0) >= C.CP_TRUST_MIN_N and (c.get("hit") or 0) >= C.CP_TRUST_LIFT * (c.get("base") or 1)
     return TRUST
 
 
@@ -399,27 +421,35 @@ def weekly_lines(state, fmt):
     lines = []
     bt = state.get("fc_bt") or {}
     s = bt.get("scurve") or {}
+    scope = " — only rises the bot watched from their start are checked" if bt.get("live") else ""
     if s.get("median_err") is not None:
         lines.append(f"📈 Peak forecasts (made on day {C.FC_BACKTEST_DAYS}): typically off by **{s['median_err'] * 100:.0f}%**; "
-                     f"{s['within2x'] * 100:.0f}% within 2× of the real peak ({s['n']} games)")
-    if s.get("median_err") is not None and not TRUST["peak"]:
-        lines.append(f"   ↳ not accurate enough to quote numbers yet (needs {C.FC_TRUST_WITHIN2X * 100:.0f}% within 2×): "
-                     "the bot says \"big rise ahead / more growth / near its peak\" instead")
+                     f"{s['within2x'] * 100:.0f}% within 2× of the real peak ({s['n']} games{scope})")
+        if not TRUST["peak"]:
+            lines.append(f"   ↳ not proven enough to quote numbers (needs {C.FC_TRUST_MIN_N}+ games with {C.FC_TRUST_WITHIN2X * 100:.0f}% within 2×): "
+                         "the bot says \"big rise ahead / more growth / near its peak\" instead")
+    else:
+        lines.append(f"📈 Peak forecasts: {s.get('n', 0)} checkable so far (needs {C.FC_BACKTEST_MIN}){scope}. "
+                     "Shown as \"big rise ahead / more growth / near its peak\" until proven.")
     c = bt.get("cp") or {}
     if c.get("hit") is not None:
         lines.append(f"🧭 Breakout-start signal: followed by 2× players within 2 weeks **{c['hit'] * 100:.0f}%** of the time "
                      f"vs {c['base'] * 100:.0f}% for any young game ({c['n']} firings)"
-                     + ("" if TRUST["cp"] else " · **alerts paused** until it beats that"))
+                     + ("" if TRUST["cp"] else f" · **alerts paused** until it beats that by {C.CP_TRUST_LIFT}× over {C.CP_TRUST_MIN_N}+ firings"))
+    else:
+        lines.append(f"🧭 Breakout-start signal: {c.get('n', 0)} firings checkable so far (needs 5) · alerts paused until proven")
     surv = state.get("fc_surv") or []
     allg = next((x for x in surv if x["kind"] == "all"), None)
+    seen = " that peaked while the bot was watching" if bt.get("live") else ""
     if allg and allg["median"] is not None:
-        lines.append(f"⏳ A typical hit keeps half its peak players for **{allg['median']} days** ({allg['n']} games)")
+        lines.append(f"⏳ A typical hit keeps half its peak players for **{allg['median']} days** ({allg['n']} games{seen}; "
+                     f"{allg['events']} have dropped below half so far)")
     elif allg:
-        lines.append(f"⏳ Lifespans: most of the {allg['n']} hits tracked are still above half their peak — "
+        lines.append(f"⏳ Lifespans: most of the {allg['n']} hits{seen} are still above half their peak — "
                      f"half-lives appear as they age")
-    for kind, title in (("hold", "By weekday hold"), ("mech", "By mechanic"), ("genre", "By genre")):
+    for kind, title in (("hold", "By weekday hold in the weeks BEFORE the peak"), ("mech", "By mechanic"), ("genre", "By genre")):
         xs = [x for x in surv if x["kind"] == kind and x["median"] is not None]
         xs.sort(key=lambda x: -x["median"])
         if len(xs) >= 2:
-            lines.append(f"{title}: " + " · ".join(f"{x['label']} **{x['median']}d**" for x in xs[:4]))
+            lines.append(f"{title}: " + " · ".join(f"{x['label']} **{x['median']}d** ({x['n']})" for x in xs[:4]))
     return lines

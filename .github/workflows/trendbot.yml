@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: state
-          key: trendbot-state-${{ github.run_id }}
+          key: trendbot-state-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: trendbot-state-
 
       - name: Run
@@ -83,20 +83,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           STATE_PATH: state/state.json
           DB_PATH: state/trendbot.db
-          QUESTION: ${{ inputs.question }}
-          REPLY_TOKEN: ${{ inputs.reply_token }}
-          REPLY_APP: ${{ inputs.reply_app }}
+        # The slash-command inputs are read from the event file inside the script, not passed through `env:`.
+        # Anything in `env:` is printed in the run log before a mask can apply, and this repo's logs are public.
         run: |
+          ev() { python3 -c 'import json,os,sys; v=(json.load(open(os.environ["GITHUB_EVENT_PATH"])).get("inputs") or {}).get(sys.argv[1]); print("" if v is None else (str(v).lower() if isinstance(v, bool) else v))' "$1"; }
+          REPLY_TOKEN="$(ev reply_token)"
           if [ -n "$REPLY_TOKEN" ]; then echo "::add-mask::$REPLY_TOKEN"; fi
+          REPLY_APP="$(ev reply_app)"
+          QUESTION="$(ev question)"
+          export REPLY_TOKEN REPLY_APP
           if [ -n "$QUESTION" ]; then
             python bot.py --ask "$QUESTION"
-          elif [ "${{ inputs.test_webhooks }}" = "true" ]; then
+          elif [ "$(ev test_webhooks)" = "true" ]; then
             python bot.py --test-webhooks
-          elif [ "${{ inputs.check_sources }}" = "true" ]; then
+          elif [ "$(ev check_sources)" = "true" ]; then
             python bot.py --check-sources
-          elif [ "${{ inputs.digest_now }}" = "true" ]; then
+          elif [ "$(ev digest_now)" = "true" ]; then
             python bot.py --digest-now
-          elif [ "${{ inputs.weekly_now }}" = "true" ]; then
+          elif [ "$(ev weekly_now)" = "true" ]; then
             python bot.py --weekly-now
           else
             python bot.py
@@ -107,4 +111,4 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: state
-          key: trendbot-state-${{ github.run_id }}
+          key: trendbot-state-${{ github.run_id }}-${{ github.run_attempt }}

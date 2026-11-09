@@ -194,6 +194,8 @@ def upcoming(db, today):
             if row and (best is None or row["new7"] > best["new7"] or (row["new7"] == best["new7"] and row["games"] > best["games"])):
                 best = {"word": w, "games": row["games"], "new7": row["new7"], "ccu": row["ccu"]}
         days = (_d(r["date"]) - t).days if r["date"] else None
+        if days is not None and days < 0 and r["source"] == "event":
+            continue      # a holiday that has passed is over; a film or game released last week is still "out now"
         out.append({"source": r["source"], "name": r["name"], "date": r["date"], "days": days, "score": r["score"] or 1,
                     "detail": r["detail"], "roblox": best})
     def rank(x):

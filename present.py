@@ -19,7 +19,7 @@ import discord_out as DO
 import forecast as FC
 
 BLUE, RED, GREEN, PINK, AMBER, PURPLE, TEAL = 0x5865F2, 0xED4245, 0x2ECC71, 0xE91E63, 0xFAA61A, 0x8E7CC3, 0x1ABC9C
-LEGEND = ("Trend Score = chance (%) its players double within 2 weeks, combining every signal · "
+LEGEND = ("Trend Score = how likely it is to at least double AND pass 5,000 players within 2 weeks, combining every signal · "
           "reasons = what pushed it up most")
 LEGEND_TAGS = ("×N growth vs same day last week · 🧭 breakout just started · 📈 forecast peak · 🧠 promotion chance · "
                "🔥 heat · 🎯 breakout chance · ⏱ playtime/player/day")
@@ -187,7 +187,11 @@ SEASONS = [("Halloween", "🎃", r"🎃|👻|🦇|🕸|\bhalloween\b|\bspooky\b|
            ("Easter", "🐰", r"🐰|🥚🐣|\beaster\b"), ("Summer", "☀️", r"\bsummer\b|🏖")]
 
 
-def season_line(state, min_players=400):
+# (first day after the event, last day the "it's over" wording is used) as MM-DD
+SEASON_END = {"Halloween": ("11-01", "11-21"), "Christmas": ("12-27", "01-15"), "Valentine's": ("02-15", "02-28")}
+
+
+def season_line(state, min_players=400, today=None):
     """'🎃 Halloween events in 24% of games' when a seasonal event is big enough to skew the numbers."""
     names = [(r.get("name") or "") for r in state["games"].values() if (r.get("last") or 0) >= min_players]
     if len(names) < 100:
@@ -199,6 +203,11 @@ def season_line(state, min_players=400):
             best = (label, icon, share)
     if not best:
         return None
+    over = SEASON_END.get(best[0])
+    today = (today or datetime.utcnow().strftime("%Y-%m-%d"))[5:]
+    if over and ((over[0] <= today <= over[1]) if over[0] <= over[1] else (today >= over[0] or today <= over[1])):
+        return (f"{best[1]} **After {best[0]}:** {best[2] * 100:.0f}% of games still carry {best[0]} tags. The event is over, so "
+                f"week-on-week falls right now are mostly that event unwinding, not games failing")
     return (f"{best[1]} **{best[0]} season:** {best[2] * 100:.0f}% of games are running {best[0]} events — growth, earnings "
             f"and \"trending\" numbers are inflated by them; expect a broad dip when it ends")
 
@@ -274,7 +283,7 @@ def digest_cards(db, state, today, cutoff, t, ctx):
     if ov:
         head.append(f"📥 **Also flagged** (kept out of #alerts to stay readable): " + "; ".join(o for o in ov[:5])
                     + (f" (+{len(ov) - 5} more)" if len(ov) > 5 else ""))
-    sl = season_line(state)
+    sl = season_line(state, today=today)
     if sl:
         head.append(sl)
     if not head:
@@ -362,8 +371,10 @@ def digest_cards(db, state, today, cutoff, t, ctx):
 def _when(u):
     if u["days"] is None:
         return "date tbc"
-    if u["days"] <= 0:
-        return "out now"
+    if u["days"] == 0:
+        return "today"
+    if u["days"] < 0:
+        return f"out {-u['days']} day{'s' if u['days'] != -1 else ''} ago"
     return f"in {u['days']} day{'s' if u['days'] != 1 else ''}"
 
 
@@ -449,12 +460,20 @@ def weekly_cards(db, state, today, ctx, table):
         gt = HOLD.genre_table(db, state)
     except Exception:
         gt = []
-    if gt:
-        g0 = gt[0]
-        head.append(f"🏛️ **Most long-term genre:** {g0['genre']} — {_pct(g0['share'])} of its games hold players on weekdays")
+    solid = [r for r in gt if r["evidence"] == "above"]
+    if solid:
+        g0 = solid[0]
+        head.append(f"🏛️ **Most long-term genre:** {g0['genre']} — {_pct(g0['share'])} of its games reliably hold players on weekdays "
+                    f"(all genres: {_pct(g0['overall'])})")
+    rel = (state.get("hold_meta") or {}).get("reliability")
+    if rel is not None:
+        ll.append(f"Weekday hold is {_pct(rel)} the game, {_pct(1 - rel)} week-to-week noise — so one good week proves little")
     for r in gt[:5]:
-        ll.append(f"**{r['genre']}** · {_pct(r['share'])} long-term ({r['lt']}/{r['games']}) · hold {r['median']:.2f}×")
-    ylt = sorted(((v["players"], u, v) for u, v in lt.items() if v["status"] == "long-term" and u in young), reverse=True)[:3]
+        tag = {"above": " ✅", "below": " 🔻", "unclear": ""}[r["evidence"]]
+        ll.append(f"**{r['genre']}** · {_pct(r['share'])} long-term ({r['lt']}/{r['games']}, likely {_pct(r['lo'])}–{_pct(r['hi'])}){tag}")
+    if gt and not any(r["evidence"] != "unclear" for r in gt):
+        ll.append("_No genre is reliably different from the average yet._")
+    ylt = sorted(((v.get("z") or 0, u, v) for u, v in lt.items() if v["status"] == "long-term" and u in young), reverse=True)[:3]
     if ylt:
         ll.append("Young games already long-term: " + ", ".join(name_link(nm(u), lk(u), 24) for _, u, _ in ylt))
     st = state.get("stick") or {}
@@ -467,18 +486,28 @@ def weekly_cards(db, state, today, ctx, table):
 
     # algorithm
     pst = ctx["W"].meta_get(db, "promo_status", {}) or {}
-    rw = P.rewarded(pst)
+    rw = P.rewarded_detail(pst)
     al = []
-    if rw:
-        scale = max(abs(w) for _, w in rw)
-        for f, w in rw[:6]:
-            al.append(f"{_bar(w, scale)} {P.LABEL[f].split(' (')[0]}")
-        top2 = [P.LABEL[f].split(" (")[0] for f, w in rw[:2] if w > 0]
-        if top2:
-            head.append(f"🧠 **Roblox is rewarding:** {' and '.join(top2)}")
-        accs = [f"{t} {(pst.get(t) or {}).get('test_auc'):.2f}" for t in P.TARGETS if (pst.get(t) or {}).get("test_auc") is not None]
-        if accs:
-            al.append(f"Accuracy on unseen days: {' · '.join(accs)} (0.5 = coin flip)")
+    trained = any((pst.get(t) or {}).get("trained") for t in P.TARGETS)
+    if trained:
+        solid = [r for r in rw if r["stable"]]
+        if solid:
+            scale = max(abs(r["w"]) for r in solid)
+            for r in solid[:6]:
+                al.append(f"{_bar(r['w'], scale)} {P.LABEL[r['f']].split(' (')[0]}")
+            top2 = [P.LABEL[r["f"]].split(" (")[0] for r in solid[:2] if r["w"] > 0]
+            if top2:
+                head.append(f"🧠 **Roblox is reliably rewarding:** {' and '.join(top2)}")
+        else:
+            al.append("No quality signal is reliably rewarded or penalised right now — the weights flip direction when the "
+                      "model is refitted on resampled games, so none is reported as a finding.")
+        try:
+            sc = P.scorecard(db, today) or {}
+        except Exception:
+            sc = {}
+        for t, r in sc.items():
+            al.append(f"🧪 {P.TARGETS[t]}: predictions the bot made scored **{r['auc']:.2f}** · top 10% came true "
+                      f"{_pct(r['top10'])} vs {_pct(r['base'])} overall")
         sh = P.shifts(db)
         if sh and sh[0]:
             moves, old = sh
@@ -489,7 +518,8 @@ def weekly_cards(db, state, today, ctx, table):
         why = "; ".join(f"{(pst.get(t) or {}).get('why', 'not trained')}" for t in P.TARGETS) or "not trained yet"
         al.append(f"_Still learning — {why}._")
     c_al = card("🧠 What Roblox's algorithm is rewarding", al, BLUE,
-                footer="learned from which games Roblox charted or grew 50%+ the next week · bars = relative weight")
+                footer="learned from which games Roblox charted or grew 50%+ the next week · only signals that survive "
+                       "resampling are shown · 0.5 = coin flip")
 
     # engagement (badges)
     b = state.get("badges") or {}
@@ -506,8 +536,9 @@ def weekly_cards(db, state, today, ctx, table):
                   + (f" · ↩{_pct(v['returning'])}" if v.get("returning") is not None and C.BADGE_RETURNING else ""))
     if tp:
         head.append(f"⏱ **Most playtime (young):** {name_link(nm(tp[0][1]), lk(tp[0][1]))} — {tp[0][0]:.0f} min/player/day")
-    sk = sorted(((v["streak7"][1], u) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"), reverse=True)[:3]
-    if sk:
+    sk = sorted(((v["streak7"][1], u) for u, v in b.items() if v.get("streak7") and v.get("base") == "new players"
+                 and v["streak7"][1] >= 0.01), reverse=True)[:3]
+    if len(sk) >= 2:
         el.append("🔁 Best 7-day streak retention: " + ", ".join(f"{name_link(nm(u), lk(u), 22)} {_pct(s, 1)}" for s, u in sk))
     c_en = card("⏱ Engagement (from badges)", el, AMBER, optional=True,
                 footer="players/day from badge win rates · streak = share of new players reaching it")
@@ -516,56 +547,61 @@ def weekly_cards(db, state, today, ctx, table):
     sl = []
     try:
         fr = E.feature_report(db, state)
-        for r in [x for x in fr["rows"] if x["lift"]][:5]:
-            sl.append(f"{'✅' if r['lift'] >= 1.2 else '▫️'} {r['feature']} · **{r['lift']:.1f}×** as likely to be long-term")
-        bt = E.backtest(db)
-        if bt.get("bands"):
-            hi, lo = bt["bands"].get("70+"), bt["bands"].get("under 40")
-            if hi and lo and abs(hi["median_kept"] - lo["median_kept"]) >= 0.05:
-                sl.append(f"🧪 Stickiness 70+ kept {_pct(hi['median_kept'])} of players 4 weeks later vs {_pct(lo['median_kept'])} for under 40")
+        sig = [x for x in fr["rows"] if x["sig"]]
+        for r in sig[:5]:
+            sl.append(f"✅ {r['feature']} · **{r['lift']:.1f}×** as likely to be long-term (likely {r['lo']:.1f}–{r['hi']:.1f}×, {r['games']} games)")
+        if fr["rows"] and not sig:
+            sl.append(f"None of the {fr['checked']} description features checked is reliably tied to long-term games yet.")
+        sw = ctx["W"].meta_get(db, "stick_weights") or {}
+        cv = sw.get("cv")
+        if cv:
+            sl.append(f"🧪 Stickiness score vs players kept 4 weeks later (weights learned on other weeks): **{cv['rho']:+.2f}** "
+                      f"({cv['n']:,} game-weeks; 0 = no link)")
+        elif sw.get("first_pair"):
+            sl.append(f"🧪 Stickiness can't be checked against survival until {sw['first_pair']} (needs games watched from the start, 4 weeks on)")
     except Exception:
         pass
-    c_sh = card("🧩 What lasting games have in common", sl, GREEN, footer="from game descriptions · correlation, not proof",
+    c_sh = card("🧩 What lasting games have in common", sl, GREEN,
+                footer="from game descriptions · long-term = high weekday hold, which idle/AFK games partly get by being left running · correlation, not proof",
                 optional=True)
 
-    # model check
+    # model check: only honest numbers (walk-forward on outcomes already known, or predictions actually made)
     ck = []
     ms = ctx["W"].meta_get(db, "model_status", {}) or {}
-    if ms.get("test_auc") is not None:
-        ck.append(f"🎯 Breakout model: accuracy **{ms['test_auc']:.2f}** · top picks hit {_pct(ms['test_top10_hit'])} vs {_pct(ms['base_rate'])} average")
+    L = ctx["L"]
+    def short(st, name, what):
+        h = st.get("honest") or {}
+        if h.get("auc") is not None:
+            rng = f" ({h['lo']:.2f}–{h['hi']:.2f})" if h.get("lo") is not None else ""
+            return f"{name}: **{h['auc']:.2f}**{rng} · top 10% came true {_pct(h['top'])} vs {_pct(h['base'])}"
+        if st.get("trained"):
+            return f"{name}: not provable yet (too few finished {what} among games watched live) — its picks aren't used"
+        return f"{name}: still collecting — {st.get('why', 'not trained')}"
+    ck.append(short(ms, "🎯 Explosion model", "explosions"))
     ts = ctx["W"].meta_get(db, "theme_model_status", {}) or {}
-    if ts.get("test_auc") is not None:
-        ck.append(f"🌱 Theme model: accuracy **{ts['test_auc']:.2f}** · top picks hit {_pct(ts['test_top5_hit'])} vs {_pct(ts['base_rate'], 1)}")
+    ck.append(short(ts, "🌱 Theme model", "breakouts"))
     try:
-        sc = P.scorecard(db, today) or {}
-        for t, r in sc.items():
-            ck.append(f"🧠 Promotion ({t}) live check: **{r['auc']:.2f}** · top picks {_pct(r['top10'])} vs {_pct(r['base'])}")
+        ck = ctx["TS"].weekly_lines(db, state, today)[:3] + ck
     except Exception:
         pass
     try:
         irows, nb, _ = T.indicator_report(db, today)
-        good = [r for r in irows if r["done"] and r.get("lift")]
+        good = [r for r in irows if r["done"] >= C.THEME_IND_MIN_DONE and r.get("lift")]
         good.sort(key=lambda r: -r["lift"])
         for r in good[:3]:
             lead = f", ~{r['lead']:.0f} days' warning" if r["lead"] is not None else ""
-            ck.append(f"🔬 {r['label']}: **{r['lift']:.1f}×** better than chance{lead}")
+            ck.append(f"🔬 {r['label']}: **{r['lift']:.1f}×** the usual chance ({r['hit']}/{r['done']}){lead}")
     except Exception:
         pass
-    try:
-        ck = ctx["TS"].weekly_lines(db, state, today) + ck
-    except Exception:
-        pass
-    if ms.get("test_auc") is not None:
-        head.append(f"🎯 **Model check:** breakout model accuracy {ms['test_auc']:.2f} (0.5 = coin flip)")
-    if not ck:
-        ck.append("_Models are still collecting examples — accuracy appears once they've been tested on unseen data._")
-    c_ck = card("🔬 Are the predictions working?", ck, RED, footer="accuracy = AUC on data the model never saw · 0.5 coin flip, 1.0 perfect")
+    c_ck = card("🔬 Are the predictions working?", ck, RED,
+                footer="accuracy = ranking accuracy (0.5 coin flip, 1.0 perfect) on predictions made by a model trained only on "
+                       "outcomes already known · ranges come from resampling games")
 
     fl = ctx["FC"].weekly_lines(state, fmt)
     c_fc = card("📈 Forecasts & how long hits last", fl, TEAL, optional=True,
                 footer="peak = S-curve fitted to each game's rise · start signal = Bayesian change-point detection · "
                        "lifespan = Kaplan-Meier half-life (days until below half the peak)")
-    sl = season_line(state)
+    sl = season_line(state, today=today)
     if sl:
         head.insert(0, sl)
     if not head:
@@ -600,7 +636,7 @@ def weekly_cards(db, state, today, ctx, table):
         ml = [f"**{len(mo):,} games** (400+ players) · typical **{M.usd(median(r['monthly'] for r in mo))}/month**"]
         ml += [f"💰 **{g['group']}** — {M.usd(g['median'])} typical · {M.usd(g['top25'])} top-quartile · "
                f"**{M.usd(g['per_player'])}**/player" for g in gl]
-        small = sorted([r for r in mo if r["ccu"] < 5000], key=lambda r: -r["monthly"])[:3]
+        small = sorted([r for r in mo if r["ccu"] < 5000 and not r.get("suspect")], key=lambda r: -r["monthly"])[:3]
         if small:
             ml.append("Top earners under 5K players: " + ", ".join(
                 f"{name_link(r['name'], lk(r['uid']), 22)} {M.usd(r['monthly'])}" for r in small))

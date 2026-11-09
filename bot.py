@@ -933,17 +933,23 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 db.commit()
                 print(f"trend score: {nts} games scored ({state.get('ts_mode')}), "
                       f"{tst.get('examples', 0)} outcomes / {tst.get('positives', 0)} took off")
+                raw_mode = state.get("ts_mode") == "starting formula"     # not yet calibrated against real outcomes
+                ts_alert, ts_ping = (C.TS_ALERT, C.TS_PING) if raw_mode else (C.TS_ALERT_CAL, C.TS_PING_CAL)
+                base = (W.meta_get(db, "trend_prior", {}) or {}).get("base")
                 for gid, v in sorted((state.get("_ts") or {}).items(), key=lambda kv: -kv[1]["score"]):
                     rec = games.get(gid)
-                    if v["score"] < C.TS_ALERT or not rec or not cooled(state, "ts:" + gid, today, 10):
+                    if v["score"] < ts_alert or not rec or not cooled(state, "ts:" + gid, today, 10):
                         continue
+                    what = f"at least doubles and passes {fmt(C.TS_MIN_TARGET)} players within 2 weeks"
                     add("trend", gid, f"🚀 Trend Score {v['score']}: {rec['name'][:70]}",
-                        (f"About **{v['score']}%** chance its players double within 2 weeks"
-                         + (" (starting formula — accuracy shown in the Sunday report)." if state.get("ts_mode") != "learned" else ".")
+                        ((f"Scores **{v['score']}** on the starting formula for \"{what}\". Not yet calibrated against real "
+                          f"outcomes: read it as a ranking, not a percentage." if raw_mode else
+                          f"About **{v['score']}%** chance it {what}"
+                          + (f" (a typical young game: {base * 100:.0f}%)." if base else "."))
                          + ("\n" + "\n".join("• " + x for x in v["reasons"]) if v["reasons"] else "")),
                         [("Players", fmt(rec.get("last", 0))),
                          ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
-                        + studio_field(db, gid), ping=v["score"] >= C.TS_PING)
+                        + studio_field(db, gid), ping=v["score"] >= ts_ping)
                     state["alerts"]["ts:" + gid] = today
             except Exception as e:
                 import traceback

@@ -238,6 +238,7 @@ THEME_HIT_CCU = 2000             # a theme's game "hits" at this many players...
 THEME_BREAKOUT_GAMES = 3         # ...and a theme "breaks out" when it goes from <=1 hit to this many
 THEME_YOUNG_DAYS = 45            # ...counting only games younger than this (new games succeeding, not old hits)
 THEME_VERSION = 2                # bump when the breakout definition changes: theme history is rebuilt once
+THEME_SMALL_MAX_HITS = 2         # only themes with at most this many 2K+ games (any age) can be "emerging"
 THEME_CALM_DAYS = 21             # a theme is only a candidate after this many watched days without a burst
 THEME_DAY_STEP = 2               # training uses every 2nd day of every theme (same days for all: no sampling bias)
 THEME_IND_MIN_DONE = 8           # an indicator's hit rate is only reported after this many finished firings
@@ -304,6 +305,8 @@ PLATFORM_EVERY_HOURS = 6         # Roblox-wide player counts (RoWatcher, 1 reque
 # Engagement: session length, stickiness score, backtest, features, opportunity map
 # =====================================================================
 SEASON_SKEW_SHARE = 0.08         # flag a seasonal event in the digest once 8%+ of games (400+ players) run one
+STICK_MIN_PAIRS = 50             # a signal needs this many game-weeks with data before its weight is learned
+FEATURE_Z = 2.576                # description features: 99% range (many are tested at once)
 STICK_LEARN_MIN = 300            # stickiness weights start learning from survival after this many game-weeks...
 STICK_LEARN_FULL = 1500          # ...and fully trust the data from this many (blended with the starting weights before)
 BADGE_STREAK_MAX = 0.30          # a 5+ day streak reached by more than 30% of new players isn't a login streak
@@ -458,8 +461,10 @@ TS_CAL_MIN_EXAMPLES = 500        # outcomes needed before the starting formula i
 TS_CAL_MIN_POSITIVES = 25        # ...including this many take-offs...
 TS_CAL_MIN_DAYS = 5              # ...over this many days
 TS_KEEP_DAYS = 90                # daily snapshots kept for learning
-TS_ALERT = 60                    # 🚀 alert when a young game's Trend Score reaches this
+TS_ALERT = 60                    # 🚀 alert when a young game's Trend Score reaches this (starting formula, uncalibrated)
 TS_PING = 80                     # ...and ping you at this
+TS_ALERT_CAL = 30                # once scores are real percentages: alert at a 30%+ chance (a typical young game: ~7%)
+TS_PING_CAL = 50                 # ...and ping at 50%+
 MERGE_ALERTS = True              # several alerts about one game in the same run become one card
 
 # =====================================================================

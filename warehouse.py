@@ -206,6 +206,24 @@ def prune(db, today):
 
 # ------------------------------------------------------------------ reads ---
 
+def live_start(db):
+    """The first day the bot itself was watching (its first 'live' reading), as YYYY-MM-DD, or None.
+
+    Everything before it was downloaded afterwards ("backfill") and only exists for games that were still
+    around when the bot met them. That history is fine for charts and for a game's own past, but it is a
+    SURVIVORS-ONLY sample: games that rose and died before the bot started are missing. Anything that asks
+    "what happens to games like this?" (lifespans, survival, which games explode) must be tested on games the
+    bot watched from the start, or it will flatter itself. Cached in meta; it never changes once set."""
+    v = meta_get(db, "live_start")
+    if v:
+        return v
+    r = db.execute("SELECT MIN(day) AS m FROM daily WHERE src='live'").fetchone()
+    if r and r["m"]:
+        meta_set(db, "live_start", r["m"])
+        return r["m"]
+    return None
+
+
 def series(db, uid, since=None):
     q = "SELECT day, peak FROM daily WHERE uid=? AND peak IS NOT NULL" + (" AND day>=?" if since else "") + " ORDER BY day"
     return {r["day"]: r["peak"] for r in db.execute(q, (uid, since) if since else (uid,))}

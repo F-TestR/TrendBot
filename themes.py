@@ -19,9 +19,15 @@ Every day the bot works out, for every theme:
 
 A theme "breaks out" when, after at least THEME_CALM_DAYS calm days (no more than 1 YOUNG game - under
 THEME_YOUNG_DAYS days old - with 2K+ players, and no burst in the 3 weeks before), THEME_BREAKOUT_GAMES or
-more of its young games pass 2K players within LABEL_DAYS days. Only calm themes are candidates: an
-evergreen category that always has a few new hits ("Tower Defense", "rng") is not a trend forming, and
-counting those made half of all theme-days "breakouts". A theme can break out again after going calm.
+more of its young games pass 2K players within LABEL_DAYS days. Only calm, SMALL themes (at most
+THEME_SMALL_MAX_HITS games of any age with 2K+ players) are candidates: an established category that always
+has a few new hits ("Tower Defense", "rng", "tower", "escape") is not a trend forming - with hundreds of
+games, three young hits is just a normal month - and counting those made the model little more than "big
+themes get more hits". A theme can break out again after going calm.
+
+The model is trained ONLY on days the bot watched live. In downloaded history, brand-new games that died
+are missing, so "new games this week", "tiny games", "studios" and the chart / YouTube signals are nearly
+empty there; a model fitted on that history would meet live days whose numbers look nothing like it.
 
 The model learns, from every past calm theme-day, which of the numbers above came before breakouts, and is
 tested honestly (learn.py: trained only on outcomes already known at the time - the same theme appears on
@@ -312,7 +318,8 @@ def timeline(hist, start):
     """Walk one theme's days in order. Returns (calm candidate days, breakout days).
 
     hot        = a day with THEME_BREAKOUT_GAMES+ young hits happened in the last LABEL_DAYS days
-    candidate  = not hot, at most 1 young hit, and we have watched at least THEME_CALM_DAYS days of history
+    candidate  = not hot, at most 1 young hit, at most THEME_SMALL_MAX_HITS hits of any age (a small theme),
+                 and we have at least THEME_CALM_DAYS days of history before it
     breakout   = THEME_BREAKOUT_GAMES+ young hits on a day that isn't hot, with a candidate day in the
                  LABEL_DAYS before it (so it came out of calm, not out of a slow plateau)"""
     cands, bks = [], []
@@ -327,7 +334,8 @@ def timeline(hist, start):
             if not hot and last_cand is not None and (d - last_cand).days <= C.LABEL_DAYS:
                 bks.append(day)
             last_hot = d
-        elif not hot and y <= 1 and (d - start).days >= C.THEME_CALM_DAYS:
+        elif not hot and y <= 1 and (hist[day].get("hits") or 0) <= C.THEME_SMALL_MAX_HITS \
+                and (d - start).days >= C.THEME_CALM_DAYS:
             cands.append(day)
             last_cand = d
     return cands, bks
@@ -338,12 +346,19 @@ def _start(data):
     return _d(first) if first else None
 
 
+def live_from(db):
+    """First day whose "new games in the last 7 days" was fully watched live (see module docstring)."""
+    ls = W.live_start(db)
+    return _s(_d(ls) + timedelta(days=7)) if ls else None
+
+
 def examples(db, today, predict_only=False):
     data = _load(db, _s(_d(today) - timedelta(days=C.THEME_KEEP_DAYS)))
     start = _start(data)
     out = []
     if start is None:
         return out
+    lf = live_from(db)
     for k, hist in data.items():
         cands, bks = timeline(hist, start)
         last = max(hist)
@@ -354,6 +369,8 @@ def examples(db, today, predict_only=False):
                     continue
                 y = None
             else:
+                if not lf or day < lf:
+                    continue  # downloaded history: the early-warning numbers aren't comparable with live days
                 if _d(day).toordinal() % C.THEME_DAY_STEP:
                     continue  # every theme is thinned on the SAME days, whatever happened next (no bias)
                 end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
@@ -372,7 +389,10 @@ def train(db, today):
     st = {"examples": n, "positives": pos, "trained": False, "day": today,
           "themes": len({e["theme"] for e in ex}), "base_rate": (pos / n) if n else None}
     if n < C.THEME_MIN_EXAMPLES or pos < C.THEME_MIN_POSITIVES:
-        st["why"] = f"needs {C.THEME_MIN_EXAMPLES}+ calm theme-days with {C.THEME_MIN_POSITIVES}+ breakouts (has {n} / {pos})"
+        lf = live_from(db)
+        first = _s(_d(lf) + timedelta(days=C.LABEL_DAYS + 1)) if lf else "?"
+        st["why"] = (f"needs {C.THEME_MIN_EXAMPLES}+ calm theme-days with {C.THEME_MIN_POSITIVES}+ breakouts from days the bot "
+                     f"watched live (has {n} / {pos}; the first live days finish their {C.LABEL_DAYS}-day window on {first})")
         W.meta_set(db, "theme_model_status", st)
         W.meta_set(db, "theme_model", None)
         return st
@@ -428,6 +448,7 @@ def indicator_report(db, today):
     """For each indicator: how often it was followed by a breakout, and how much warning it gave."""
     data = _load(db, _s(_d(today) - timedelta(days=C.THEME_KEEP_DAYS)))
     start = _start(data)
+    lf = live_from(db)
     stats = {k: {"fired": 0, "hit": 0, "miss": 0, "leads": []} for k in INDICATORS}
     caught = {k: 0 for k in INDICATORS}
     total_b = cand_days = cand_pos = 0
@@ -435,9 +456,12 @@ def indicator_report(db, today):
         if start is None:
             break
         cands, bks = timeline(hist, start)
+        bks = [b for b in bks if lf and b >= lf]
         total_b += len(bks)
         last_fire, fired_days = {}, {k: [] for k in INDICATORS}
         for day in cands:
+            if not lf or day < lf:
+                continue      # indicators are only fair on days the bot watched live
             r = hist[day]
             end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
             nxt = next((b for b in bks if day < b <= end), None)
@@ -479,8 +503,9 @@ def indicator_report(db, today):
 
 def report_lines(db, today, fmt):
     st = W.meta_get(db, "theme_model_status", {}) or {}
-    lines = [f"🌱 **Theme model** (a theme \"breaks out\" when, after {C.THEME_CALM_DAYS}+ calm days, {C.THEME_BREAKOUT_GAMES}+ of its "
-             f"games under {C.THEME_YOUNG_DAYS} days old pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days)"]
+    lines = [f"🌱 **Theme model** (a small theme \"breaks out\" when, after {C.THEME_CALM_DAYS}+ calm days, {C.THEME_BREAKOUT_GAMES}+ of its "
+             f"games under {C.THEME_YOUNG_DAYS} days old pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days; "
+             f"established themes with more than {C.THEME_SMALL_MAX_HITS} hits aren't candidates)"]
     if not st.get("trained"):
         lines.append(f"• Still collecting — {st.get('why', 'not trained yet')}.")
     else:

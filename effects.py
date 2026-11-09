@@ -178,7 +178,10 @@ def update(db, state, today):
     ev, allp, watched = publish_events(db, since)
     for uid, day in ev:
         if day <= ready and (uid, day, "update") not in have:
-            jobs.append(("update", uid, day, watched, allp))
+            # twins: any similar game not KNOWN to have published that fortnight. (Only ~800 games are watched
+            # for publishes; restricting twins to them left most updates with too few to compare against. Some
+            # unwatched twins will have updated too, which makes this lift slightly conservative.)
+            jobs.append(("update", uid, day, None, allp))
     ch = {"icon": {}, "title": {}}
     for c in state.get("icon_changes") or []:
         if c.get("kind") in ch:
