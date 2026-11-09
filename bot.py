@@ -35,6 +35,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import effects as EF
 import icons as IC
 import passes as PA
 import events as EV
@@ -782,8 +783,10 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         try:
             status = L.train(db, today)
             print(f"model: {status.get('examples')} examples, {status.get('positives')} explosions, trained={status.get('trained')}")
-            preds = L.predictions(db, today)
+            preds = L.predictions(db, today)     # always stored, so the scorecard can mark them later
             db.commit()
+            if not L.trusted(status):
+                preds = []                       # ...but not shown or alerted on until the model passes its honest test
         except Exception as e:
             print(f"learning failed: {e}", file=sys.stderr)
         state["_preds"] = {e["uid"]: p for p, e in preds}
@@ -912,6 +915,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 print(f"icons: {nch} changes, {ncp} new icon copies")
             except Exception as e:
                 print(f"icons failed: {e}", file=sys.stderr)
+            # What updates / new icons / new titles did, against matched games that changed nothing
+            try:
+                nef = EF.update(db, state, today)
+                db.commit()
+                print(f"effects: {nef} changes measured")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"effects failed: {e}", file=sys.stderr)
             # Trend Score: every signal combined into one calibrated number, with plain-English reasons
             try:
                 ty = [gid for gid, r in games.items() if is_young(r, today) and r.get("last_seen") == today]
@@ -1048,6 +1060,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                         and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
         text, table = I.weekly_report(state, today)
         files = []
+        try:
+            text += "\n\n🛠️ **Do updates, new icons and new titles help?** (vs similar games that changed nothing)\n" \
+                    + "\n".join(EF.report_lines(db, today))
+        except Exception as e:
+            print(f"effects report failed: {e}", file=sys.stderr)
         text += "\n\n" + "\n".join(L.report_lines(db, today, fmt))
         try:
             state["_young_ids"] = {gid for gid, r in games.items() if is_young(r, today)}
@@ -1442,6 +1459,27 @@ def run_ask(question, dry_run=False):
         except Exception:
             pass
     t = now_utc()
+    if question.strip().lower() in ("diagnose", "diagnostics"):
+        # A self-check on the bot's own data and models. Everything is recomputed in memory: nothing is saved
+        # (question runs never save the bot's memory) and nothing is posted to the channels.
+        import diagnose as DIAG
+        for mod in (EF, TS, P):
+            try:
+                mod.ensure(db)
+            except Exception:
+                pass
+        text = DIAG.report(db, state, day_str(t), fmt)
+        if os.environ.get("DIAG_PATH"):
+            with open(os.environ["DIAG_PATH"], "w", encoding="utf-8") as f:
+                f.write(text)
+        if not dry_run:
+            print(PUB.publish({"reports/diagnostics.md": text}, "Diagnostics"))
+            rt, ra = os.environ.get("REPLY_TOKEN"), os.environ.get("REPLY_APP")
+            if rt and ra:
+                DO.edit_interaction(ra, rt, {"content": "Diagnostics published to the reports branch (reports/diagnostics.md).",
+                                             "allowed_mentions": {"parse": []}})
+        db.close()
+        return
     ctx = {"S": S, "fmt": fmt, "today": day_str(t), "t": t, "link": link, "age_days": age_days, "I": I, "FC": FC,
            "P": P, "PR": PR, "pctx": present_ctx(), "HOLD": HOLD, "FUT": FUT, "MO": MO, "TS": TS}
     try:
@@ -1577,7 +1615,7 @@ def merge_alerts(alerts, state):
 
 
 def present_ctx():
-    return {"IC": IC, "PA": PA, "MO": MO, "TS": TS, "FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
+    return {"IC": IC, "EF": EF, "PA": PA, "MO": MO, "TS": TS, "FC": FC, "S": S, "T": T, "FUT": FUT, "I": I, "L": L, "HOLD": HOLD, "E": E, "BD": BD, "P": P, "W": W,
             "link": link, "fmt": fmt, "is_young": is_young, "growth": growth, "age_days": age_days,
             "is_base": is_base, "keywords": keywords}
 

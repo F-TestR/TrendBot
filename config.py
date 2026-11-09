@@ -132,6 +132,14 @@ BREAKOUT_PLAYERS = 10000         # a young game crossing this is logged as a bre
 UPDATE_MIN_PLAYERS = 2000        # only measure updates on games with at least this many players
 INSIGHT_KEEP_DAYS = 180          # breakouts and update results are kept this long
 MAX_UPDATE_EVENTS = 400
+LIFE_MATURE_DAYS = 14            # "days to peak" only counts breakouts at least this old (so climbers aren't left out)
+EFFECT_MIN_DAYS = 5              # a "week before/after" needs data on at least this many of its 7 days
+EFFECT_MIN_PLAYERS = 300         # changes on games smaller than this aren't measured (too noisy)
+EFFECT_TREND_TOL = 0.15          # twins must have had a similar trend the week before (within ~15%)...
+EFFECT_MIN_TWINS = 15            # ...and a change needs at least this many twins to be scored
+EFFECT_MIN_EVENTS = 20           # a kind of change is only summarised once this many are measured
+EFFECT_QUIET_DAYS = 7            # an "update" = a publish after this many days without one
+EFFECT_HISTORY_DAYS = 75         # how far back changes are measured
 
 # Mechanic groups: a game belongs to a group if its title contains one of the words
 # (plurals count too). Add your own groups or words freely.
@@ -200,7 +208,13 @@ GBM_MIN_EXAMPLES = 300           # trees only challenge once a model has this ma
 GBM_MIN_POSITIVES = 30           # ...and this many positives
 GBM_MARGIN = 0.01                # ...and only take over when they beat the simple model by this much (walk-forward AUC)
 GBM_MIN_AUC = 0.6                # ...and are genuinely useful themselves
+GBM_MIN_CONFIDENCE = 0.9         # ...and win in at least 90% of resamples of the test predictions (not a lucky draw)
 WF_FOLDS = 4                     # walk-forward: number of train-on-past / test-on-next slices
+WF_MIN_TRAIN_DAYS = 5            # a walk-forward slice needs at least this many days of finished outcomes to train on
+WF_MIN_TRAIN_POS = 5             # ...including this many positives
+HONEST_MIN_POS = 10              # an accuracy figure is only reported when the test predictions include this many positives
+BOOT_ROUNDS = 200                # resamples used for accuracy ranges and champion-vs-challenger confidence
+COEF_BOOT_ROUNDS = 60            # resamples used to check which model weights are stable
 EXPLODE_CCU = 25000              # "exploded" = reached this many players...
 LABEL_DAYS = 21                  # ...within this many days of first being noticed
 LEARN_ENTRY_CCU = 600            # a game is "noticed" the first day it reaches this many players (inside the top 2,000)
@@ -224,6 +238,9 @@ THEME_HIT_CCU = 2000             # a theme's game "hits" at this many players...
 THEME_BREAKOUT_GAMES = 3         # ...and a theme "breaks out" when it goes from <=1 hit to this many
 THEME_YOUNG_DAYS = 45            # ...counting only games younger than this (new games succeeding, not old hits)
 THEME_VERSION = 2                # bump when the breakout definition changes: theme history is rebuilt once
+THEME_CALM_DAYS = 21             # a theme is only a candidate after this many watched days without a burst
+THEME_DAY_STEP = 2               # training uses every 2nd day of every theme (same days for all: no sampling bias)
+THEME_IND_MIN_DONE = 8           # an indicator's hit rate is only reported after this many finished firings
 THEME_HISTORY_DAYS = 60          # how far back to rebuild theme history the first time
 THEME_KEEP_DAYS = 150
 THEME_MIN_EXAMPLES = 200         # theme-days needed before the theme model trains...
@@ -264,7 +281,7 @@ battle battles war wars fight hero heroes story adventure online season update o
 """.split())
 
 # =====================================================================
-# Weekday hold (Tue-Wed players vs the weekend before, relative to Roblox overall)
+# Weekday hold (Mon-Wed players vs the two busiest days of the weekend before, relative to a typical game)
 # =====================================================================
 HOLD_MIN_PLAYERS = 1000          # only judge games with at least this many weekend players
 HOLD_SPIKE_RATIO = 1.8           # Saturday > 1.8x Sunday = an event spike: use Sunday as the weekend
@@ -273,10 +290,10 @@ HOLD_MIN_BENCHMARK_GAMES = 30    # need this many rated games in a week to set t
 HOLD_HISTORY_WEEKS = 8           # weeks rebuilt from the database (history downloads go back ~8 weeks)
 
 # ---- Long-term games ----
-LONGTERM_REL = 1.0               # long-term = holds at least as well as the typical game...
-LONGTERM_SHARE = 0.75            # ...in at least 75% of its rated weeks...
-LONGTERM_MIN_WEEKS = 2           # ...with at least this many weeks rated...
-LONGTERM_WINDOW_WEEKS = 6        # ...looking back this many weeks
+HOLD_ROBUST = True               # weekend = the two busiest of Fri-Sun, weekdays = Mon-Wed (fair to non-Western weekends)
+LONGTERM_Z = 1.645               # long-term = average hold above typical by this many standard errors (95% one-sided)
+LONGTERM_MIN_WEEKS = 3           # ...with at least this many weeks rated...
+LONGTERM_WINDOW_WEEKS = 8        # ...looking back this many weeks
 LONGTERM_PROMISING_REL = 1.15    # one strong week at this level = "promising"
 GENRE_MIN_GAMES = 5              # genres with fewer rated games are left out of the genre table
 BACKFILL_ESTABLISHED_PER_RUN = 3 # past-history downloads per run for older games (for long-term ratings)
@@ -356,6 +373,9 @@ BADGE_PLAYTIME_REFERENCE = 25    # minutes/day used as "typical" until enough ga
 # Algorithm mirror: learns what Roblox's recommendation algorithm rewards right now
 # =====================================================================
 PROMO_MIN_PLAYERS = 200          # game-days with fewer average players are ignored
+PROMO_HORIZON_DAYS = 8           # an example's outcome is known 8 days later (used to keep the honest test leak-free)
+PROMO_STABLE_SHARE = 0.9         # a weight is a "finding" only if it keeps its sign in 90%+ of refits on resampled games...
+PROMO_MIN_COVERAGE = 0.25        # ...and the signal is measured for at least a quarter of game-days
 PROMO_GROWTH_RATIO = 1.5         # "growth" outcome = next 7 days' average players >= 1.5x the last 7 days'
 PROMO_HISTORY_WEEKS = 5          # train on the last 5 weeks (recent enough to notice algorithm changes)
 PROMO_DAY_STEP = 1               # use every day
@@ -428,10 +448,15 @@ SURV_MIN_GROUP = 8               # groups smaller than this aren't reported
 # =====================================================================
 # Trend Score: one calibrated 0-100 score combining every early signal
 # =====================================================================
-TS_MIN_TARGET = 1000             # "took off" = average players at least double within 14 days AND reach this
+TS_MIN_TARGET = 5000             # "took off" = players at least double within 14 days AND reach this...
+TS_SUSTAIN_DAYS = 2              # ...on at least this many days (one lucky reading doesn't count)
 TS_MIN_PLAYERS = 150             # young games below this aren't scored
-TS_MIN_EXAMPLES = 400            # outcomes needed before the learned model replaces the starting formula...
-TS_MIN_POSITIVES = 30            # ...including this many games that took off
+TS_MIN_EXAMPLES = 2000           # outcomes needed before a learned model is even tried...
+TS_MIN_POSITIVES = 60            # ...including this many games that took off...
+TS_MIN_DAYS = 21                 # ...spread over this many different days (it then still has to pass the honest test)
+TS_CAL_MIN_EXAMPLES = 500        # outcomes needed before the starting formula is calibrated against reality...
+TS_CAL_MIN_POSITIVES = 25        # ...including this many take-offs...
+TS_CAL_MIN_DAYS = 5              # ...over this many days
 TS_KEEP_DAYS = 90                # daily snapshots kept for learning
 TS_ALERT = 60                    # 🚀 alert when a young game's Trend Score reaches this
 TS_PING = 80                     # ...and ping you at this

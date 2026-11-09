@@ -207,9 +207,9 @@ def build(db, today):
             y = labels(uid, d, data)
             if not y:
                 continue
-            ex["growth"].append({"x": x, "y": y["growth"], "day": d})
+            ex["growth"].append({"x": x, "y": y["growth"], "day": d, "uid": uid})
             if not charted_recently(uid, d, data):  # "enters a chart" only makes sense for games not on one
-                ex["chart"].append({"x": x, "y": y["chart"], "day": d})
+                ex["chart"].append({"x": dict(x), "y": y["chart"], "day": d, "uid": uid})
         day += timedelta(days=C.PROMO_DAY_STEP)
     return ex, data
 
@@ -223,24 +223,24 @@ def _fit_one(examples):
     examples.sort(key=lambda e: e["day"])
     med = {f: (median([e["x"][f] for e in examples if e["x"][f] is not None])
                if any(e["x"][f] is not None for e in examples) else 0.0) for f in NAMES}
+    st["coverage"] = {f: round(sum(1 for e in examples if e["x"][f] is not None) / n, 3) for f in NAMES}
     for e in examples:
         e["x"] = {f: (e["x"][f] if e["x"][f] is not None else med[f]) for f in NAMES}
     usable = [f for f in NAMES if len({round(e["x"][f], 6) for e in examples}) > 1]
-    cut = int(n * 0.75)
-    tr, te = examples[:cut], examples[cut:]
-    if sum(e["y"] for e in tr) >= 5 and 0 < sum(e["y"] for e in te) < len(te):
-        m = L.fit(tr, names=usable, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
-        sc = [L.predict(m, e["x"]) for e in te]
-        lab = [e["y"] for e in te]
-        st["test_auc"] = L.auc(sc, lab)
-        k = max(1, len(te) // 10)
-        st["top10_hit"] = sum(l for _, l in sorted(zip(sc, lab), reverse=True)[:k]) / k
-        st["base_rate"] = sum(lab) / len(lab)
     m = L.fit(examples, names=usable, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
-    m = L.attach_champion(m, examples, usable, st, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+    # honest test: a game-day's outcome is its next 7 days, and the same game is in the data on many days,
+    # so each test block is predicted by a model trained only on days whose 7-day outcome had already finished
+    m = L.attach_champion(m, examples, usable, st, horizon=C.PROMO_HORIZON_DAYS, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+    h = st.get("honest") or {}
+    st["top10_hit"], st["base_rate"] = h.get("top"), h.get("base", pos / n)
     m["median"] = med
     st["trained"] = True
     st["weights"] = {f: w for f, w in zip(m["names"], m["w"])}
+    try:
+        st["stability"] = L.coef_stability(examples, usable, iters=C.PROMO_ITERS, l2=C.PROMO_L2)
+    except Exception as e:
+        st["stability"] = {}
+        print(f"promo weight stability failed: {e}")
     return m, st
 
 
@@ -331,13 +331,34 @@ def _bar(w, scale=1.0):
 
 
 def rewarded(status):
-    """Quality signals ranked by average standardised weight across both targets."""
-    ws = {}
+    """Quality signals ranked by average standardised weight across both targets: [(feature, weight)]."""
+    return [(r["f"], r["w"]) for r in rewarded_detail(status)]
+
+
+def rewarded_detail(status):
+    """[{f, w, stable, share}] — w = average weight over the two targets. `stable` = the weight keeps its sign
+    when the model is refitted on resampled games (PROMO_STABLE_SHARE of the time, in every target that has it)
+    AND the signal is measured for enough game-days to mean something (PROMO_MIN_COVERAGE)."""
+    ws, signs, cov = {}, {}, {}
     for t in TARGETS:
-        for f, w in ((status.get(t) or {}).get("weights") or {}).items():
-            if f in dict(QUALITY):
-                ws.setdefault(f, []).append(w)
-    return sorted(((f, sum(v) / len(v)) for f, v in ws.items()), key=lambda x: -x[1])
+        st = status.get(t) or {}
+        stab = st.get("stability") or {}
+        for f, w in (st.get("weights") or {}).items():
+            if f not in dict(QUALITY):
+                continue
+            ws.setdefault(f, []).append(w)
+            if f in stab:
+                signs.setdefault(f, []).append((stab[f]["sign"], stab[f]["w"]))
+            cov.setdefault(f, []).append((st.get("coverage") or {}).get(f, 1.0))
+    out = []
+    for f, v in ws.items():
+        w = sum(v) / len(v)
+        sg = signs.get(f) or []
+        same_dir = all((x[1] > 0) == (w > 0) for x in sg) if sg else False
+        share = min((x[0] for x in sg), default=None)
+        stable = bool(sg) and same_dir and share >= C.PROMO_STABLE_SHARE and min(cov.get(f, [0])) >= C.PROMO_MIN_COVERAGE
+        out.append({"f": f, "w": w, "stable": stable, "share": share, "coverage": min(cov.get(f, [0]))})
+    return sorted(out, key=lambda r: -r["w"])
 
 
 def shifts(db):
@@ -357,28 +378,41 @@ def shifts(db):
                 ws.setdefault(f, []).append(v)
         return {f: sum(v) / len(v) for f, v in ws.items()}
     a, b = avgw(hist[old]), avgw(hist[now])
-    out = [(f, a[f], b[f]) for f in b if f in a and f in dict(QUALITY) and abs(b[f] - a[f]) >= C.PROMO_SHIFT_MIN]
+    stable = {r["f"] for r in rewarded_detail(W.meta_get(db, "promo_status", {}) or {}) if r["stable"]}
+    out = [(f, a[f], b[f]) for f in b if f in a and f in dict(QUALITY) and f in stable
+           and abs(b[f] - a[f]) >= C.PROMO_SHIFT_MIN]
     return sorted(out, key=lambda x: -abs(x[2] - x[1])), old
+
+
+NOTES = {"rev_per_player": "fast-growing games are full of new players who haven't paid yet, so this mostly means "
+                           "\"is growing\", not that Roblox punishes monetisation"}
 
 
 def report_lines(db, today):
     st = W.meta_get(db, "promo_status", {}) or {}
     lines = ["🧠 **Algorithm mirror: what Roblox is rewarding right now**",
-             "_Learned from which games Roblox promoted (chart entries, 50%+ growth) in the following week. "
-             "Bars = how much one step up in a signal raises the odds, after allowing for size, momentum and age._"]
+             "_Learned from which games Roblox promoted (chart entries, 50%+ growth) in the following week, after "
+             "allowing for size, momentum and age. Only signals that keep their direction when the model is refitted "
+             "on resampled games are listed as findings._"]
     if not any((st.get(t) or {}).get("trained") for t in TARGETS):
         why = "; ".join(f"{t}: {(st.get(t) or {}).get('why', 'not trained')}" for t in TARGETS)
         return lines + [f"• Still learning — {why}."]
-    rw = rewarded(st)
-    scale = max((abs(w) for _, w in rw), default=1) or 1
-    for f, w in rw:
-        lines.append(f"{_bar(w, scale)} {LABEL[f]} ({w:+.2f})")
+    rw = rewarded_detail(st)
+    solid = [r for r in rw if r["stable"]]
+    scale = max((abs(r["w"]) for r in solid), default=1) or 1
+    if solid:
+        for r in solid:
+            note = f" — {NOTES[r['f']]}" if r["f"] in NOTES else ""
+            lines.append(f"{_bar(r['w'], scale)} {LABEL[r['f']]} ({r['w']:+.2f}){note}")
+    else:
+        lines.append("• No quality signal is reliably rewarded or penalised in this window.")
+    shaky = [LABEL[r["f"]].split(" (")[0] for r in rw if not r["stable"]]
+    if shaky:
+        lines.append("▫️ Unclear this week (direction flips when resampled, or measured for too few games): " + ", ".join(shaky))
     for t, desc in TARGETS.items():
         s = st.get(t) or {}
-        if s.get("test_auc") is not None:
-            lines.append(f"• Model for *{desc}*: accuracy {s['test_auc']:.2f} on days it hadn't seen "
-                         f"(0.5 = coin flip); its top 10% were promoted {s['top10_hit']*100:.0f}% of the time vs "
-                         f"{s['base_rate']*100:.0f}% for all games ({s['examples']} examples).")
+        if s.get("trained"):
+            lines.append(f"• Model for *{desc}* ({s['examples']:,} game-days): " + L.honest_line(s, "promotions"))
             cl = L.champion_line(s)
             if cl:
                 lines.append("  " + cl)
@@ -390,10 +424,10 @@ def report_lines(db, today):
     sc = scorecard(db, today)
     if sc:
         for t, r in sc.items():
-            lines.append(f"🧪 Live check, {TARGETS[t]}: past predictions scored {r['auc']:.2f}; their top 10% were promoted "
-                         f"{r['top10']*100:.0f}% of the time vs {r['base']*100:.0f}% overall ({r['n']} predictions).")
-    lines.append("_Correlation from public data, not Roblox's actual model — but it tracks what its outputs reward, "
-                 "and the live check shows whether it works._")
+            lines.append(f"🧪 Live check, {TARGETS[t]}: predictions the bot actually made scored {r['auc']:.2f}; their top 10% were "
+                         f"promoted {r['top10']*100:.0f}% of the time vs {r['base']*100:.0f}% overall ({r['n']:,} predictions).")
+    lines.append("_Correlation from public data, not Roblox's actual model. The live check is the number to trust: "
+                 "it scores predictions made before the outcome existed._")
     return lines
 
 

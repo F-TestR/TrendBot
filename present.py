@@ -463,7 +463,7 @@ def weekly_cards(db, state, today, ctx, table):
         ll.append("Stickiest young games: " + ", ".join(f"{name_link(nm(u), lk(u), 22)} ({s:.0f})" for s, u in sy))
         head.append(f"📏 **Stickiest young game:** {name_link(nm(sy[0][1]), lk(sy[0][1]))} — {sy[0][0]:.0f}/100")
     c_lt = card("🏛️ Long-term games", ll, PURPLE,
-                footer="long-term = holds its weekend crowd on Tue–Wed better than a typical game, most weeks")
+                footer="long-term = keeps its weekend crowd on weekdays reliably better than a typical game (3+ weeks)")
 
     # algorithm
     pst = ctx["W"].meta_get(db, "promo_status", {}) or {}
@@ -574,18 +574,22 @@ def weekly_cards(db, state, today, ctx, table):
               footer="full-length report attached (weekly_report.md) · tables in the dashboard")
     c_ic = None
     try:
-        eff = ctx["IC"].effects(state)
+        EF = ctx["EF"]
         il = []
-        for k, label in (("icon", "Icon changes"), ("title", "Title changes")):
-            x = eff.get(k)
-            if x:
-                il.append(f"🎨 {label}: players **{x['median']:+.0f}%** 3 days later (median) · "
-                          f"{x['up'] * 100:.0f}% gave a 10%+ boost ({x['n']} changes)")
+        for kind, label in EF.KINDS.items():
+            x = EF.summarise(EF.table(db, kind))
+            if x and x.get("lift") is not None:
+                icon = {"helps": "✅", "hurts": "🔻", "no clear effect": "▫️"}[x["verdict"]]
+                rng = f" (likely {x['lo'] * 100:+.0f}% to {x['hi'] * 100:+.0f}%)" if x.get("lo") is not None else ""
+                il.append(f"{icon} **{label}**: {x['lift'] * 100:+.0f}%{rng} vs similar games that changed nothing · "
+                          f"{x['up'] * 100:.0f}% beat them by 10%+ ({x['n']} measured)")
+            elif x:
+                il.append(f"▫️ {label}: measuring ({x['n']} so far)")
         ncop = len(state.get("icon_copies") or {})
         if ncop:
             il.append(f"🖼️ {ncop} young games use an icon nearly identical to a hit from another studio (last 30 days)")
-        c_ic = card("🎨 Icons & titles", il, PURPLE, optional=True,
-                    footer="icon changes spotted daily; copies found by comparing icon fingerprints")
+        c_ic = card("🛠️ Do updates, icons and titles help?", il, PURPLE, optional=True,
+                    footer="lift = the game's week-on-week change vs similar-size, similar-trend games that made no such change")
     except Exception:
         pass
     mo = state.get("_money") or []

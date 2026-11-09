@@ -7,11 +7,19 @@ It is a learned combination of every early signal the bot has, so you don't have
   YouTube Shorts speed and count · YouTube videos · Roblox home-page sorts it's in ·
   the size of the copy wave it belongs to · weekday hold · playtime per player · size and age
 
-Outcome it learns: the game's average players at least DOUBLE within 14 days and reach TS_MIN_TARGET.
+Outcome it predicts ("takes off"): within 14 days the game's daily players are at least DOUBLE today's AND
+at least TS_MIN_TARGET (5,000), on TS_SUSTAIN_DAYS or more days. (An earlier version only asked for 2x and
+1,000 players on one day. A 400-player game wobbling up to 1,000 counted, a quarter of all snapshots
+"took off", and the learned model simply ranked the smallest games first.)
+
   * Every day the bot saves each young game's signals ("snapshots"). After 14 days it knows the outcome.
-  * Once there are enough outcomes it fits a logistic model and CALIBRATES it (isotonic regression),
-    so a Trend Score of 70 means "about 70% of games scored like this doubled". Before that it uses a
-    sensible hand-set starting formula and says so.
+  * It starts with a hand-set formula. As outcomes arrive that formula is CALIBRATED against them (a
+    2-number curve fitted to what its past scores were actually followed by), so a score of 40 means
+    "about 40% of games scored like this took off" - no model training involved, so it can't fool itself.
+  * A learned model (logistic regression, challenged by boosted trees) replaces the formula only after it
+    passes the honest test in learn.py: trained only on outcomes already known at the time (a 14-day
+    purge - the same game appears in many daily snapshots, so an ordinary train/test split would let it
+    memorise games), over TS_MIN_DAYS+ different days.
   * Each score comes with the 2-3 signals that pushed it up most, in plain English.
 """
 import json
@@ -240,54 +248,81 @@ def score_one(model, f):
     return _sig(PRIOR_BIAS + sum(contrib.values())), contrib
 
 
-def label(db, uid, day, players):
+def _daily_value(r):
+    return (r["sum_ccu"] / r["n"]) if r["n"] and r["n"] >= 3 else (r["peak"] or 0) * 0.75
+
+
+def label(db, uid, day, players, target=None, sustain=None):
+    """1 = took off: on `sustain`+ of the next 14 days it had at least max(2 x players, target). None = unknown."""
+    target = C.TS_MIN_TARGET if target is None else target
+    sustain = C.TS_SUSTAIN_DAYS if sustain is None else sustain
     lo, hi = _s(_d(day) + timedelta(days=1)), _s(_d(day) + timedelta(days=14))
-    rows = db.execute("SELECT peak, sum_ccu, n FROM daily WHERE uid=? AND day>=? AND day<=?", (uid, lo, hi)).fetchall()
+    rows = db.execute("SELECT peak, sum_ccu, n FROM daily WHERE uid=? AND day>=? AND day<=? AND peak IS NOT NULL",
+                      (uid, lo, hi)).fetchall()
     if len(rows) < 7:
         return None
-    best = max(((r["sum_ccu"] / r["n"]) if r["n"] and r["n"] >= 3 else (r["peak"] or 0) * 0.75) for r in rows)
-    return 1 if best >= max(2 * players, C.TS_MIN_TARGET) else 0
+    vals = sorted((_daily_value(r) for r in rows), reverse=True)
+    return 1 if vals[min(sustain, len(vals)) - 1] >= max(2 * players, target) else 0
 
 
-def train(db, today):
-    rows = db.execute("SELECT day, uid, players, feats FROM trend_feats WHERE day<=?",
+def labelled(db, today):
+    """Every snapshot old enough to know its outcome: [{x, y, day, uid, players, shown}] oldest first."""
+    rows = db.execute("SELECT day, uid, players, feats, score FROM trend_feats WHERE day<=?",
                       (_s(_d(today) - timedelta(days=14)),)).fetchall()
     ex = []
     for r in rows:
         y = label(db, r["uid"], r["day"], r["players"])
         if y is not None:
-            ex.append({"x": json.loads(r["feats"]), "y": y, "day": r["day"]})
+            ex.append({"x": json.loads(r["feats"]), "y": y, "day": r["day"], "uid": r["uid"], "players": r["players"],
+                       "shown": r["score"]})
+    ex.sort(key=lambda e: e["day"])
+    return ex
+
+
+def prior_score(f):
+    """The hand-set starting formula's raw probability for one feature dict."""
+    return _sig(PRIOR_BIAS + sum(PRIOR[k] * (f.get(k) or 0.0) for k in NAMES))
+
+
+def calibrate_prior(db, today, ex=None):
+    """Check the starting formula against real outcomes and fit its calibration curve.
+    Stores and returns {"n", "pos", "days", "auc", "lo", "hi", "cal": {"a", "b"} or None}."""
+    ex = labelled(db, today) if ex is None else ex
     n, pos = len(ex), sum(e["y"] for e in ex)
-    st = {"day": today, "examples": n, "positives": pos, "trained": False}
-    if n < C.TS_MIN_EXAMPLES or pos < C.TS_MIN_POSITIVES or pos == n:
-        st["why"] = f"needs {C.TS_MIN_EXAMPLES}+ outcomes with {C.TS_MIN_POSITIVES}+ take-offs (has {n} / {pos})"
+    out = {"n": n, "pos": pos, "days": len({e["day"] for e in ex}), "cal": None}
+    if n >= 50 and 0 < pos < n:
+        oof = [(prior_score(e["x"]), e["y"], e["uid"]) for e in ex]
+        h = L.honest_metrics(oof)
+        if h and h.get("auc") is not None:
+            out.update({k: h[k] for k in ("auc", "lo", "hi", "base", "top") if k in h})
+        if n >= C.TS_CAL_MIN_EXAMPLES and pos >= C.TS_CAL_MIN_POSITIVES and out["days"] >= C.TS_CAL_MIN_DAYS:
+            out["cal"] = platt([o[0] for o in oof], [o[1] for o in oof])
+    W.meta_set(db, "trend_prior", out)
+    return out
+
+
+def train(db, today, ex=None):
+    """Fit the learned model and run its honest test. It is only USED when status['test_auc'] passes."""
+    ex = labelled(db, today) if ex is None else ex
+    n, pos = len(ex), sum(e["y"] for e in ex)
+    ndays = len({e["day"] for e in ex})
+    st = {"day": today, "examples": n, "positives": pos, "days": ndays, "trained": False}
+    if n < C.TS_MIN_EXAMPLES or pos < C.TS_MIN_POSITIVES or pos == n or ndays < C.TS_MIN_DAYS:
+        st["why"] = (f"needs {C.TS_MIN_EXAMPLES}+ outcomes with {C.TS_MIN_POSITIVES}+ take-offs over {C.TS_MIN_DAYS}+ days "
+                     f"(has {n} / {pos} over {ndays} day{'s' if ndays != 1 else ''})")
         W.meta_set(db, "trend_status", st)
         W.meta_set(db, "trend_model", None)
         return st
-    ex.sort(key=lambda e: e["day"])
     med = {k: (median([e["x"][k] for e in ex if e["x"].get(k) is not None]) if any(e["x"].get(k) is not None for e in ex) else 0.0)
            for k in NAMES}
     for e in ex:
         e["x"] = {k: (e["x"].get(k) if e["x"].get(k) is not None else med[k]) for k in NAMES}
     names = [k for k in NAMES if len({round(e["x"][k], 5) for e in ex}) > 1]
-    cut = int(n * 0.7)
-    tr, te = ex[:cut], ex[cut:]
-    iso = None
-    if sum(e["y"] for e in tr) >= 5 and 0 < sum(e["y"] for e in te) < len(te):
-        m = L.fit(tr, names=names, iters=400, l2=0.02)
-        sc = [L.predict(m, e["x"]) for e in te]
-        lab = [e["y"] for e in te]
-        st["test_auc"] = L.auc(sc, lab)
-        iso = platt(sc, lab)
-        cal = [_apply_iso(iso, s) for s in sc]
-        hi = [l for c, l in zip(cal, lab) if c >= 0.5]
-        st["hi_hit"] = (sum(hi) / len(hi)) if hi else None
-        st["hi_n"] = len(hi)
-        st["base_rate"] = sum(lab) / len(lab)
     model = L.fit(ex, names=names, iters=400, l2=0.02)
-    model = L.attach_champion(model, ex, names, st, iters=400, l2=0.02)
-    if model.get("gbm") and model.get("oof"):   # calibrate the trees on their own walk-forward predictions
-        iso = platt([a for a, _ in model["oof"]], [b for _, b in model["oof"]])
+    model = L.attach_champion(model, ex, names, st, horizon=14, iters=400, l2=0.02)
+    iso = None
+    if model.get("oof") and 0 < sum(b for _, b in model["oof"]) < len(model["oof"]):
+        iso = platt([a for a, _ in model["oof"]], [b for _, b in model["oof"]])   # calibrated on honest predictions only
     model["median"] = med
     model["iso"] = iso
     st["trained"] = True
@@ -308,13 +343,18 @@ def update(db, state, today, ids, ctx):
     except Exception:
         pass
     yts = ctx["S"].yt_stats(state, ctx["t"])
+    prior = {}
     try:
-        st = train(db, today)
+        ex = labelled(db, today)
+        prior = calibrate_prior(db, today, ex)
+        st = train(db, today, [dict(e, x=dict(e["x"])) for e in ex])
     except Exception as e:
         print(f"trend score training failed: {e}")
         st = W.meta_get(db, "trend_status", {}) or {}
     model = W.meta_get(db, "trend_model")
-    trusted = bool(model) and (st.get("test_auc") or 0) >= C.MODEL_TRUST_AUC
+    # the learned model must pass its honest test AND beat the starting formula it would replace
+    trusted = bool(model) and (st.get("test_auc") or 0) >= max(C.MODEL_TRUST_AUC, (prior.get("auc") or 0) + C.GBM_MARGIN)
+    cal = prior.get("cal")
     out, rows = {}, []
     yavg = {}
     for r in db.execute("SELECT uid, peak, sum_ccu, n FROM daily WHERE day=?", (yday,)):
@@ -325,6 +365,8 @@ def update(db, state, today, ids, ctx):
             continue
         f, info = features(state, db, gid, today, ctx, yts, theme_new)
         p, contrib = score_one(model if trusted else None, f)
+        if not trusted and cal:
+            p = _apply_iso(cal, p)      # starting formula, corrected to what its scores were really followed by
         out[gid] = {"score": round(100 * p), "reasons": reasons(contrib, info, ctx["fmt"]), "players": r.get("last", 0),
                     "event": info.get("event")}
         rows.append((today, gid, float(yavg.get(gid) or r.get("last", 0)), json.dumps(f), p))
@@ -332,44 +374,47 @@ def update(db, state, today, ids, ctx):
     db.execute("DELETE FROM trend_feats WHERE day < ?", (_s(_d(today) - timedelta(days=C.TS_KEEP_DAYS)),))
     state["_ts"] = out
     state["ts"] = {u: v["score"] for u, v in out.items() if v["score"] >= 20}  # small, kept between runs for alerts
-    state["ts_mode"] = "learned" if trusted else "starting formula"
+    state["ts_mode"] = "learned" if trusted else ("starting formula, calibrated" if cal else "starting formula")
     return len(out), st
 
 
 def live_check(db, today):
-    """How did past Trend Scores do? Uses snapshots 14-60 days old."""
-    rows = db.execute("SELECT day, uid, players, score FROM trend_feats WHERE day<=? AND day>=?",
-                      (_s(_d(today) - timedelta(days=14)), _s(_d(today) - timedelta(days=60)))).fetchall()
-    bands = {"70+": [], "40–69": [], "under 40": []}
-    sc, lab = [], []
-    for r in rows:
-        y = label(db, r["uid"], r["day"], r["players"])
-        if y is None or r["score"] is None:
-            continue
-        s = 100 * r["score"]
-        sc.append(s)
-        lab.append(y)
-        bands["70+" if s >= 70 else ("40–69" if s >= 40 else "under 40")].append(y)
-    if len(sc) < 50 or not (0 < sum(lab) < len(lab)):
-        return {"n": len(sc)}
-    return {"n": len(sc), "auc": L.auc(sc, lab),
+    """How did the scores the bot actually SHOWED do? Uses snapshots 14-60 days old."""
+    ex = [e for e in labelled(db, today) if e["day"] >= _s(_d(today) - timedelta(days=60)) and e["shown"] is not None]
+    bands = {"50+": [], "25–49": [], "10–24": [], "under 10": []}
+    for e in ex:
+        s = 100 * e["shown"]
+        bands["50+" if s >= 50 else "25–49" if s >= 25 else "10–24" if s >= 10 else "under 10"].append(e["y"])
+    lab = [e["y"] for e in ex]
+    if len(ex) < 50 or not (0 < sum(lab) < len(lab)):
+        return {"n": len(ex)}
+    return {"n": len(ex), "auc": L.auc([e["shown"] for e in ex], lab), "base": sum(lab) / len(lab),
             "bands": {b: (sum(v) / len(v), len(v)) for b, v in bands.items() if v}}
 
 
 def weekly_lines(db, state, today):
     st = W.meta_get(db, "trend_status", {}) or {}
-    lines = []
+    pr = W.meta_get(db, "trend_prior", {}) or {}
     mode = state.get("ts_mode") or "starting formula"
-    if st.get("trained") and st.get("test_auc") is not None:
-        lines.append(f"🚀 Trend Score ({mode}): accuracy **{st['test_auc']:.2f}** on unseen days"
-                     + (f" · games scored 50+ took off {st['hi_hit'] * 100:.0f}% of the time vs {st['base_rate'] * 100:.0f}% overall"
-                        if st.get("hi_hit") is not None else ""))
+    lines = [f"🚀 **Trend Score** — chance a young game at least doubles and passes {C.TS_MIN_TARGET:,} players within 2 weeks · "
+             f"now using: **{mode}**"]
+    if pr.get("auc") is not None:
+        rng = f" (likely {pr['lo']:.2f}–{pr['hi']:.2f})" if pr.get("lo") is not None else ""
+        lines.append(f"• Starting formula vs real outcomes: accuracy **{pr['auc']:.2f}**{rng} · its top 10% took off "
+                     f"{pr['top'] * 100:.0f}% of the time vs {pr['base'] * 100:.1f}% for all · {pr['n']:,} snapshots over {pr['days']} days")
+    elif pr.get("n"):
+        lines.append(f"• Starting formula: {pr['n']:,} outcomes so far, {pr.get('pos', 0)} take-offs — too few to score it yet")
+    if st.get("trained"):
+        lines.append("• Learned model — " + L.honest_line(st, "take-offs"))
         cl = L.champion_line(st)
         if cl:
-            lines.append(cl)
+            lines.append("  " + cl)
+        if mode != "learned":
+            lines.append("  Not used yet: it has to pass that test and beat the starting formula first.")
     else:
-        lines.append(f"🚀 Trend Score: using its starting formula — {st.get('why', 'collecting outcomes')}")
+        lines.append(f"• Learned model: not trained yet — {st.get('why', 'collecting outcomes')}")
     lc = live_check(db, today)
     if lc.get("bands"):
-        lines.append("Live check: " + " · ".join(f"scored {b}: {v[0] * 100:.0f}% took off ({v[1]})" for b, v in lc["bands"].items()))
+        lines.append("• Scores as shown at the time: " + " · ".join(
+            f"{b}: {v[0] * 100:.0f}% took off ({v[1]})" for b, v in lc["bands"].items()))
     return lines

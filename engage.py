@@ -132,18 +132,19 @@ COLS = {"hold_rel": "hold_rel", "playtime": "playtime", "session_min": "session_
         "fav_conv": "fav_conv", "rev_per_ccu": "rev_per_ccu"}
 
 
-def learn_weights(db):
-    """Let the data set the stickiness weights: for every past game-week, how well did each signal's rank
-    predict the players it still had 4 weeks later (Spearman)? Signals that predicted better weigh more.
-    Blended with the starting weights until there's plenty of history, so one odd month can't swing it."""
-    import warehouse as W
+def _week_rows(db):
     rows = {}
     for r in db.execute("SELECT * FROM engage_weekly"):
         rows.setdefault(r["week"], {})[r["uid"]] = dict(r)
+    return rows
+
+
+def _pairs(rows, weeks):
+    """For the given weeks: {component: [(percentile rank, log players kept 4 weeks later)]}, number of game-weeks."""
     xs = {k: [] for k in COLS}
     n = 0
-    for w, games in rows.items():
-        later = rows.get(_s(_d(w) + timedelta(days=28)))
+    for w in weeks:
+        games, later = rows[w], rows.get(_s(_d(w) + timedelta(days=28)))
         if not later:
             continue
         ranks = {k: _pct_ranks({u: g[c] for u, g in games.items()}) for k, c in COLS.items()}
@@ -156,12 +157,16 @@ def learn_weights(db):
             for k in COLS:
                 if uid in ranks[k]:
                     xs[k].append((ranks[k][uid], out))
+    return xs, n
+
+
+def _weights_from(xs, n):
+    """Weights from how well each signal's rank predicted survival, blended with the starting weights."""
     prior = {k: WEIGHTS[k] for k in COLS}
     ps = sum(prior.values())
     prior = {k: v / ps for k, v in prior.items()}
     res = {"n": n, "rho": {}, "weights": prior, "learned": False}
     if n < C.STICK_LEARN_MIN:
-        W.meta_set(db, "stick_weights", res)
         return res
     for k, pairs in xs.items():
         if len(pairs) >= 50:
@@ -169,14 +174,58 @@ def learn_weights(db):
     pos = {k: max(0.0, v) for k, v in res["rho"].items()}
     tot = sum(pos.values())
     if tot <= 0:
-        W.meta_set(db, "stick_weights", res)
         return res
     learned = {k: pos.get(k, 0.0) / tot for k in COLS}
     a = min(1.0, n / C.STICK_LEARN_FULL)
     res["weights"] = {k: round(a * learned[k] + (1 - a) * prior[k], 4) for k in COLS}
     res["learned"], res["blend"] = True, round(a, 2)
+    return res
+
+
+def learn_weights(db):
+    """Let the data set the stickiness weights: for every past game-week, how well did each signal's rank
+    predict the players it still had 4 weeks later (Spearman)? Signals that predicted better weigh more.
+    Blended with the starting weights until there's plenty of history, so one odd month can't swing it.
+    Also runs the out-of-sample check (cv_check) so the report can say how well this really works."""
+    import warehouse as W
+    rows = _week_rows(db)
+    xs, n = _pairs(rows, list(rows))
+    res = _weights_from(xs, n)
+    try:
+        res["cv"] = cv_check(rows)
+    except Exception as e:
+        print(f"stickiness cross-check failed: {e}")
     W.meta_set(db, "stick_weights", res)
     return res
+
+
+def cv_check(rows):
+    """Honest check of the learned weights: score each week with weights learned from the OTHER weeks only,
+    then see how well that score ranked the players kept 4 weeks later. {"rho", "n", "weeks"} or None."""
+    weeks = sorted(w for w in rows if _s(_d(w) + timedelta(days=28)) in rows)
+    if len(weeks) < 2:
+        return None
+    sc, outc = [], []
+    for w in weeks:
+        xs, n = _pairs(rows, [x for x in weeks if x != w])
+        wts = _weights_from(xs, n)["weights"]
+        games, later = rows[w], rows[_s(_d(w) + timedelta(days=28))]
+        ranks = {k: _pct_ranks({u: g[c] for u, g in games.items()}) for k, c in COLS.items()}
+        for uid, g in games.items():
+            a, f = g["avg_ccu"], (later.get(uid) or {}).get("avg_ccu")
+            if not a or a < C.HOLD_MIN_PLAYERS or f is None:
+                continue
+            tot = wsum = 0.0
+            for k, wt in wts.items():
+                if uid in ranks[k]:
+                    tot += wt * ranks[k][uid]
+                    wsum += wt
+            if wsum >= 0.45:
+                sc.append(tot / wsum)
+                outc.append(math.log(max(f, 1) / a))
+    if len(sc) < C.BACKTEST_MIN_PAIRS:
+        return None
+    return {"rho": round(_spearman(sc, outc), 3), "n": len(sc), "weeks": len(weeks)}
 
 
 def current_weights(db):
@@ -287,9 +336,14 @@ def backtest(db):
 # -------------------------------------------------------------- features ---
 
 def feature_report(db, state):
-    """Which description features are over-represented in long-term games."""
+    """Which description features are more common in long-term games — with a range, so luck isn't reported.
+    Only games with enough rated weeks to BE classified are compared."""
     lt = state.get("longterm") or {}
-    rated = {r["uid"] for r in db.execute("SELECT DISTINCT uid FROM hold_weekly WHERE rel IS NOT NULL")}
+    wk = (state.get("hold_meta") or {}).get("week")
+    since = _s(_d(wk) - timedelta(days=7 * (C.LONGTERM_WINDOW_WEEKS - 1))) if wk else "2000-01-01"
+    rated = {r["uid"] for r in db.execute(
+        "SELECT uid FROM hold_weekly WHERE rel IS NOT NULL AND week>=? GROUP BY uid HAVING COUNT(*)>=?",
+        (since, C.LONGTERM_MIN_WEEKS))}
     descs = {r["uid"]: (r["description"] or "").lower() for r in db.execute(
         "SELECT uid, description FROM games WHERE description IS NOT NULL AND description != ''")}
     pool = [u for u in rated if u in descs]
@@ -297,21 +351,25 @@ def feature_report(db, state):
     n_lt = sum(is_lt.values())
     n_other = len(pool) - n_lt
     if n_lt < 5 or n_other < 5:
-        return {"n_lt": n_lt, "n_other": n_other, "rows": []}
-    rows = []
+        return {"n_lt": n_lt, "n_other": n_other, "rows": [], "checked": 0}
+    rows, checked = [], 0
     for feat, pats in C.DESCRIPTION_FEATURES.items():
         rx = re.compile("|".join(r"\b" + re.escape(p) + r"\b" for p in pats))
         has = {u for u in pool if rx.search(descs[u])}
         if len(has) < C.FEATURE_MIN_GAMES:
             continue
-        a = sum(1 for u in has if is_lt[u]) / n_lt
-        b = sum(1 for u in has if not is_lt[u]) / n_other
-        lt_rate_with = sum(1 for u in has if is_lt[u]) / len(has)
-        lt_rate_without = sum(1 for u in pool if u not in has and is_lt[u]) / max(1, len(pool) - len(has))
-        rows.append({"feature": feat, "games": len(has), "in_lt": a, "in_other": b,
-                     "lift": (lt_rate_with / lt_rate_without) if lt_rate_without else None})
-    rows.sort(key=lambda r: -(r["lift"] or 0))
-    return {"n_lt": n_lt, "n_other": n_other, "rows": rows}
+        checked += 1
+        x1, n1 = sum(1 for u in has if is_lt[u]), len(has)
+        x2, n2 = sum(1 for u in pool if u not in has and is_lt[u]), len(pool) - len(has)
+        lift = lo = hi = None
+        if x1 and x2 and n2:
+            lift = (x1 / n1) / (x2 / n2)
+            se = math.sqrt(1 / x1 - 1 / n1 + 1 / x2 - 1 / n2)       # standard error of log risk ratio
+            lo, hi = lift * math.exp(-1.645 * se), lift * math.exp(1.645 * se)
+        rows.append({"feature": feat, "games": n1, "in_lt": x1 / n_lt, "in_other": (n1 - x1) / n_other,
+                     "lift": lift, "lo": lo, "hi": hi, "sig": bool(lo and (lo > 1 or hi < 1))})
+    rows.sort(key=lambda r: -(r["lo"] or 0))
+    return {"n_lt": n_lt, "n_other": n_other, "rows": rows, "checked": checked}
 
 
 # ------------------------------------------------------- opportunity map ---
@@ -342,7 +400,7 @@ def opportunity_map(db, state, today):
         stick = median(x["scores"])
         q = ("🟢 growing + sticky" if growth >= C.MAP_GROWTH_PCT and stick >= 50 else
              "🟡 growing, not sticky (hype)" if growth >= C.MAP_GROWTH_PCT else
-             "🔵 sticky, not growing (steady)" if stick >= 50 else "🔴 shrinking, not sticky")
+             "🔵 sticky, not growing (steady)" if stick >= 50 else "🔴 not growing, not sticky")
         rows.append({"genre": g, "growth": growth, "stick": stick, "games": x["games"], "quadrant": q})
     rows.sort(key=lambda r: -(r["growth"] + r["stick"]))
     return rows
@@ -411,16 +469,29 @@ def report_lines(db, state, today, fmt, name_of, link):
                 lines.append(f"• Score {b}: kept a median **{x['median_kept']*100:.0f}%** of players; "
                              f"{x['alive']*100:.0f}% still had half or more ({x['n']} game-weeks)")
         if bt.get("rho") is not None:
-            lines.append(f"• Rank correlation {bt['rho']:+.2f} (0 = no link, +1 = perfect) over {bt['n']} game-weeks.")
+            lines.append(f"• Rank correlation {bt['rho']:+.2f} (0 = no link, +1 = perfect) over {bt['n']} game-weeks — but the "
+                         f"weights were tuned on these same weeks, so this flatters the score.")
+        cv = sw.get("cv")
+        if cv:
+            lines.append(f"• Honest version (each week scored with weights learned from the other weeks): "
+                         f"**{cv['rho']:+.2f}** over {cv['n']:,} game-weeks in {cv['weeks']} weeks. "
+                         + ("A weak but real signal." if cv["rho"] >= 0.1 else "Too weak to rely on yet."))
     else:
         lines.append(f"• Needs more history ({bt.get('n', 0)} game-weeks so far, needs {C.BACKTEST_MIN_PAIRS}).")
     fr = feature_report(db, state)
     lines += ["", "🧩 **What long-term games do differently** (features mentioned in their descriptions)"]
-    if fr["rows"]:
-        for r in [x for x in fr["rows"] if x["lift"] is not None][:8]:
-            lines.append(f"• {r['feature']}: in {r['in_lt']*100:.0f}% of long-term games vs {r['in_other']*100:.0f}% of others "
-                         f"→ games mentioning it were **{r['lift']:.1f}×** as likely to be long-term ({r['games']} games)")
-        lines.append("_Descriptions are marketing, and this is correlation, not proof — but it's a strong checklist._")
+    sig = [x for x in fr["rows"] if x["sig"]]
+    if sig:
+        for r in sig[:8]:
+            lines.append(f"• {r['feature']}: games mentioning it were **{r['lift']:.1f}×** as likely to be long-term "
+                         f"(likely {r['lo']:.1f}–{r['hi']:.1f}×; in {r['in_lt']*100:.0f}% of long-term games vs "
+                         f"{r['in_other']*100:.0f}% of others; {r['games']} games)")
+        lines.append(f"_{fr['checked']} features were checked; with that many, about one can pass by luck. "
+                     "Descriptions are marketing and this is correlation, not proof._")
+    elif fr["rows"]:
+        lines.append(f"• None of the {fr['checked']} features checked is reliably more (or less) common in long-term games "
+                     f"({fr['n_lt']} long-term vs {fr['n_other']} others). Earlier reports listed 1.1–2.4× \"lifts\" here; "
+                     "those were within the range luck produces.")
     else:
         lines.append(f"• Needs more rated games ({fr['n_lt']} long-term, {fr['n_other']} others with descriptions).")
     om = opportunity_map(db, state, today)

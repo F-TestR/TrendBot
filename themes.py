@@ -17,13 +17,16 @@ Every day the bot works out, for every theme:
   upstream   whether it is rising on Steam / YouTube trending / Wikipedia / Twitch,
              or is in season
 
-A theme "breaks out" when it goes from at most 1 YOUNG game (under THEME_YOUNG_DAYS days old) with 2K+
-players to at least THEME_BREAKOUT_GAMES such young games within LABEL_DAYS days. (Counting every 2K+
-game made 97% of theme-days "breakouts": old hits and the bot discovering more games over time
-both look like growth. Young games only measures what we care about: new games succeeding.) The model learns, from every
-past theme-day, which of the numbers above came before breakouts. The indicator
-report tests each signal on its own: how often it was followed by a breakout and
-how many days of warning it gave.
+A theme "breaks out" when, after at least THEME_CALM_DAYS calm days (no more than 1 YOUNG game - under
+THEME_YOUNG_DAYS days old - with 2K+ players, and no burst in the 3 weeks before), THEME_BREAKOUT_GAMES or
+more of its young games pass 2K players within LABEL_DAYS days. Only calm themes are candidates: an
+evergreen category that always has a few new hits ("Tower Defense", "rng") is not a trend forming, and
+counting those made half of all theme-days "breakouts". A theme can break out again after going calm.
+
+The model learns, from every past calm theme-day, which of the numbers above came before breakouts, and is
+tested honestly (learn.py: trained only on outcomes already known at the time - the same theme appears on
+many consecutive days, so an ordinary split lets a model memorise themes). The indicator report tests each
+signal on its own: how often it was followed by a breakout and how many days of warning it gave.
 """
 import math
 import re
@@ -305,44 +308,58 @@ def _features(r, hist, day):
     }
 
 
-def breakout_day(hist):
-    """First day a theme reached THEME_BREAKOUT_GAMES young hits after having <= 1."""
-    was_small = False
+def timeline(hist, start):
+    """Walk one theme's days in order. Returns (calm candidate days, breakout days).
+
+    hot        = a day with THEME_BREAKOUT_GAMES+ young hits happened in the last LABEL_DAYS days
+    candidate  = not hot, at most 1 young hit, and we have watched at least THEME_CALM_DAYS days of history
+    breakout   = THEME_BREAKOUT_GAMES+ young hits on a day that isn't hot, with a candidate day in the
+                 LABEL_DAYS before it (so it came out of calm, not out of a slow plateau)"""
+    cands, bks = [], []
+    last_hot = last_cand = None
     for day in sorted(hist):
-        h = hist[day].get("yhits")
-        if h is None:
+        y = hist[day].get("yhits")
+        if y is None:
             continue
-        if h <= 1:
-            was_small = True
-        elif h >= C.THEME_BREAKOUT_GAMES and was_small:
-            return day
-    return None
+        d = _d(day)
+        hot = last_hot is not None and (d - last_hot).days <= C.LABEL_DAYS
+        if y >= C.THEME_BREAKOUT_GAMES:
+            if not hot and last_cand is not None and (d - last_cand).days <= C.LABEL_DAYS:
+                bks.append(day)
+            last_hot = d
+        elif not hot and y <= 1 and (d - start).days >= C.THEME_CALM_DAYS:
+            cands.append(day)
+            last_cand = d
+    return cands, bks
+
+
+def _start(data):
+    first = min((min(h) for h in data.values() if h), default=None)
+    return _d(first) if first else None
 
 
 def examples(db, today, predict_only=False):
     data = _load(db, _s(_d(today) - timedelta(days=C.THEME_KEEP_DAYS)))
+    start = _start(data)
     out = []
+    if start is None:
+        return out
     for k, hist in data.items():
-        bday = breakout_day(hist)
-        ds = sorted(hist)
-        for i, day in enumerate(ds):
+        cands, bks = timeline(hist, start)
+        last = max(hist)
+        for day in cands:
             r = hist[day]
-            if (r.get("yhits") or 0) > 1 or (bday and day >= bday):
-                if bday and day >= bday:
-                    break
-                continue
-            end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
             if predict_only:
-                if day != ds[-1] or day < _s(_d(today) - timedelta(days=2)):
+                if day != last or day < _s(_d(today) - timedelta(days=2)):
                     continue
                 y = None
             else:
-                if i % 3 and not (bday and _d(bday) - _d(day) <= timedelta(days=C.LABEL_DAYS)):
-                    continue  # thin out non-event days so one theme doesn't dominate
+                if _d(day).toordinal() % C.THEME_DAY_STEP:
+                    continue  # every theme is thinned on the SAME days, whatever happened next (no bias)
+                end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
                 if end >= today:
-                    continue  # window not over: keeping only the early breakouts here made recent data ~90% "yes"
-                hit = bool(bday and day < bday <= end)
-                y = 1 if hit else 0
+                    continue  # window not over yet
+                y = 1 if any(day < b <= end for b in bks) else 0
             out.append({"theme": k, "day": day, "x": _features(r, hist, day), "y": y, "row": r})
     out.sort(key=lambda e: e["day"])
     return out
@@ -352,23 +369,15 @@ def train(db, today):
     names = [f for f, _ in FEATURES]
     ex = examples(db, today)
     n, pos = len(ex), sum(e["y"] for e in ex)
-    st = {"examples": n, "positives": pos, "trained": False, "day": today}
+    st = {"examples": n, "positives": pos, "trained": False, "day": today,
+          "themes": len({e["theme"] for e in ex}), "base_rate": (pos / n) if n else None}
     if n < C.THEME_MIN_EXAMPLES or pos < C.THEME_MIN_POSITIVES:
-        st["why"] = f"needs {C.THEME_MIN_EXAMPLES}+ theme-days with {C.THEME_MIN_POSITIVES}+ breakouts (has {n} / {pos})"
+        st["why"] = f"needs {C.THEME_MIN_EXAMPLES}+ calm theme-days with {C.THEME_MIN_POSITIVES}+ breakouts (has {n} / {pos})"
         W.meta_set(db, "theme_model_status", st)
+        W.meta_set(db, "theme_model", None)
         return st
-    cut = int(n * 0.75)
-    tr, te = ex[:cut], ex[cut:]
-    if sum(e["y"] for e in tr) >= 3 and 0 < sum(e["y"] for e in te) < len(te):
-        m = L.fit(tr, names=names)
-        sc = [L.predict(m, e["x"]) for e in te]
-        lab = [e["y"] for e in te]
-        st["test_auc"] = L.auc(sc, lab)
-        st["test_n"], st["test_pos"], st["base_rate"] = len(te), sum(lab), sum(lab) / len(lab)
-        k = max(1, len(te) // 20)
-        st["test_top5_hit"] = sum(l for _, l in sorted(zip(sc, lab), reverse=True)[:k]) / k
     model = L.fit(ex, names=names)
-    model = L.attach_champion(model, ex, names, st)
+    model = L.attach_champion(model, ex, names, st, horizon=C.LABEL_DAYS)
     st["trained"] = True
     st["drivers"] = sorted(zip(model["names"], model["w"]), key=lambda x: -abs(x[1]))[:6]
     W.meta_set(db, "theme_model", model)
@@ -418,46 +427,44 @@ def predict(db, today):
 def indicator_report(db, today):
     """For each indicator: how often it was followed by a breakout, and how much warning it gave."""
     data = _load(db, _s(_d(today) - timedelta(days=C.THEME_KEEP_DAYS)))
+    start = _start(data)
     stats = {k: {"fired": 0, "hit": 0, "miss": 0, "leads": []} for k in INDICATORS}
-    breakouts = {}
-    for k, hist in data.items():
-        b = breakout_day(hist)
-        if b:
-            breakouts[k] = b
     caught = {k: 0 for k in INDICATORS}
+    total_b = cand_days = cand_pos = 0
     for theme, hist in data.items():
-        b = breakouts.get(theme)
-        last_fire = {}
-        for day in sorted(hist):
-            if b and day >= b:
-                break
+        if start is None:
+            break
+        cands, bks = timeline(hist, start)
+        total_b += len(bks)
+        last_fire, fired_days = {}, {k: [] for k in INDICATORS}
+        for day in cands:
             r = hist[day]
-            if r["hits"] > 1:
-                continue
+            end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
+            nxt = next((b for b in bks if day < b <= end), None)
+            if end < today:
+                cand_days += 1
+                cand_pos += 1 if nxt else 0
             prev = hist.get(_s(_d(day) - timedelta(days=7)))
             for ind in firing(r, prev):
+                fired_days[ind].append(day)
                 lf = last_fire.get(ind)
                 if lf and (_d(day) - _d(lf)).days < 14:
                     continue
                 last_fire[ind] = day
                 s = stats[ind]
                 s["fired"] += 1
-                end = _s(_d(day) + timedelta(days=C.LABEL_DAYS))
-                if b and day < b <= end:
-                    s["hit"] += 1
-                    s["leads"].append((_d(b) - _d(day)).days)
-                elif end < today:
-                    s["miss"] += 1
-        if b:
+                if end < today:           # only finished windows are scored, hit or miss
+                    if nxt:
+                        s["hit"] += 1
+                        s["leads"].append((_d(nxt) - _d(day)).days)
+                    else:
+                        s["miss"] += 1
+        for b in bks:
+            lo = _s(_d(b) - timedelta(days=C.LABEL_DAYS))
             for ind in INDICATORS:
-                lo = _s(_d(b) - timedelta(days=C.LABEL_DAYS))
-                if any(lo <= d < b and ind in firing(hist[d], hist.get(_s(_d(d) - timedelta(days=7))))
-                       for d in hist if d < b):
+                if any(lo <= d < b for d in fired_days[ind]):
                     caught[ind] += 1
-    total_b = len(breakouts)
-    # base rate: share of small-theme days followed by a breakout
-    ex = examples(db, today)
-    base = (sum(e["y"] for e in ex) / len(ex)) if ex else None
+    base = (cand_pos / cand_days) if cand_days else None   # share of calm theme-days (finished windows) followed by a breakout
     rows = []
     for k, s in stats.items():
         done = s["hit"] + s["miss"]
@@ -472,34 +479,35 @@ def indicator_report(db, today):
 
 def report_lines(db, today, fmt):
     st = W.meta_get(db, "theme_model_status", {}) or {}
-    lines = [f"🌱 **Theme model** (a theme \"breaks out\" when {C.THEME_BREAKOUT_GAMES}+ of its games under "
-             f"{C.THEME_YOUNG_DAYS} days old pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days)"]
+    lines = [f"🌱 **Theme model** (a theme \"breaks out\" when, after {C.THEME_CALM_DAYS}+ calm days, {C.THEME_BREAKOUT_GAMES}+ of its "
+             f"games under {C.THEME_YOUNG_DAYS} days old pass {fmt(C.THEME_HIT_CCU)} players within {C.LABEL_DAYS} days)"]
     if not st.get("trained"):
         lines.append(f"• Still collecting — {st.get('why', 'not trained yet')}.")
     else:
-        lines.append(f"• Trained on {st['examples']:,} theme-days, {st['positives']} of which led to a breakout.")
-        if st.get("test_auc") is not None:
-            lines.append(f"• On the newest data it hadn't seen: AUC **{st['test_auc']:.2f}**; its top 5% picks broke out "
-                         f"**{st['test_top5_hit']*100:.0f}%** of the time vs {st['base_rate']*100:.1f}% on average.")
+        lines.append(f"• Trained on {st['examples']:,} calm theme-days from {st.get('themes', '?'):,} themes; "
+                     f"{st['positives']} ({(st.get('base_rate') or 0) * 100:.1f}%) were followed by a breakout.")
+        lines.append("• " + L.honest_line(st, "breakouts"))
         cl = L.champion_line(st)
         if cl:
             lines.append("• " + cl)
         names = dict(FEATURES)
         lines.append("• Biggest drivers: " + ", ".join(f"{names[f]} ({'+' if w > 0 else '−'})" for f, w in st.get("drivers", [])[:5]))
     rows, nb, base = indicator_report(db, today)
-    lines += ["", f"🔬 **Which indicators actually work** ({nb} theme breakouts tracked so far)"]
-    useful = [r for r in rows if r["done"]]
+    lines += ["", f"🔬 **Which indicators actually work** ({nb} theme breakouts tracked so far"
+              + (f"; {base * 100:.1f}% of calm theme-days are followed by one" if base else "") + ")"]
+    useful = [r for r in rows if r["done"] >= C.THEME_IND_MIN_DONE]
     if useful:
         for r in useful[:12]:
-            lift = f" · **{r['lift']:.1f}×** better than chance" if r["lift"] else ""
+            lift = f" · **{r['lift']:.1f}×** chance" if r["lift"] else ""
             lead = f" · ~{r['lead']:.0f} days' warning" if r["lead"] is not None else ""
             rec = f" · caught {r['recall']*100:.0f}% of breakouts" if r["recall"] is not None else ""
             lines.append(f"• {r['label']}: followed by a breakout {r['hit']}/{r['done']} times{lift}{lead}{rec}")
-        idle = [r["label"] for r in rows if not r["done"]]
-        if idle:
-            lines.append("• Not enough data yet: " + ", ".join(idle))
-    else:
-        lines.append("• Measuring — results appear as indicator firings reach the end of their 3-week window.")
+    few = [f"{r['label']} ({r['hit']}/{r['done']})" for r in rows if 0 < r["done"] < C.THEME_IND_MIN_DONE]
+    if few:
+        lines.append(f"• Too few firings to judge (under {C.THEME_IND_MIN_DONE}): " + ", ".join(few))
+    idle = [r["label"] for r in rows if not r["done"]]
+    if idle:
+        lines.append("• No finished firings yet: " + ", ".join(idle))
     return lines
 
 

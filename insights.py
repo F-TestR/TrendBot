@@ -3,8 +3,8 @@ Insights: turning the raw numbers into decisions.
 
   * Mechanics  - groups games by what you do in them (tycoon, anomaly, find-the...)
                  and tracks demand vs. how crowded each one is getting.
-  * Updates    - spots when a game publishes an update and measures what it did
-                 to players 1, 3 and 7 days later.
+  * Updates    - spots when a game publishes an update (what it did to players is measured
+                 fairly, against similar games that didn't update, in effects.py).
   * Lifecycle  - every young game that breaks out gets a record: age when it broke
                  out, how long it took to peak, and how fast it fell after.
 
@@ -246,7 +246,10 @@ def lifecycle_summary(state, today):
     out = []
     for m, rs in by.items():
         ages = [r["age"] for r in rs if r.get("age") is not None]
-        done = [r for r in rs if (_d(today) - _d(r["peak_day"])).days >= 3]
+        # Only breakouts old enough to have had their full run are used. Taking "already peaked" ones instead
+        # keeps just the quick fades and leaves out everything still climbing - which made every type look
+        # like it "peaked 0 days later".
+        done = [r for r in rs if (_d(today) - _d(r["broke"])).days >= C.LIFE_MATURE_DAYS]
         to_peak = [(_d(r["peak_day"]) - _d(r["broke"])).days for r in done]
         out.append({"mech": m, "n": len(rs), "age": median(ages) if ages else None,
                     "to_peak": median(to_peak) if to_peak else None, "done": len(done)})
@@ -295,23 +298,12 @@ def weekly_report(state, today):
     if summ:
         for s in summ[:8]:
             age = f"broke out at ~{s['age']:.0f} days old" if s["age"] is not None else ""
-            tp = (f"peaked ~{s['to_peak']:.0f} days later" if s["to_peak"] is not None else "none peaked yet")
+            tp = (f"peaked ~{s['to_peak']:.0f} days later ({s['done']} old enough to tell)" if s["to_peak"] is not None and s["done"] >= 3
+                  else f"too early to say when they peak ({s['done']} are {C.LIFE_MATURE_DAYS}+ days old)")
             lines.append(f"• **{s['mech']}** — {s['n']} breakouts, {age}, {tp}")
-        lines.append("_Tip: if a type usually peaks ~10 days after breaking out, a copy needs to ship well inside that window._")
+        lines.append(f"_Days to peak counts only breakouts at least {C.LIFE_MATURE_DAYS} days old, so games still climbing aren't left out. "
+                     "A copy has to ship inside that window._")
     else:
         lines.append("• Builds up over the coming weeks")
 
-    # Updates
-    evs = [e for e in ins_state(state)["updates"] if "d3" in e]
-    lines += ["", "🛠️ **What updates did** (players 3 days after an update vs the days before)"]
-    if evs:
-        d3 = [e["d3"] for e in evs]
-        ups = sum(1 for v in d3 if v >= 10)
-        lines.append(f"• {len(evs)} update{'s' if len(evs) != 1 else ''} measured · median change {median(d3):+.0f}% · "
-                     f"{ups} of {len(evs)} gave a 10%+ boost")
-        best = [e for e in sorted(evs, key=lambda e: -e["d3"]) if e["d3"] > 0][:3]
-        if best:
-            lines.append("• Biggest boosts: " + ", ".join(f"{e['name'][:25]} ({e['d3']:+d}%)" for e in best))
-    else:
-        lines.append("• Measuring — results appear 3 days after the first updates are spotted")
     return "\n".join(lines), table

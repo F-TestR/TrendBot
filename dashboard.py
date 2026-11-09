@@ -166,13 +166,27 @@ def build(state, today, cutoff):
                      f'<td data-v="{r["peak"]}">{fmt(r["peak"])}</td><td data-v="{days_to_peak}">{days_to_peak}d</td>'
                      f'<td>{_e(I.life_status(r, today))}</td><td>{_e(", ".join(r["mech"]))}</td></tr>')
 
-    # --- updates
+    # --- updates, icon and title changes: measured against matched games that changed nothing (effects.py)
     urows = []
-    for e in sorted(I.ins_state(state)["updates"], key=lambda e: e["date"], reverse=True)[:80]:
-        cells = "".join(f'<td data-v="{e.get(k, -999)}" class="{"up" if e.get(k, 0) > 0 else ("down" if e.get(k, 0) < 0 else "")}">'
-                        f'{(str(e[k]) if e[k] <= 0 else "+" + str(e[k])) + "%" if k in e else "…"}</td>' for k in ("d1", "d3", "d7"))
-        urows.append(f'<tr><td data-v="{_e(e["name"].lower())}">{_e(e["name"])}</td><td data-v="{e["date"]}">{e["date"][5:]}</td>'
-                     f'<td data-v="{e.get("before") or -1}">{fmt(e["before"]) if e.get("before") else "—"}</td>{cells}</tr>')
+    try:
+        import effects as EF, warehouse as WH2
+        _edb = WH2.connect()
+        EF.ensure(_edb)
+        erows = [dict(r) for r in _edb.execute("""SELECT e.*, g.name FROM effects e LEFT JOIN games g ON g.uid=e.uid
+                                                  WHERE e.raw IS NOT NULL ORDER BY e.day DESC LIMIT 150""")]
+        _edb.close()
+        def pc(v):
+            return "—" if v is None else f"{(v - 1) * 100:+.0f}%"
+        for e in erows:
+            lift = e["lift"]
+            cls = "" if lift is None else ("up" if lift > 0.05 else ("down" if lift < -0.05 else ""))
+            urows.append(f'<tr><td data-v="{_e((e["name"] or e["uid"]).lower())}">{_e((e["name"] or e["uid"])[:48])}</td>'
+                         f'<td>{_e(EF.KINDS.get(e["kind"], e["kind"]).split(" ")[0])}</td><td data-v="{e["day"]}">{e["day"][5:]}</td>'
+                         f'<td data-v="{e["before"] or -1}">{fmt(e["before"]) if e["before"] else "—"}</td>'
+                         f'<td data-v="{e["raw"]}">{pc(e["raw"])}</td><td data-v="{e["twins"] or -1}">{pc(e["twins"])}</td>'
+                         f'<td data-v="{lift if lift is not None else -9}" class="{cls}">{"—" if lift is None else f"{lift * 100:+.0f}%"}</td></tr>')
+    except Exception:
+        pass
 
     # --- themes
     import themes as T
@@ -389,7 +403,7 @@ ul.head a,.card td a{{color:var(--accent);text-decoration:none;font-weight:600}}
 <section id="hot"><input type="search" placeholder="Filter games or types…" data-for="t-hot">
 <div class="card">{table(hot, "t-hot")}</div><p class="note">Model = the learned chance of reaching the "exploded" level (see weekly report for its accuracy). Heat combines player growth vs last week, YouTube videos/views (48h), Twitch viewers, Roblox group / Discord growth (~2 days) and likes. Click a column to sort.</p></section>
 <section id="watch"><div class="card">{table(watch, "t-watch")}</div></section>
-<section id="longterm"><p class="note">Long-term = keeps its weekend crowd on Tue–Wed at least as well as a typical game, in most weeks ({hm.get("weeks", 0)} weeks of data so far; the typical game last week kept {f"{hm['benchmark']*100:.0f}%" if hm.get("benchmark") else "—"}).</p>
+<section id="longterm"><p class="note">Long-term = keeps its weekend crowd on Mon–Wed reliably better than a typical game, over 3+ weeks, by more than week-to-week noise ({hm.get("weeks", 0)} weeks of data so far; the typical game last week kept {f"{hm['benchmark']*100:.0f}%" if hm.get("benchmark") else "—"}).</p>
 <div class="card"><table class="sortable"><thead><tr><th data-t="s">Genre</th><th>Long-term share</th><th>Long-term games</th><th>Games rated</th><th>Median hold vs typical</th><th class="nosort">Best long-term games</th></tr></thead><tbody>{genre_rows or '<tr><td colspan=6 class=muted>Builds up over the first couple of weeks.</td></tr>'}</tbody></table></div>
 <p></p><input type="search" placeholder="Filter games or genres…" data-for="t-lt">
 <div class="card"><table id="t-lt" class="sortable"><thead><tr><th data-t="s">Game</th><th class="nosort">Status</th><th data-t="s">Genre</th><th>Median hold vs typical</th><th>Weeks above typical</th><th>Weekend players</th><th>Age</th></tr></thead><tbody>{"".join(lt_rows) or '<tr><td colspan=7 class=muted>No long-term games rated yet.</td></tr>'}</tbody></table></div>
@@ -427,7 +441,7 @@ q.addEventListener('input',draw);draw();}})();
 <section id="mech"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Mechanic</th><th>Avg players (7d)</th><th>vs last week</th><th>Games</th><th>New this week</th><th>New hits</th><th class="nosort">Top games</th></tr></thead><tbody>{mech_rows}</tbody></table></div>
 <p class="note">🟢 open gap = demand up 10%+ with few new games · 🟡 growing but crowding · 🔴 saturating = demand falling while copies keep arriving.</p></section>
 <section id="life"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Game</th><th>Broke out</th><th>Age then</th><th>Peak</th><th>Days to peak</th><th class="nosort">Now</th><th class="nosort">Type</th></tr></thead><tbody>{"".join(lrows) or '<tr><td colspan=7 class=muted>No breakouts logged yet.</td></tr>'}</tbody></table></div></section>
-<section id="upd"><div class="card"><table class="sortable"><thead><tr><th data-t="s">Game</th><th>Updated</th><th>Players before</th><th>Day 1</th><th>Day 3</th><th>Day 7</th></tr></thead><tbody>{"".join(urows) or '<tr><td colspan=6 class=muted>No updates measured yet.</td></tr>'}</tbody></table></div></section>
+<section id="upd"><p class="note">What a change did, measured fairly: the game's players in the week after vs the week before (same weekdays), compared with similar-size, similar-trend games that made no such change. "Lift" is the difference — the part the change added. "Update" = a publish after a quiet week (constant patching can't be measured).</p><div class="card"><table class="sortable"><thead><tr><th data-t="s">Game</th><th data-t="s">Change</th><th>Date</th><th>Players before</th><th>Week after vs before</th><th>Similar games</th><th>Lift</th></tr></thead><tbody>{"".join(urows) or '<tr><td colspan=7 class=muted>Nothing measured yet — a change needs a full week after it.</td></tr>'}</tbody></table></div></section>
 </main>
 <script>
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{{document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.getElementById(b.dataset.s).classList.add('on')}});

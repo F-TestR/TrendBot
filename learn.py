@@ -167,6 +167,37 @@ def _sigmoid(z):
     return 1 / (1 + math.exp(-max(-30, min(30, z))))
 
 
+def _np():
+    try:
+        import numpy as np
+        return np
+    except ImportError:
+        return None
+
+
+def fit_matrix(Xa, ya, l2, iters, lr=0.3):
+    """Class-balanced, standardised logistic regression on numpy arrays. Returns (w, b, mu, sd) as lists/floats."""
+    np = _np()
+    n, k = Xa.shape
+    mu = Xa.mean(axis=0)
+    sd = Xa.std(axis=0)
+    sd[sd == 0] = 1.0
+    Za = (Xa - mu) / sd
+    pos = float(ya.sum()) or 1.0
+    neg = float(n - ya.sum()) or 1.0
+    cw = np.where(ya > 0, n / (2 * pos), n / (2 * neg))   # balance rare positives
+    wa, b = np.zeros(k), 0.0
+    for _ in range(iters):
+        p = 1 / (1 + np.exp(-np.clip(b + Za @ wa, -30, 30)))
+        err = (p - ya) * cw
+        b -= lr * err.sum() / n
+        wa -= lr * (Za.T @ err / n + l2 * wa)
+    prior = float(ya.sum()) / n
+    if 0 < prior < 1:   # undo class balancing in the intercept so outputs are real-world probabilities
+        b += math.log(prior / (1 - prior))
+    return wa.tolist(), float(b), mu.tolist(), sd.tolist()
+
+
 def fit(examples, l2=None, iters=None, lr=0.3, names=None):
     l2 = C.LEARN_L2 if l2 is None else l2
     iters = iters or 600
@@ -174,6 +205,10 @@ def fit(examples, l2=None, iters=None, lr=0.3, names=None):
     X = [[e["x"][f] for f in names] for e in examples]
     y = [e["y"] for e in examples]
     n, k = len(X), len(names)
+    np = _np()
+    if np is not None:   # same maths with numpy when it's there (~100x faster); pure Python otherwise
+        w, b, mu, sd = fit_matrix(np.array(X, dtype=float).reshape(n, k), np.array(y, dtype=float), l2, iters, lr)
+        return {"names": names, "mu": mu, "sd": sd, "w": w, "b": b, "n": n, "pos": int(sum(y))}
     mu = [sum(r[j] for r in X) / n for j in range(k)]
     sd = [math.sqrt(sum((r[j] - mu[j]) ** 2 for r in X) / n) or 1.0 for j in range(k)]
     Z = [[(r[j] - mu[j]) / sd[j] for j in range(k)] for r in X]
@@ -181,19 +216,6 @@ def fit(examples, l2=None, iters=None, lr=0.3, names=None):
     neg = (n - sum(y)) or 1
     wpos, wneg = n / (2 * pos), n / (2 * neg)  # balance rare explosions
     w, b = [0.0] * k, 0.0
-    try:   # same maths with numpy when it's there (~100x faster); pure Python otherwise
-        import numpy as np
-        Za, ya = np.array(Z, dtype=float).reshape(n, k), np.array(y, dtype=float)
-        cw = np.where(ya > 0, wpos, wneg)
-        wa, b = np.zeros(k), 0.0
-        for _ in range(iters):
-            p = 1 / (1 + np.exp(-np.clip(b + Za @ wa, -30, 30)))
-            err = (p - ya) * cw
-            b -= lr * err.sum() / n
-            wa -= lr * (Za.T @ err / n + l2 * wa)
-        w, iters = wa.tolist(), 0
-    except ImportError:
-        pass
     for _ in range(iters):
         gw, gb = [0.0] * k, 0.0
         for zi, yi in zip(Z, y):
@@ -206,7 +228,7 @@ def fit(examples, l2=None, iters=None, lr=0.3, names=None):
         for j in range(k):
             w[j] -= lr * (gw[j] / n + l2 * w[j])
     # undo class balancing in the intercept so outputs are real-world probabilities
-    prior = pos / n
+    prior = sum(y) / n
     b += math.log(prior / (1 - prior)) if 0 < prior < 1 else 0
     return {"names": names, "mu": mu, "sd": sd, "w": w, "b": b, "n": n, "pos": int(sum(y))}
 
@@ -253,84 +275,20 @@ def brier(scores, labels):
     return sum((s - l) ** 2 for s, l in zip(scores, labels)) / len(labels) if labels else None
 
 
-def walk_forward(examples, names, lr_kw, folds=None):
-    """Time-ordered test: for each cut, train on everything before it and predict the next slice.
-    Returns {'lr': {'auc', 'brier'}, 'gbm': {...}, 'oof': {'lr': [(score, y)], 'gbm': [...]}}."""
-    folds = folds or C.WF_FOLDS
-    n = len(examples)
-    start = int(n * 0.5)
-    step = max(1, (n - start) // folds)
-    oof = {"lr": [], "gbm": []}
-    try:
-        import sklearn  # noqa: F401
-        have_gbm = True
-    except ImportError:
-        have_gbm = False
-    for i in range(folds):
-        a, b = start + i * step, (start + (i + 1) * step) if i < folds - 1 else n
-        tr, te = examples[:a], examples[a:b]
-        if not te or sum(e["y"] for e in tr) < 5 or len({e["y"] for e in tr}) < 2:
-            continue
-        m = fit(tr, names=names, **lr_kw)
-        oof["lr"] += [(predict(m, e["x"]), e["y"]) for e in te]
-        if have_gbm:
-            clf = _gbm_new().fit(_matrix(tr, names), [e["y"] for e in tr])
-            oof["gbm"] += list(zip(clf.predict_proba(_matrix(te, names))[:, 1].tolist(), [e["y"] for e in te]))
-    res = {"oof": oof}
-    for k, v in oof.items():
-        if v and 0 < sum(l for _, l in v) < len(v):
-            res[k] = {"auc": auc([s for s, _ in v], [l for _, l in v]), "brier": brier([s for s, _ in v], [l for _, l in v]),
-                      "n": len(v)}
-    return res
-
-
-def attach_champion(model, examples, names, status, **lr_kw):
-    """Walk-forward test the simple model vs boosted trees; if the trees clearly win, store them in `model`
-    (predict() then uses them). Writes the comparison into `status`. `examples` must be oldest-first."""
-    n, pos = len(examples), sum(e["y"] for e in examples)
-    if n < C.GBM_MIN_EXAMPLES or pos < C.GBM_MIN_POSITIVES or pos == n:
-        status["champion"] = "simple"
-        status["champion_why"] = f"boosted trees need {C.GBM_MIN_EXAMPLES}+ examples with {C.GBM_MIN_POSITIVES}+ positives"
-        return model
-    try:
-        wf = walk_forward(examples, names, lr_kw)
-    except Exception as e:
-        status["champion"], status["champion_why"] = "simple", f"walk-forward failed: {e}"
-        return model
-    lr, gb = wf.get("lr"), wf.get("gbm")
-    status["wf"] = {k: {kk: round(vv, 4) for kk, vv in v.items()} for k, v in (("lr", lr), ("gbm", gb)) if v}
-    if gb and lr and gb["auc"] is not None and lr["auc"] is not None and gb["auc"] >= lr["auc"] + C.GBM_MARGIN \
-            and gb["auc"] >= C.GBM_MIN_AUC:
-        import base64
-        import pickle
-        clf = _gbm_new().fit(_matrix(examples, names), [e["y"] for e in examples])
-        model["gbm"] = base64.b64encode(pickle.dumps(clf)).decode()
-        model["gbm_names"] = list(names)
-        status["champion"] = "boosted trees"
-        model["oof"] = wf["oof"]["gbm"][-3000:]
-    else:
-        model.pop("gbm", None)
-        status["champion"] = "simple"
-        model["oof"] = wf["oof"]["lr"][-3000:] if wf["oof"]["lr"] else []
-    return model
-
-
-def champion_line(status):
-    """One line for reports: which model won the walk-forward test and by how much."""
-    wf = (status or {}).get("wf") or {}
-    lr, gb = wf.get("lr"), wf.get("gbm")
-    if not lr:
-        return None
-    if status.get("champion") == "boosted trees":
-        return (f"⚙️ Using **boosted trees**: walk-forward accuracy **{gb['auc']:.2f}** vs {lr['auc']:.2f} for the simple model "
-                f"({gb['n']:,} predictions tested in time order)")
-    if gb:
-        return (f"⚙️ Simple model kept: walk-forward accuracy {lr['auc']:.2f} vs {gb['auc']:.2f} for boosted trees "
-                f"(trees must win by {C.GBM_MARGIN:.2f}+)")
-    return f"⚙️ Walk-forward accuracy {lr['auc']:.2f} ({lr['n']:,} predictions tested in time order)"
-
-
 def auc(scores, labels):
+    """Ranking accuracy: chance a random positive is scored above a random negative (ties count half)."""
+    np = _np()
+    if np is not None and len(scores) >= 64:
+        s = np.asarray(scores, dtype=float)
+        y = np.asarray(labels) > 0
+        npos = int(y.sum())
+        nneg = len(y) - npos
+        if not npos or not nneg:
+            return None
+        _, inv, cnt = np.unique(s, return_inverse=True, return_counts=True)
+        avg_rank = np.cumsum(cnt) - (cnt - 1) / 2.0
+        r = avg_rank[inv]
+        return float((r[y].sum() - npos * (npos + 1) / 2.0) / (npos * nneg))
     pos = [s for s, l in zip(scores, labels) if l]
     neg = [s for s, l in zip(scores, labels) if not l]
     if not pos or not neg:
@@ -339,8 +297,235 @@ def auc(scores, labels):
     return wins / (len(pos) * len(neg))
 
 
+# --------------------------------------------------------- honest testing ---
+#
+# Every model here predicts something that takes days to find out (7, 14 or 21). Two traps follow:
+#   1. LEAKAGE. A game scored on Monday and again on Tuesday has almost the same next-7-days. If Monday is
+#      in the training set and Tuesday in the test set, the model is being marked on answers it has seen.
+#      So a test block may only be predicted by a model trained on examples whose outcome was ALREADY KNOWN
+#      when that block began (their day + the outcome window is before the block). That gap is the "purge".
+#   2. NOISE. A model that scores 0.70 against 0.67 on a few hundred predictions has not shown it is
+#      better. Accuracy gets a range from resampling whole games (a game's repeated days move together),
+#      and a challenger only takes over when it wins in nearly all resamples.
+
+def _day_of(e):
+    return e.get("day") or e.get("t0")
+
+
+def _group_of(e):
+    return e.get("uid") or e.get("theme") or e.get("group") or _day_of(e)
+
+
+def purged_folds(examples, horizon, folds=None, min_train_days=None):
+    """[(train, test)] in time order. Each test block is a run of days; its training set is every example
+    whose outcome window (day + horizon) had closed before the block started."""
+    folds = folds or C.WF_FOLDS
+    min_train_days = C.WF_MIN_TRAIN_DAYS if min_train_days is None else min_train_days
+    days = sorted({_day_of(e) for e in examples})
+    if len(days) < 3:
+        return []
+    first_test = _s(_d(days[0]) + timedelta(days=horizon + min_train_days))
+    tdays = [d for d in days if d >= first_test]
+    if len(tdays) < 2:
+        return []
+    size = max(1, math.ceil(len(tdays) / folds))
+    out = []
+    for i in range(0, len(tdays), size):
+        block = tdays[i:i + size]
+        cut = _s(_d(block[0]) - timedelta(days=horizon))
+        tr = [e for e in examples if _day_of(e) < cut]
+        te = [e for e in examples if block[0] <= _day_of(e) <= block[-1]]
+        if te and len({e["y"] for e in tr}) == 2 and sum(e["y"] for e in tr) >= C.WF_MIN_TRAIN_POS:
+            out.append((tr, te))
+    return out
+
+
+def _boot_groups(groups, rounds, seed=7):
+    """Index arrays for cluster-bootstrap resamples (whole groups drawn with replacement)."""
+    np = _np()
+    rng = np.random.default_rng(seed)
+    idx = {}
+    for i, g in enumerate(groups):
+        idx.setdefault(g, []).append(i)
+    members = [np.array(v) for v in idx.values()]
+    for _ in range(rounds):
+        pick = rng.integers(0, len(members), len(members))
+        yield np.concatenate([members[j] for j in pick])
+
+
+def honest_metrics(oof, top_share=0.1):
+    """oof: [(score, y, group)] from purged walk-forward. AUC with a 90% range, and top-picks hit rate vs base."""
+    if not oof:
+        return None
+    sc, lab, grp = [o[0] for o in oof], [o[1] for o in oof], [o[2] for o in oof]
+    n, pos = len(sc), sum(lab)
+    if pos < C.HONEST_MIN_POS or pos == n:
+        return {"n": n, "pos": pos, "auc": None}
+    k = max(1, int(n * top_share))
+    top = sorted(zip(sc, lab), key=lambda x: -x[0])[:k]
+    out = {"n": n, "pos": pos, "auc": auc(sc, lab), "base": pos / n, "top": sum(l for _, l in top) / k, "top_n": k}
+    np = _np()
+    if np is not None and len(set(grp)) >= 20:
+        s, y = np.asarray(sc, dtype=float), np.asarray(lab)
+        vals = []
+        for ix in _boot_groups(grp, C.BOOT_ROUNDS):
+            a = auc(s[ix], y[ix])
+            if a is not None:
+                vals.append(a)
+        if len(vals) >= 20:
+            vals.sort()
+            out["lo"], out["hi"] = vals[int(0.05 * len(vals))], vals[min(len(vals) - 1, int(0.95 * len(vals)))]
+    return out
+
+
+def p_better(oof_a, oof_b):
+    """How sure are we that model B ranks better than model A on the same test predictions?
+    Returns (share of resamples where B wins, mean AUC difference)."""
+    np = _np()
+    if np is None or not oof_a or len(oof_a) != len(oof_b):
+        return None, None
+    y = np.asarray([o[1] for o in oof_a])
+    a, b = np.asarray([o[0] for o in oof_a], dtype=float), np.asarray([o[0] for o in oof_b], dtype=float)
+    wins, diffs = 0, []
+    for ix in _boot_groups([o[2] for o in oof_a], C.BOOT_ROUNDS):
+        ua, ub = auc(a[ix], y[ix]), auc(b[ix], y[ix])
+        if ua is None or ub is None:
+            continue
+        diffs.append(ub - ua)
+        wins += ub > ua
+    if not diffs:
+        return None, None
+    return wins / len(diffs), sum(diffs) / len(diffs)
+
+
+def walk_forward(examples, names, lr_kw, horizon=0, want_gbm=True, folds=None):
+    """Purged, time-ordered test of the simple model (and boosted trees).
+    Returns {'oof': {'lr': [(score, y, group)], 'gbm': [...]}, 'folds': n, 'horizon': days}."""
+    oof = {"lr": [], "gbm": []}
+    have_gbm = False
+    if want_gbm:
+        try:
+            import sklearn  # noqa: F401
+            have_gbm = True
+        except ImportError:
+            pass
+    fs = purged_folds(examples, horizon, folds)
+    for tr, te in fs:
+        m = fit(tr, names=names, **lr_kw)
+        oof["lr"] += [(predict(m, e["x"]), e["y"], _group_of(e)) for e in te]
+        if have_gbm:
+            clf = _gbm_new().fit(_matrix(tr, names), [e["y"] for e in tr])
+            ps = clf.predict_proba(_matrix(te, names))[:, 1].tolist()
+            oof["gbm"] += [(p, e["y"], _group_of(e)) for p, e in zip(ps, te)]
+    return {"oof": oof, "folds": len(fs), "horizon": horizon}
+
+
+def attach_champion(model, examples, names, status, horizon=0, **lr_kw):
+    """The honest check and the champion/challenger choice, in one place for every model.
+
+    Runs the purged walk-forward test, stores the champion's honest numbers in status['honest'] (and the
+    legacy status['test_auc'] etc. that reports and trust gates read), and — only if boosted trees beat the
+    simple model in nearly all resamples — stores the trees in `model` so predict() uses them.
+    `examples` must be oldest-first and carry 'day' (or 't0'); 'uid'/'theme' is used to resample by game."""
+    n, pos = len(examples), sum(e["y"] for e in examples)
+    for k in ("test_auc", "honest", "wf", "champion_why"):
+        status.pop(k, None)
+    status["champion"] = "simple"
+    model.pop("gbm", None)
+    want_gbm = n >= C.GBM_MIN_EXAMPLES and pos >= C.GBM_MIN_POSITIVES and pos < n
+    try:
+        wf = walk_forward(examples, names, lr_kw, horizon, want_gbm)
+    except Exception as e:
+        status["champion_why"] = f"walk-forward failed: {e}"
+        return model
+    lr, gb = honest_metrics(wf["oof"]["lr"]), honest_metrics(wf["oof"]["gbm"])
+    status["wf"] = {"folds": wf["folds"], "horizon": horizon,
+                    **{k: {kk: (round(vv, 4) if isinstance(vv, float) else vv) for kk, vv in v.items()}
+                       for k, v in (("lr", lr), ("gbm", gb)) if v}}
+    best, kind = lr, "lr"
+    if gb and lr and gb.get("auc") is not None and lr.get("auc") is not None:
+        pb, diff = p_better(wf["oof"]["lr"], wf["oof"]["gbm"])
+        status["wf"]["p_trees_better"], status["wf"]["diff"] = (round(pb, 3) if pb is not None else None,
+                                                                round(diff, 4) if diff is not None else None)
+        if pb is not None and pb >= C.GBM_MIN_CONFIDENCE and diff >= C.GBM_MARGIN and gb["auc"] >= C.GBM_MIN_AUC:
+            import base64
+            import pickle
+            clf = _gbm_new().fit(_matrix(examples, names), [e["y"] for e in examples])
+            model["gbm"] = base64.b64encode(pickle.dumps(clf)).decode()
+            model["gbm_names"] = list(names)
+            status["champion"] = "boosted trees"
+            best, kind = gb, "gbm"
+    model["oof"] = [(o[0], o[1]) for o in wf["oof"][kind][-3000:]]
+    if best and best.get("auc") is not None:
+        status["honest"] = best
+        status["test_auc"] = best["auc"]
+    elif best:
+        status["honest"] = best   # counts only: not enough positives to score
+    return model
+
+
+def honest_line(status, what="positives"):
+    """One report line: the honest accuracy with its range, or why there isn't one yet."""
+    h = (status or {}).get("honest")
+    wf = (status or {}).get("wf") or {}
+    if not h:
+        return (f"Honest test: not possible yet — it needs enough history to train only on outcomes that were "
+                f"already known ({wf.get('horizon', '?')}-day outcomes).")
+    if h.get("auc") is None:
+        return (f"Honest test: too few {what} in the test window to score ({h['pos']} of {h['n']:,}; "
+                f"needs {C.HONEST_MIN_POS}+). Treat this model's picks as unproven.")
+    rng = f" (likely between {h['lo']:.2f} and {h['hi']:.2f})" if h.get("lo") is not None else ""
+    return (f"Honest test: accuracy **{h['auc']:.2f}**{rng} · 0.5 = coin flip · top 10% picks came true "
+            f"**{h['top'] * 100:.0f}%** of the time vs {h['base'] * 100:.0f}% for all · {h['n']:,} predictions, "
+            f"each made by a model trained only on outcomes already known at the time")
+
+
+def champion_line(status):
+    """One line for reports: which model won the honest test and how sure that is."""
+    wf = (status or {}).get("wf") or {}
+    lr, gb = wf.get("lr"), wf.get("gbm")
+    if not lr or lr.get("auc") is None:
+        return None
+    if not gb or gb.get("auc") is None:
+        return None
+    pb = wf.get("p_trees_better")
+    sure = f"trees better in {pb * 100:.0f}% of resamples" if pb is not None else "not comparable"
+    if status.get("champion") == "boosted trees":
+        return f"⚙️ Using **boosted trees**: {gb['auc']:.2f} vs {lr['auc']:.2f} for the simple model ({sure})"
+    return (f"⚙️ Simple model kept: {lr['auc']:.2f} vs {gb['auc']:.2f} for boosted trees "
+            f"({sure}; they need {C.GBM_MIN_CONFIDENCE * 100:.0f}%+ and a {C.GBM_MARGIN:.2f}+ lead)")
+
+
+def coef_stability(examples, names, rounds=None, **lr_kw):
+    """Are the simple model's weights real or noise? Refit on resampled games and see how much each moves.
+    Returns {feature: {"w": weight on all data, "lo", "hi": 90% range, "sign": share of resamples agreeing
+    with the sign of w}} — or {} without numpy."""
+    np = _np()
+    if np is None or len(examples) < 100:
+        return {}
+    rounds = rounds or C.COEF_BOOT_ROUNDS
+    l2 = lr_kw.get("l2", C.LEARN_L2)
+    iters = lr_kw.get("iters") or 600
+    X = np.array([[e["x"][f] for f in names] for e in examples], dtype=float)
+    y = np.array([e["y"] for e in examples], dtype=float)
+    w0, _, _, _ = fit_matrix(X, y, l2, iters)
+    ws = []
+    for ix in _boot_groups([_group_of(e) for e in examples], rounds, seed=11):
+        if 0 < y[ix].sum() < len(ix):
+            ws.append(fit_matrix(X[ix], y[ix], l2, iters)[0])
+    if len(ws) < 10:
+        return {}
+    W_ = np.array(ws)
+    out = {}
+    for j, f in enumerate(names):
+        col = np.sort(W_[:, j])
+        out[f] = {"w": float(w0[j]), "lo": float(col[int(0.05 * len(col))]), "hi": float(col[min(len(col) - 1, int(0.95 * len(col)))]),
+                  "sign": float((np.sign(W_[:, j]) == np.sign(w0[j])).mean()) if w0[j] else 0.0}
+    return out
+
+
 def train(db, today):
-    """Train, evaluate on the newest 25%, then refit on everything. Stores the model in the DB."""
+    """Fit on every finished example, and test honestly (walk-forward, trained only on outcomes already known)."""
     ex = build_examples(db, today)
     n, pos = len(ex), sum(e["y"] for e in ex)
     status = {"examples": n, "positives": pos, "trained": False, "day": today}
@@ -349,28 +534,26 @@ def train(db, today):
                          f"(has {n} / {pos})")
         W.meta_set(db, "model_status", status)
         return status
-    cut = int(n * 0.75)
-    tr, te = ex[:cut], ex[cut:]
-    if sum(e["y"] for e in tr) >= 3 and 0 < sum(e["y"] for e in te) < len(te):
-        m = fit(tr)
-        scores = [predict(m, e["x"]) for e in te]
-        labels = [e["y"] for e in te]
-        status["test_auc"] = auc(scores, labels)
-        status["test_n"], status["test_pos"] = len(te), sum(labels)
-        k = max(1, len(te) // 10)
-        top = sorted(zip(scores, labels), reverse=True)[:k]
-        status["test_top10_hit"] = sum(l for _, l in top) / k
-        status["base_rate"] = sum(labels) / len(labels)
-        flagged = [(s, l) for s, l in zip(scores, labels) if s >= C.PREDICT_ALERT_PROB]
-        status["test_flagged"] = len(flagged)
-        status["test_flagged_hit"] = (sum(l for _, l in flagged) / len(flagged)) if flagged else None
     model = fit(ex)
-    model = attach_champion(model, ex, model["names"], status)
+    model = attach_champion(model, ex, model["names"], status, horizon=C.LABEL_DAYS)
+    h = status.get("honest") or {}
+    status["test_n"], status["test_pos"] = h.get("n"), h.get("pos")
+    status["test_top10_hit"], status["base_rate"] = h.get("top"), h.get("base", pos / n)
     status["trained"] = True
     status["drivers"] = sorted(((f, w) for f, w in zip(model["names"], model["w"])), key=lambda x: -abs(x[1]))[:6]
+    try:
+        stab = coef_stability(ex, model["names"])
+        status["stable"] = [f for f, v in stab.items() if v["sign"] >= 0.9]
+    except Exception:
+        status["stable"] = []
     W.meta_set(db, "model", model)
     W.meta_set(db, "model_status", status)
     return status
+
+
+def trusted(status):
+    """A model's predictions are only used (board, alerts, other models) once its honest test passes."""
+    return bool(status) and (status.get("test_auc") or 0) >= C.MODEL_TRUST_AUC
 
 
 def predictions(db, today):
@@ -439,22 +622,24 @@ LABELS = {"new": "🆕 crossed 2K", "surge": "🚀 surge", "copy": "🧬 copy wa
 
 def report_lines(db, today, fmt):
     st = W.meta_get(db, "model_status", {}) or {}
-    lines = [f"🧠 **What the model has learned** (explode = {fmt(C.EXPLODE_CCU)}+ players within {C.LABEL_DAYS} days)"]
+    lines = [f"🧠 **Explosion model** (explode = {fmt(C.EXPLODE_CCU)}+ players within {C.LABEL_DAYS} days of first reaching "
+             f"{fmt(C.LEARN_ENTRY_CCU)})"]
     if not st.get("trained"):
         lines.append(f"• Still collecting examples — {st.get('why', 'not trained yet')}.")
     else:
-        lines.append(f"• Trained on {st['examples']} young games, {st['positives']} of which exploded.")
+        lines.append(f"• Trained on {st['examples']} young games, {st['positives']} of which exploded "
+                     f"({st['positives'] / max(st['examples'], 1) * 100:.0f}%).")
+        lines.append("• " + honest_line(st, "explosions"))
         cl = champion_line(st)
         if cl:
             lines.append("• " + cl)
-        if st.get("test_auc") is not None:
-            lines.append(f"• Tested on the newest {st['test_n']} games it hadn't seen: ranking accuracy (AUC) "
-                         f"**{st['test_auc']:.2f}** (0.5 = coin flip, 1.0 = perfect). Its top 10% picks exploded "
-                         f"**{st['test_top10_hit']*100:.0f}%** of the time vs {st['base_rate']*100:.0f}% for a random young game.")
+        if not trusted(st):
+            lines.append("• **Not used yet**: its picks stay off the board and out of alerts until it passes that test.")
         names = dict(FEATURES)
-        drv = ", ".join(f"{names[f]} ({'+' if w > 0 else '−'})" for f, w in st.get("drivers", [])[:4])
-        if drv:
-            lines.append(f"• Biggest drivers: {drv}")
+        stable = set(st.get("stable") or [])
+        drv = ", ".join(f"{names[f]} ({'+' if w > 0 else '−'})" for f, w in st.get("drivers", []) if f in stable)
+        lines.append(f"• Drivers that hold up when resampled: {drv}" if drv else
+                     "• No driver holds up when the data is resampled yet (too few explosions) — ignore the model's \"reasons\".")
     sc = scorecard(db, today)
     lines += ["", f"🎯 **Scorecard: how often signals were followed by an explosion**"]
     if sc:

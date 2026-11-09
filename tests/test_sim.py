@@ -55,9 +55,10 @@ with redirect_stdout(out), redirect_stderr(errors):
             crashes += 1
             traceback.print_exc()
         world.NOW[0] += timedelta(hours=3)
+    os.environ["DIAG_PATH"] = os.path.join(TMP, "diagnostics.md")
     for q in ("how is cat battles doing", "is chocolate trending", "which genres earn the most", "what's rising",
               "how accurate is the bot",
-              "is there an influx of games surrounding the sea/boats/ pirates?"):
+              "is there an influx of games surrounding the sea/boats/ pirates?", "diagnose"):
         try:
             bot.run_ask(q)
         except Exception:
@@ -71,6 +72,15 @@ if crashes:
     problems.append(f"{crashes} run(s) crashed")
 if bad:
     problems.append("errors logged:\n  " + "\n  ".join(sorted(set(bad))[:30]))
+try:
+    diag = open(os.environ["DIAG_PATH"], encoding="utf-8").read()
+    if "**FAILED:**" in diag:
+        problems.append("diagnostics sections failed:\n" + "\n".join(
+            l for l in diag.splitlines() if l.startswith("## ") or "FAILED" in l or l.startswith("  File") or "Error" in l)[:3000])
+    if os.environ.get("VERBOSE") == "2":
+        print(diag)
+except OSError:
+    problems.append("diagnostics were not written")
 if len(CAP["digest"]) < days - 2:
     problems.append(f"only {len(CAP['digest'])} digests for {days} days")
 if not CAP["weekly"]:
