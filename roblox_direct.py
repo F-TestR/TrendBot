@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import config as C
+import net as NET
 
 UA = {"User-Agent": "Mozilla/5.0 (compatible; roblox-trend-bot/1.7)", "Accept": "application/json"}
 EXPLORE = "https://apis.roblox.com/explore-api/v1/get-sorts"
@@ -40,7 +41,7 @@ def _s(dt):
 
 def get_json(url, timeout=20):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with NET.call(url), urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -93,6 +94,8 @@ def discover(state, t):
     if found:
         rs["sorts_at"] = t.isoformat()
         rs["chart_rank"] = ranks
+        # exactly which games are in the worldwide Top Trending / Up-and-Coming right now (for "abroad first")
+        rs["world"] = sorted(u for u, f in found.items() if set(f["sorts"]) & {"top-trending", "up-and-coming"})
         day = _s(t)
         for uid, f in found.items():
             rs["seen"][uid] = dict(f, day=day)
@@ -147,13 +150,20 @@ def countries(state, t):
     return found
 
 
-def abroad(state, uid, today):
+def abroad(state, uid, today, t=None):
     """Countries where the game is in Top Trending / Up-and-Coming today but it isn't in the worldwide lists.
-    Returns [(country, rank)] best first."""
+    Returns [(country, rank)] best first.
+
+    "Not in the worldwide lists" is checked against the last successful read of those lists, and only if that read
+    is recent. (It used to be checked against each game's remembered list membership, which a search result could
+    blank out - so games already trending worldwide were announced as "climbing abroad first".)"""
     rs = rstate(state)
     e = rs.get("cc", {}).get(uid) or {}
-    world = set(((rs.get("seen") or {}).get(uid) or {}).get("sorts") or []) & {"top-trending", "up-and-coming"}
-    if world:
+    if rs.get("world") is None or not rs.get("sorts_at"):
+        return []                        # the worldwide lists haven't been read yet: can't say it's "abroad first"
+    if t is not None and (t - datetime.fromisoformat(rs["sorts_at"])) > timedelta(minutes=3 * C.RBX_SORTS_EVERY_MIN):
+        return []                        # ...or the last read is too old to trust
+    if uid in set(rs["world"]):
         return []
     return sorted(((c, v[0]) for c, v in e.items() if v[1] == today and c not in C.RBX_HOME_COUNTRIES), key=lambda x: x[1])
 
@@ -163,9 +173,8 @@ def abroad(state, uid, today):
 def search_words(state, today, extra=()):
     """Words worth searching today: rising themes, copy-wave words, config watch words."""
     words = list(C.RBX_SEARCH_WORDS) + list(extra)
-    for p, sc, k, r, fired in (state.get("_themes") or [])[:15]:
-        if k.startswith(("w:", "b:")):
-            words.append(k[2:])
+    # rising theme words, saved by the daily theme step (the live list only exists during that one run)
+    words += [w for w in (state.get("theme_words") or [])[:15]]
     rs = rstate(state)
     out, seen = [], set()
     for w in words:
@@ -181,7 +190,7 @@ def search(state, t, words):
     rs = rstate(state)
     today = _s(t)
     found = {}
-    for w in words[:C.RBX_SEARCH_WORDS_PER_RUN]:
+    for w in words[:NET.quota(C.RBX_SEARCH_WORDS_PER_RUN)]:
         tok = ""
         for _ in range(C.RBX_SEARCH_PAGES):
             q = {"searchQuery": w, "sessionId": rs["session"], "pageType": "all"}
@@ -210,7 +219,8 @@ def search(state, t, words):
             time.sleep(0.3)
         rs["searched"][w] = today
     for uid, f in found.items():
-        rs["seen"][uid] = dict(rs["seen"].get(uid, {}), **f, day=today)
+        prev = rs["seen"].get(uid, {})   # a search result says nothing about list membership: keep what was known
+        rs["seen"][uid] = dict(prev, **{k: v for k, v in f.items() if k != "sorts"}, sorts=prev.get("sorts") or [], day=today)
     cut = _s(t - timedelta(days=3))
     rs["searched"] = {w: d for w, d in rs["searched"].items() if d >= cut}
     return found

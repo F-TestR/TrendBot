@@ -133,6 +133,35 @@ def report(db, state, today, fmt):
                  f"({len(old)}): {_q(old)}")
     section(out, "Alerts, updates, breakouts", alerts)
 
+    # ------------------------------------------------------------ plumbing
+    def plumbing(o):
+        import bot as B
+        o.append(f"last full run: {state.get('last_run_at', '—')} · RoWatcher requests by day: "
+                 + json.dumps(dict(sorted((state.get('requests') or {}).items())[-4:])))
+        o.append(f"alert cards by day: {json.dumps(state.get('alert_count') or {})} · pings: {json.dumps(state.get('ping_count') or {})}")
+        q = state.get("alert_queue") or []
+        o.append(f"alerts waiting for a slot: {len(q)}" + (" · strongest: " + "; ".join(
+            f"{a.get('prio', 0):.2f} {a['title'][:40]}" for a in sorted(q, key=lambda a: -a.get('prio', 0))[:5]) if q else ""))
+        pr = sorted(state.get("alert_prios", {}).get(yday) or [], reverse=True)
+        o.append(f"yesterday's alert priorities: {len(pr)} alerts · top {C.ALERT_DAILY_BUDGET}th = "
+                 f"{pr[C.ALERT_DAILY_BUDGET - 1] if len(pr) >= C.ALERT_DAILY_BUDGET else '—'} · {_q(pr)}")
+        kp = state.get("kind_prec") or {}
+        o.append("\nalert type → chance it's followed by an explosion (starting guess → now, matured alerts behind it):")
+        for k, v in sorted((kp.get("p") or B.KIND_PRIOR).items(), key=lambda kv: -kv[1]):
+            o.append(f"- {k}: {B.KIND_PRIOR.get(k, 0):.3f} → {v:.3f} ({(kp.get('n') or {}).get(k, 0)} matured)")
+        up = state.get("upstream") or {}
+        o.append(f"\noutside sources last worked: {json.dumps(up.get('last') or {})}")
+        o.append(f"outside sources failing today: {json.dumps(up.get('fail') or {})} · Wikipedia days held: {sorted(up.get('wiki_hist') or {})}")
+        o.append("backfill by status: " + json.dumps({r['status']: r['c'] for r in db.execute(
+            "SELECT status, COUNT(*) c FROM backfill GROUP BY status")}))
+        rs = state.get("rbx_direct") or {}
+        o.append(f"worldwide trending lists last read: {rs.get('sorts_at', '—')} · games in them: {len(rs.get('world') or [])} "
+                 f"· theme words saved for search: {state.get('theme_words') or []}")
+        ev = state.get("events") or {}
+        o.append(f"title tags currently treated as Roblox events: {json.dumps(ev)}")
+        o.append(f"backup: {state.get('backup', '—')}")
+    section(out, "Plumbing: runs, alert cards, sources, backup", plumbing)
+
     # --------------------------------------------------------------- trend score
     def trend(o):
         rows = db.execute("SELECT day, uid, players, feats, score FROM trend_feats WHERE day<=?", (_s(_d(today) - timedelta(days=14)),)).fetchall()

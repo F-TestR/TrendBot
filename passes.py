@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from statistics import median
 
 import config as C
+import net as NET
 
 UA = {"User-Agent": "Mozilla/5.0 (compatible; roblox-trend-bot/1.8)", "Accept": "application/json"}
 SCHEMA = """
@@ -38,7 +39,7 @@ def ensure(db):
 
 
 def get_json(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
+    with NET.call(url), urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=20) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -79,14 +80,21 @@ def collect(db, state, money_rows, today):
     ensure(db)
     done = {r["uid"]: r["day"] for r in db.execute("SELECT uid, day FROM passes")}
     cut = (datetime.strptime(today, "%Y-%m-%d") - timedelta(days=C.PASSES_REFRESH_DAYS)).strftime("%Y-%m-%d")
-    todo = [r["uid"] for r in money_rows if done.get(r["uid"], "") < cut][:C.PASSES_GAMES_PER_RUN]
+    todo = [r["uid"] for r in money_rows if done.get(r["uid"], "") < cut][:NET.quota(C.PASSES_GAMES_PER_RUN)]
     n = 0
     for uid in todo:
         try:
             ps = fetch(uid)
+        except NET.Skipped:
+            break                        # out of time, or Roblox isn't answering: leave the rest for the next run
         except Exception as e:
             log(f"game passes failed for {uid}: {e}")
-            db.execute("INSERT OR REPLACE INTO passes VALUES(?,?,?,?,?)", (uid, today, None, "[]", "[]"))
+            # Keep what was already known about this game (a failed read used to wipe it for a week) and
+            # date the entry so the game is tried again tomorrow.
+            if db.execute("SELECT 1 FROM passes WHERE uid=? AND n IS NOT NULL", (uid,)).fetchone():
+                db.execute("UPDATE passes SET day=? WHERE uid=?", (cut, uid))
+            else:
+                db.execute("INSERT OR REPLACE INTO passes VALUES(?,?,?,?,?)", (uid, cut, None, "[]", "[]"))
             continue
         db.execute("INSERT OR REPLACE INTO passes VALUES(?,?,?,?,?)",
                    (uid, today, len(ps), json.dumps([p for _, p in ps]), json.dumps([nm for nm, _ in ps])))

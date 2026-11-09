@@ -168,11 +168,12 @@ def record_history(db, uid, points, created=None):
                       ON CONFLICT(uid, hour) DO UPDATE SET ccu=MAX(ccu, excluded.ccu)""",
                    [(uid, h, v[0], v[1]) for h, v in hourly.items()
                     if v[0] >= 50 and (young_until is None or h <= young_until)])
-    # never overwrite days the bot measured live
+    # Days the bot measured live keep their own average (it's corrected for time of day), but their high and low are
+    # widened by the download: the bot only sees a small game a handful of times a day and misses its real peak.
     db.executemany("""INSERT INTO daily(uid, day, peak, low, sum_ccu, n, visits, src) VALUES(?,?,?,?,?,?,?,'backfill')
                       ON CONFLICT(uid, day) DO UPDATE SET
-                        peak=CASE WHEN src='live' THEN peak ELSE MAX(COALESCE(peak,0), excluded.peak) END,
-                        low=CASE WHEN src='live' THEN low ELSE excluded.low END,
+                        peak=MAX(COALESCE(peak,0), excluded.peak),
+                        low=CASE WHEN src='live' THEN MIN(COALESCE(low, excluded.low), excluded.low) ELSE excluded.low END,
                         sum_ccu=CASE WHEN src='live' THEN sum_ccu ELSE excluded.sum_ccu END,
                         n=CASE WHEN src='live' THEN n ELSE excluded.n END,
                         visits=COALESCE(visits, excluded.visits),
@@ -316,15 +317,72 @@ def _bundle(db):
     return buf.getvalue()
 
 
+class RestoreFailed(Exception):
+    """A backup exists but couldn't be read. The run must stop: carrying on with an empty memory would be saved
+    over the real one."""
+
+
+def _put_asset(repo, token, rel, name, data, ctype):
+    """Replace a backup file on the Releases page without ever being left with none: the new copy is uploaded
+    under a temporary name first, and only then is the old one removed and the new one renamed."""
+    tmp = name + ".new"
+    assets = {a["name"]: a for a in rel.get("assets", [])}
+    rename = lambda aid: _gh("PATCH", f"https://api.github.com/repos/{repo}/releases/assets/{aid}", token,
+                             json.dumps({"name": name}).encode())
+    remove = lambda aid: _gh("DELETE", f"https://api.github.com/repos/{repo}/releases/assets/{aid}", token)
+    if tmp in assets:                    # left over from a run that died half-way
+        if name in assets:
+            remove(assets[tmp]["id"])    # the real backup is intact: the leftover is a partial upload
+        else:
+            rename(assets[tmp]["id"])    # the old one was already removed: the leftover IS the backup, so finish the job
+            assets[name] = assets[tmp]
+    new = _gh("POST", f"https://uploads.github.com/repos/{repo}/releases/{rel['id']}/assets?name={tmp}",
+              token, data, ctype=ctype)
+    if name in assets:
+        remove(assets[name]["id"])
+    rename(new["id"])
+
+
+def _shrunk(db, rel, name, size):
+    """Is the new backup suspiciously smaller than the one it would replace? The database only ever grows, so a
+    backup under BACKUP_MIN_RATIO of the last one almost always means the bot lost its memory and started again.
+    In that case the good backup is kept. If the smaller size persists for BACKUP_SHRINK_DAYS it's accepted
+    (a deliberate fresh start)."""
+    old = next((a for a in rel.get("assets", []) if a["name"] == name), None)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not old or size >= (old.get("size") or 0) * C.BACKUP_MIN_RATIO:
+        meta_set(db, "backup_small", None)
+        return None
+    since = meta_get(db, "backup_small", None) or today
+    meta_set(db, "backup_small", since)
+    days = (datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(since, "%Y-%m-%d")).days
+    if days >= C.BACKUP_SHRINK_DAYS:
+        meta_set(db, "backup_small", None)
+        return None
+    return (f"⚠️ today's backup ({size/1e6:.1f} MB) is much smaller than the last one ({old['size']/1e6:.1f} MB), "
+            f"which usually means the bot lost its memory. The larger backup was kept and today's was saved beside it "
+            f"as '{name}.small'. If the smaller one is right, it replaces the old one after {C.BACKUP_SHRINK_DAYS} days.")
+
+
+def _save_backup(db, repo, token, name, data, ctype):
+    rel = _release(repo, token, create=True)
+    warn = _shrunk(db, rel, name, len(data))
+    if warn:
+        small = name + ".small"
+        for a in rel.get("assets", []):
+            if a["name"] == small:
+                _gh("DELETE", f"https://api.github.com/repos/{repo}/releases/assets/{a['id']}", token)
+        _gh("POST", f"https://uploads.github.com/repos/{repo}/releases/{rel['id']}/assets?name={small}",
+            token, data, ctype=ctype)
+        return warn
+    _put_asset(repo, token, rel, name, data, ctype)
+    return None
+
+
 def backup_encrypted(db, repo, token, password):
     data = _openssl(["-salt"], _bundle(db), password)
-    rel = _release(repo, token, create=True)
-    for a in rel.get("assets", []):
-        if a["name"] == ENC_ASSET:
-            _gh("DELETE", f"https://api.github.com/repos/{repo}/releases/assets/{a['id']}", token)
-    _gh("POST", f"https://uploads.github.com/repos/{repo}/releases/{rel['id']}/assets?name={ENC_ASSET}",
-        token, data, ctype="application/octet-stream")
-    return f"encrypted backup saved ({len(data)/1e6:.1f} MB)"
+    warn = _save_backup(db, repo, token, ENC_ASSET, data, "application/octet-stream")
+    return warn or f"encrypted backup saved ({len(data)/1e6:.1f} MB)"
 
 
 def backup(db):
@@ -346,13 +404,8 @@ def backup(db):
     with open(tmp, "rb") as f:
         data = gzip.compress(f.read(), 6)
     os.remove(tmp)
-    rel = _release(repo, token, create=True)
-    for a in rel.get("assets", []):
-        if a["name"] == "trendbot.db.gz":
-            _gh("DELETE", f"https://api.github.com/repos/{repo}/releases/assets/{a['id']}", token)
-    _gh("POST", f"https://uploads.github.com/repos/{repo}/releases/{rel['id']}/assets?name=trendbot.db.gz",
-        token, data, ctype="application/gzip")
-    return f"backed up ({len(data)/1e6:.1f} MB)"
+    warn = _save_backup(db, repo, token, "trendbot.db.gz", data, "application/gzip")
+    return warn or f"backed up ({len(data)/1e6:.1f} MB)"
 
 
 def _download(repo, token, asset):
@@ -389,8 +442,18 @@ def _restore_encrypted(repo, token, asset, password):
     return f"restored {' + '.join(restored) or 'nothing'} from the encrypted backup ({len(data)/1e6:.1f} MB)"
 
 
+def _pick(rel, name):
+    """The backup file, or its just-uploaded copy if a run died between removing the old one and renaming the new."""
+    by = {a["name"]: a for a in rel.get("assets", [])}
+    return by.get(name) or by.get(name + ".new")
+
+
 def restore_if_missing():
-    """If the cache lost the database, pull the last backup from Releases."""
+    """If the cache lost the database, pull the last backup from Releases.
+
+    Returns a status line, or None when there is nothing to restore (the database is there, or no backup has ever
+    been made). Raises RestoreFailed when a backup exists but can't be read: starting again from nothing would be
+    saved as the bot's memory and, a day later, over the backup too."""
     if os.path.exists(DB_PATH):
         return None
     repo, token = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_TOKEN")
@@ -398,31 +461,31 @@ def restore_if_missing():
         return None
     try:
         rel = _release(repo, token)
-        password = os.environ.get("BACKUP_PASSWORD")
-        enc = next((a for a in rel.get("assets", []) if a["name"] == ENC_ASSET), None)
-        if password and enc:
-            return _restore_encrypted(repo, token, enc, password)
-        asset = next((a for a in rel.get("assets", []) if a["name"] == "trendbot.db.gz"), None)
-        if not asset:
-            return None
-        opener = urllib.request.build_opener(_NoRedirect)
-        req = urllib.request.Request(f"https://api.github.com/repos/{repo}/releases/assets/{asset['id']}", headers={
-            "Authorization": f"Bearer {token}", "Accept": "application/octet-stream", "User-Agent": "roblox-trend-bot"})
-        try:
-            data = opener.open(req, timeout=120).read()
-        except urllib.error.HTTPError as e:
-            if e.code not in (301, 302, 307):
-                raise
-            data = urllib.request.urlopen(urllib.request.Request(
-                e.headers["Location"], headers={"User-Agent": "roblox-trend-bot"}), timeout=120).read()
-        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-        with open(DB_PATH, "wb") as f:
-            f.write(gzip.decompress(data))
-        return f"restored database from backup ({len(data)/1e6:.1f} MB)"
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return None
-        print(f"restore failed: {e}", file=sys.stderr)
+            return None                  # no backups yet: a genuine first run
+        raise RestoreFailed(f"couldn't look for a backup ({e})")
     except Exception as e:
-        print(f"restore failed: {e}", file=sys.stderr)
-    return None
+        raise RestoreFailed(f"couldn't look for a backup ({e})")
+    password = os.environ.get("BACKUP_PASSWORD")
+    enc, plain = _pick(rel, ENC_ASSET), _pick(rel, "trendbot.db.gz")
+    try:
+        if enc:
+            if not password:
+                raise RestoreFailed("an encrypted backup exists but the BACKUP_PASSWORD secret isn't set")
+            return _restore_encrypted(repo, token, enc, password)
+        if not plain:
+            return None
+        data = _download(repo, token, plain)
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+        with open(DB_PATH + ".part", "wb") as f:
+            f.write(gzip.decompress(data))
+        os.replace(DB_PATH + ".part", DB_PATH)
+        return f"restored database from backup ({len(data)/1e6:.1f} MB)"
+    except RestoreFailed:
+        raise
+    except Exception as e:
+        for pth in (DB_PATH, DB_PATH + ".part"):     # never leave half a database behind
+            if os.path.exists(pth):
+                os.remove(pth)
+        raise RestoreFailed(f"the backup couldn't be restored ({e})")

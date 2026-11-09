@@ -24,6 +24,7 @@ import urllib.request
 from datetime import datetime, timedelta
 
 import config as C
+import net as NET
 import upstream as U
 
 SCHEMA = """
@@ -152,18 +153,24 @@ def collect_all(db, state, t, env):
     U.ensure(db)
     fst = state.setdefault("future", {})
     today = _s(t)
-    if fst.get("last") == today:
-        return []
+    done, fails = fst.setdefault("done", {}), fst.setdefault("fail", {})
+    jobs = [(name, fn) for name, fn in (
+        ("steam", lambda: collect_steam(db, fst, today)),
+        ("films", (lambda: collect_tmdb(db, env["TMDB_API_KEY"], today)) if env.get("TMDB_API_KEY") else None),
+        ("events", lambda: collect_fixed(db, today))) if fn is not None]
     ran = []
-    for name, fn in (("steam", lambda: collect_steam(db, fst, today)),
-                     ("films", (lambda: collect_tmdb(db, env["TMDB_API_KEY"], today)) if env.get("TMDB_API_KEY") else None),
-                     ("events", lambda: collect_fixed(db, today))):
-        if fn is None:
+    for name, fn in jobs:
+        if done.get(name) == today or not NET.may_try(fails, name, t):
             continue
         try:
             ran.append(f"{name}:{fn()}")
+            done[name] = today           # only a run that worked counts as done: a failure is retried later today
+            NET.worked(fails, name)
         except Exception as e:
+            NET.failed(fails, name, t)
             log(f"future {name} failed: {e}")
+    if not ran and fst.get("last") == today:
+        return []
     # feed upcoming things (next horizon days, or released in the last 14) into the outside-signals table
     lo, hi = _s(t - timedelta(days=14)), _s(t + timedelta(days=C.FUTURE_HORIZON_DAYS))
     for r in db.execute("SELECT * FROM future WHERE last_seen >= ?", (_s(t - timedelta(days=7)),)):

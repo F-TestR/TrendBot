@@ -35,6 +35,7 @@ from datetime import datetime, timedelta, timezone
 
 import charts
 import config as C
+import net as NET
 import effects as EF
 import icons as IC
 import passes as PA
@@ -181,7 +182,7 @@ def normalise_game(g):
 # ---------------------------------------------------------------- discord ---
 
 def post_discord(url, text, dry_run=False, label="", files=None):
-    DO.post_text(url, text, dry_run, label, files)
+    return DO.post_text(url, text, dry_run, label, files)
 
 
 def link(gid, state=None):
@@ -263,6 +264,8 @@ def is_base(state, r):
 
 
 def cooled(state, key, today, days=C.ALERT_COOLDOWN_DAYS):
+    if (state.get("alert_hold") or {}).get(key) == today:
+        return False                     # flagged earlier today but never shown: look again tomorrow, not every run
     last = state["alerts"].get(key)
     return last is None or (parse_day(today) - parse_day(last)).days >= days
 
@@ -277,13 +280,28 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     if not api_key:
         sys.exit("ROWATCHER_API_KEY is not set. See SETUP.md.")
 
-    restored = W.restore_if_missing()  # before loading state, so a lost cache comes back whole
+    try:
+        restored = W.restore_if_missing()  # before loading state, so a lost cache comes back whole
+    except W.RestoreFailed as e:
+        sys.exit(f"The bot's memory is missing from the cache and {e}. Stopping here rather than starting from "
+                 f"nothing, which would replace the real memory. The next run will try again.")
     if restored:
         print(restored)
     state = load_state()
     FC.set_trust(state)
     t = now_utc()
     today = day_str(t)
+    gap = C.RUN_PLANNED_GAP_MIN
+    try:
+        if state.get("last_run_at"):
+            gap = (t - datetime.fromisoformat(state["last_run_at"])).total_seconds() / 60
+    except Exception:
+        pass
+    if (os.environ.get("GITHUB_ACTIONS") and not (dry_run or force_digest or force_weekly)
+            and state.get("last_run_at") and 0 <= gap < C.RUN_MIN_GAP_MIN):
+        print(f"the last run was {gap:.0f} minutes ago — skipping this one (it started too soon after it)")
+        return
+    NET.begin(gap / C.RUN_PLANNED_GAP_MIN)   # a run after a long gap does several runs' worth of the rotating jobs
     api = RoWatcher(api_key, state, today)
     db = W.connect()
     T.ensure(db)
@@ -291,6 +309,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     E.ensure(db)
     BD.ensure(db)
     P.ensure(db)
+
+    def checkpoint():
+        """Save what has happened so far. Called straight after anything is posted to Discord, so that a crash or a
+        timeout later in the run can't make the next run post the same alerts or digest again."""
+        try:
+            db.commit()
+            save_state({k: v for k, v in state.items() if not k.startswith("_")})   # "_" keys only live during a run
+        except Exception as e:
+            print(f"checkpoint failed: {e}", file=sys.stderr)
 
     def paced():
         """Optional calls only while we're under the day's pro-rata budget."""
@@ -304,7 +331,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     pages = list(range(1, min(C.CORE_PAGES, limit) + 1))
     deep = list(range(C.CORE_PAGES + 1, min(C.DEEP_LAST_PAGE, limit) + 1)) or [C.CORE_PAGES]
     ptr = state.get("deep_ptr", 0) % max(len(deep), 1)
-    rotation = [deep[(ptr + i) % len(deep)] for i in range(min(C.DEEP_PAGES_PER_RUN, len(deep)))]
+    rotation = [deep[(ptr + i) % len(deep)] for i in range(min(NET.quota(C.DEEP_PAGES_PER_RUN), len(deep)))]
     first_run = not state["games"]
     upgrading = "deep_ptr" not in state
     if first_run or upgrading:
@@ -336,6 +363,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             ng["raw"] = g
             top.append(ng)
         raw_seen += len(data)
+        (state.get("page_refused") or {}).pop(str(page), None)
         if state.get("page_limit") and page > state["page_limit"]:
             print(f"page {page} worked again — RoWatcher's cap looks lifted")
             state.pop("page_limit", None)
@@ -363,9 +391,16 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         print(f"Stopping fetch: {e}")
     except PageLimit as e:
         old = state.get("page_limit")
-        state["page_limit"] = e.page - 1
-        print(f"RoWatcher refused {e} — scanning pages 1-{e.page - 1} only from now on")
-        if old != e.page - 1:
+        refused = state.setdefault("page_refused", {})
+        refused[str(e.page)] = refused.get(str(e.page), 0) + 1
+        if refused[str(e.page)] < 2 and (old is None or e.page <= old):
+            # one refusal can be a passing error: stop for this run, and only shrink the scan if it happens again
+            print(f"RoWatcher refused {e} — stopping the list here for this run; if it's refused again the scan shrinks")
+        else:
+            state["page_limit"] = e.page - 1
+            refused.pop(str(e.page), None)
+            print(f"RoWatcher refused {e} — scanning pages 1-{e.page - 1} only from now on")
+        if state.get("page_limit") == e.page - 1 and old != e.page - 1:
             ops_notice(state, "page_limit", f"ℹ️ RoWatcher now only serves the first {(e.page - 1) * C.PAGE_SIZE:,} games "
                        f"(page {e.page} was refused). The bot has adjusted and keeps running; it re-checks once a day.")
     except (urllib.error.URLError, OSError, ValueError) as e:
@@ -422,6 +457,15 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         state["cutoff"] = fetched_deepest
     cutoff = state.get("cutoff") or min(g["playing"] for g in top)
 
+    # A game can come back twice in one run (it moved between two pages while the list was being read, or it's in
+    # both RoWatcher's list and Roblox's own): count it once, or its average for the day gets a double reading.
+    once, uniq = set(), []
+    for g in top:
+        if g["id"] not in once:
+            once.add(g["id"])
+            uniq.append(g)
+    top = uniq
+
     games = state["games"]
     new_ids, crossed = [], []
     for g in top:
@@ -466,7 +510,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         rec = games[gid]
         if rec.get("created") or rec.get("detail_checked") or rec["last"] < C.MIN_PLAYERS_NEW_ENTRY:
             continue
-        if lookups >= C.MAX_DETAIL_LOOKUPS_PER_RUN:
+        if lookups >= NET.quota(C.MAX_DETAIL_LOOKUPS_PER_RUN):
             break
         try:
             d = api.get(f"/games/{urllib.parse.quote(gid)}")
@@ -571,11 +615,35 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         # alternate: one game that exploded, one that didn't, so the model sees both kinds
         want_hit = (state.get("bf_flip", 0) % 2 == 0)
         state["bf_flip"] = state.get("bf_flip", 0) + 1
-        cands = db.execute("""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
-                              WHERE g.created >= ? AND g.uid NOT IN (SELECT uid FROM backfill)
+        # A download that failed is tried again a day later, up to three times (it used to be given up on for good).
+        retry_before = (t - timedelta(days=1)).isoformat()
+        skip = "(SELECT uid FROM backfill WHERE status NOT LIKE 'error%' OR status >= 'error:3' OR ts >= ?)"
+
+        def bf_failed(uid, e):
+            print(f"backfill failed for {uid}: {e}", file=sys.stderr)
+            prev = db.execute("SELECT status FROM backfill WHERE uid=?", (uid,)).fetchone()
+            ps = (prev["status"] if prev else "") or ""
+            if not ps.startswith("error") and ps:
+                return                   # a refresh failed: keep the good first download on record
+            n_err = int(ps.split(":")[1]) if ":" in ps else (1 if ps else 0)
+            db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
+                       (uid, t.isoformat(), 0, f"error:{n_err + 1}"))
+
+        quota = NET.quota(C.BACKFILL_PER_RUN)
+        cands = db.execute(f"""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
+                              WHERE g.created >= ? AND g.uid NOT IN {skip}
                               GROUP BY g.uid ORDER BY ((MAX(d.peak) >= ?) = ?) DESC, RANDOM() LIMIT ?""",
-                           (since, C.EXPLODE_CCU, 1 if want_hit else 0, C.BACKFILL_PER_RUN)).fetchall()
-        for c in cands:
+                           (since, retry_before, C.EXPLODE_CCU, 1 if want_hit else 0, quota)).fetchall()
+        cands = [(c, "ok") for c in cands]
+        if len(cands) < quota:
+            # Spare room: download a young game's history a second time once its 3-week outcome window has closed.
+            # That fills in the true daily highs for the days the bot watched it live, which is what the models
+            # are marked against.
+            again = db.execute("""SELECT g.uid, g.created FROM backfill b JOIN games g ON g.uid=b.uid
+                                  WHERE b.status='ok' AND b.ts < ? AND g.created >= ? ORDER BY b.ts LIMIT ?""",
+                               ((t - timedelta(days=C.LABEL_DAYS + 1)).isoformat(), since, quota - len(cands))).fetchall()
+            cands += [(c, "ok2") for c in again]
+        for c, status in cands:
             if not paced():
                 break
             try:
@@ -583,18 +651,17 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 h = api.get(f"/games/{c['uid']}/history", {"from": frm})
                 n = W.record_history(db, c["uid"], (h or {}).get("data") or [], c["created"])
                 db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
-                           (c["uid"], t.isoformat(), n, "ok"))
+                           (c["uid"], t.isoformat(), n, status))
             except BudgetExceeded:
                 break
             except Exception as e:
-                print(f"backfill failed for {c['uid']}: {e}", file=sys.stderr)
-                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
-                           (c["uid"], t.isoformat(), 0, "error"))
+                bf_failed(c["uid"], e)
         # older games: about 8 weeks of history each, so long-term ratings start straight away
-        olds = db.execute("""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
-                             WHERE (g.created IS NULL OR g.created < ?) AND g.uid NOT IN (SELECT uid FROM backfill)
+        olds = db.execute(f"""SELECT g.uid, g.created, MAX(d.peak) AS pk FROM games g JOIN daily d ON d.uid=g.uid
+                             WHERE (g.created IS NULL OR g.created < ?) AND g.uid NOT IN {skip}
                              GROUP BY g.uid HAVING MAX(d.peak) >= ? ORDER BY MAX(d.peak) DESC LIMIT ?""",
-                          (since, C.BACKFILL_ESTABLISHED_MIN_PLAYERS, C.BACKFILL_ESTABLISHED_PER_RUN)).fetchall()
+                          (since, retry_before, C.BACKFILL_ESTABLISHED_MIN_PLAYERS,
+                           NET.quota(C.BACKFILL_ESTABLISHED_PER_RUN))).fetchall()
         for c in olds:
             if not paced():
                 break
@@ -607,9 +674,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             except BudgetExceeded:
                 break
             except Exception as e:
-                print(f"backfill failed for {c['uid']}: {e}", file=sys.stderr)
-                db.execute("INSERT OR REPLACE INTO backfill(uid, ts, points, status) VALUES(?,?,?,?)",
-                           (c["uid"], t.isoformat(), 0, "error"))
+                bf_failed(c["uid"], e)
     db.commit()
 
     alerts = []  # each: {kind, gid, title, desc, url, fields, ping, text}
@@ -620,8 +685,14 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         if evt:
             desc += f"\n⚠️ Taking part in a Roblox event (\"{evt}\") — part of this boost is the event, not demand."
         alerts.append({"kind": kind, "gid": gid, "title": title, "desc": desc, "url": url,
-                       "fields": list(fields), "ping": ping,
+                       "fields": list(fields), "ping": ping, "keys": [],
                        "text": f"**{title}** — {desc}{extra_text}" + (f" {link(gid, state)}" if gid else "")})
+
+    def mark(key):
+        """Start the cooldown for the alert just added. The old value is kept with the alert, so that if the alert
+        never reaches the channel (the day's cards ran out) the cooldown can be put back instead of being burned."""
+        alerts[-1]["keys"].append([key, state["alerts"].get(key)])
+        state["alerts"][key] = today
 
     try:
         evs = EV.update(state, today)
@@ -645,14 +716,14 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 f"From **{(g['creator_name'] or 'a studio')[:40]}**, whose other game peaked at **{fmt(best)}** players. "
                 f"Studios with a past hit are far more likely to land another — {fmt(rec.get('last', 0))} playing already.",
                 [("Players", fmt(rec.get("last", 0))), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "new")])
-            state["alerts"]["studio:" + gid] = today
+            mark("studio:" + gid)
 
     # 3a1. Climbing in other countries before the worldwide lists
     for gid in list((state.get("rbx_direct") or {}).get("cc", {}).keys()):
         rec = games.get(gid)
         if not rec or not is_young(rec, today) or not cooled(state, "abroad:" + gid, today, 7):
             continue
-        ab = RD.abroad(state, gid, today)
+        ab = RD.abroad(state, gid, today, t)
         if len(ab) < C.ABROAD_ALERT_COUNTRIES:
             continue
         where = ", ".join(f"{country_label(c)} (#{r})" for c, r in ab[:5])
@@ -662,7 +733,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             [("Players", fmt(rec.get("last", 0))), ("Countries", str(len(ab))),
              ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")] + studio_field(db, gid),
             ping=len(ab) >= 4)
-        state["alerts"]["abroad:" + gid] = today
+        mark("abroad:" + gid)
 
     # 3a. Young games crossing 2K players for the first time
     for gid in crossed:
@@ -673,7 +744,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 f"{fmt(rec['last'])} playing right now.",
                 [("Players", fmt(rec["last"])), ("Age", f"{a} days" if a is not None else "unknown"),
                  ("Type", ", ".join(I.mechanics_of(rec["name"])) or "—")] + studio_field(db, gid))
-            state["alerts"]["new:" + gid] = today
+            mark("new:" + gid)
 
     # 3a2. Young games that just appeared in Roblox's algorithm charts
     for gid in charted_now:
@@ -683,7 +754,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 f"Now #{state['chart_rank'].get(gid)} in the charts with {fmt(rec['last'])} playing — Roblox is pushing it.",
                 [("Players", fmt(rec["last"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
                 + studio_field(db, gid))
-            state["alerts"]["chart:" + gid] = today
+            mark("chart:" + gid)
 
     # 3b. Weekday-to-weekday surges in young games
     for gid, rec in games.items():
@@ -698,7 +769,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 f"Today's high **{fmt(high)}** vs {fmt(base)} on {kind}s last week (**{ratio:.1f}×**).",
                 [("Today's high", fmt(high)), ("Growth", f"{ratio:.1f}×"), ("Age", f"{a} days" if a is not None else "unknown")],
                 ping=ratio >= C.PING_SURGE_MULTIPLIER)
-            state["alerts"]["surge:" + gid] = today
+            mark("surge:" + gid)
 
     # 3c. Copy waves: 3+ games new to the list in 7 days sharing a title word
     week_ago = parse_day(today) - timedelta(days=7)
@@ -723,7 +794,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 f"{len(items)} new games this week share this word:\n{names}",
                 ping=len(items) >= C.PING_COPY_WAVE_GAMES)
             alerts[-1]["url"] = None
-            state["alerts"]["copy:" + kw] = today
+            mark("copy:" + kw)
 
     # 3d. Extra sources (YouTube / Roblox / Twitch / community) and cross-platform heat
     ran = S.collect_all(state, t, os.environ)
@@ -742,7 +813,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 heat_fields(state, gid, h) + studio_field(db, gid),
                 ping=h["score"] >= C.PING_HEAT_SCORE and len(h["signals"]) >= 3,
                 extra_text=" · " + S.heat_line(state, gid, h).split(" — ", 1)[-1].rsplit(" <", 1)[0])
-            state["alerts"]["heat:" + gid] = today
+            mark("heat:" + gid)
     for gid, y in yts.items():
         name = S.game_name(state, gid)
         players = S.players_now(state, gid)
@@ -758,7 +829,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 + studio_field(db, gid),
                 ping=y["views"] >= C.PING_EARLY_VIEWS or y.get("big", 0) >= 2,
                 extra_text=f" · top video <https://youtu.be/{vid}>")
-            state["alerts"]["early:" + gid] = today
+            mark("early:" + gid)
 
     # 3e. Insights: updates and breakouts
     for ev in I.track_updates(state, today):
@@ -807,6 +878,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
             traceback.print_exc()
             print(f"themes failed: {e}", file=sys.stderr)
         state["_themes"] = [(p, sc, k, dict(r), f) for p, sc, k, r, f in tpreds[:40]]
+        state["theme_words"] = [k[2:] for _, _, k, _, _ in tpreds[:15] if k.startswith(("w:", "b:"))]   # for Roblox search
         state["_bridges"] = [(w, srcs, row) for w, srcs, row in brs]
         rw = state.get("rw_trends", [])
         for p, sc, k, r, fired in tpreds[:30]:
@@ -828,7 +900,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                  ("With 2K+ players", str(r["hits"])), ("Signals", labels)],
                 ping=p is not None and p >= 0.6)
             alerts[-1]["url"] = None
-            state["alerts"]["theme:" + k] = today
+            mark("theme:" + k)
         for w, srcs, row in brs:
             if not cooled(state, "bridge:" + w, today, 30):
                 continue
@@ -840,7 +912,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 + "\n".join(f"• {nm[:45]} — {fmt(pk)}" for pk, nm, _ in tops),
                 [("New Roblox games", str(row["new7"])), ("Total players", fmt(row["ccu"]))], ping=row["new7"] >= 3)
             alerts[-1]["url"] = None
-            state["alerts"]["bridge:" + w] = today
+            mark("bridge:" + w)
         try:
             for x in FUT.alerts_for(db, state, today):
                 key = "future:" + x["name"].lower()[:60]
@@ -856,7 +928,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                     + "\n".join(f"• {nm[:45]} — {fmt(pk)}" for pk, nm, _ in tops),
                     [("New Roblox games", str(rb["new7"])), ("Release", x["date"] or "tbc")], ping=rb["new7"] >= 3)
                 alerts[-1]["url"] = None
-                state["alerts"][key] = today
+                mark(key)
         except Exception as e:
             print(f"future alerts failed: {e}", file=sys.stderr)
         for p, e in preds:
@@ -868,7 +940,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                     f"(noticed {e['t0'][5:]}).",
                     [("Playing now", fmt(S.players_now(state, gid))), ("Type", ", ".join(I.mechanics_of(e["name"])) or "—")]
                     + studio_field(db, gid), ping=p >= 0.7)
-                state["alerts"]["predict:" + gid] = today
+                mark("predict:" + gid)
 
     # 3g. Weekday hold + long-term games (once a day, with the digest)
     if digest_due or force_weekly:
@@ -898,7 +970,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                         + (f"\nGames like this usually keep half their peak players ~{lf['days']} days." if lf else ""),
                         [("Players", fmt(c["players"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
                         + studio_field(db, gid))
-                    state["alerts"]["cp:" + gid] = today
+                    mark("cp:" + gid)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -950,7 +1022,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                         [("Players", fmt(rec.get("last", 0))),
                          ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
                         + studio_field(db, gid), ping=v["score"] >= ts_ping)
-                    state["alerts"]["ts:" + gid] = today
+                    mark("ts:" + gid)
             except Exception as e:
                 import traceback
                 traceback.print_exc()
@@ -980,7 +1052,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                             f"(median **{v['med']:.2f}×**). Young games that do this tend to last.",
                             [("Weekend players", fmt(v["players"])), ("Age", f"{age_days(rec, today)} days" if age_days(rec, today) is not None else "unknown")]
                             + studio_field(db, gid))
-                        state["alerts"]["longterm:" + gid] = today
+                        mark("longterm:" + gid)
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -994,14 +1066,21 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 print(f"couldn't log alert: {e}", file=sys.stderr)
     db.commit()
 
+    found = len(alerts)
     if alerts and C.MERGE_ALERTS:
         alerts = merge_alerts(alerts, state)
-    if alerts:
-        alerts = apply_budget(alerts, state, today)
+    alerts = apply_budget(alerts, state, today, t, kind_precision(db, state, today))
     if alerts:
         header = f"**Trend alert** · {t.strftime('%a %d %b %H:%M')} UTC"
         icons = S.game_icons([a["gid"] for a in alerts if a.get("gid")]) if (C.RICH_CARDS and not dry_run) else {}
-        DO.post_alerts(alerts_url, alerts, header, icons, dry_run)
+        sent = DO.post_alerts(alerts_url, alerts, header, icons, dry_run)
+        lost = [a for a in alerts if a not in sent]
+        if lost:                         # Discord didn't take them: back on the waiting list, not counted as shown
+            state["alert_queue"] = lost + (state.get("alert_queue") or [])
+            state["alert_count"][today] = max(0, state["alert_count"].get(today, 0) - len(lost))
+            print(f"{len(lost)} alert(s) didn't reach Discord: kept for the next run", file=sys.stderr)
+            alerts = sent
+    checkpoint()                         # cooldowns, the day's card count and the waiting list are now safe
 
     # 4. Daily digest (+ charts and dashboard), weekly report on the chosen day
     if digest_due:
@@ -1030,12 +1109,18 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         board_rows = list(state.get("_board") or [])
         state.pop("_head", None)
         state.pop("_board", None)
-        posted = False
         if cards:
-            PR.post_cards(digest_url, cards, files=files, dry_run=dry_run, label="digest")
-            posted = True
-        if not posted:
-            post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
+            delivered = PR.post_cards(digest_url, cards, files=files, dry_run=dry_run, label="digest")
+        else:
+            delivered = post_discord(digest_url, build_digest(state, today, cutoff, t), dry_run, "digest", files)
+        tries = state.get("digest_fail") or [today, 0]
+        tries = [today, (tries[1] if tries[0] == today else 0) + (0 if delivered else 1)]
+        state["digest_fail"] = tries
+        if delivered or tries[1] >= 3 or not digest_url:
+            state["last_digest"] = today # out (or Discord refused it three times today: it's still in the reports)
+        else:
+            print(f"the digest didn't reach Discord (attempt {tries[1]}): will try again next run", file=sys.stderr)
+        checkpoint()                     # the digest is out: never post it twice, whatever happens next
         if not dry_run:
             try:
                 rep_files = {"reports/money.md": MO.markdown(state.get("_money") or [], fmt)
@@ -1056,14 +1141,12 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 print(PUB.publish(rep_files, f"Reports for {today}"))
             except Exception as e:
                 print(f"report publish failed: {e}", file=sys.stderr)
-        state["last_digest"] = today
         try:
             state["backup"] = W.backup(db)
         except Exception as e:
             state["backup"] = f"failed: {e}"
         print("backup: " + state["backup"])
-    if force_weekly or (state.get("last_weekly") != today and t.weekday() == C.WEEKLY_REPORT_WEEKDAY
-                        and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
+    def weekly():
         text, table = I.weekly_report(state, today)
         files = []
         try:
@@ -1123,12 +1206,31 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         if not posted:
             post_discord(digest_url, text, dry_run, "weekly", files)
         state["last_weekly"] = today
+        checkpoint()
         try:  # weekly database maintenance: reclaim space and refresh query statistics
             db.commit()
             db.execute("VACUUM")
             db.execute("ANALYZE")
         except Exception as e:
             print(f"database maintenance failed: {e}", file=sys.stderr)
+
+    if force_weekly or (state.get("last_weekly") != today and t.weekday() == C.WEEKLY_REPORT_WEEKDAY
+                        and t.hour >= C.DIGEST_HOUR_UTC and not first_run):
+        try:
+            weekly()
+        except Exception as e:
+            # A weekly report that can't be built must not take the run down with it (that would lose the run's
+            # memory and repeat every 20 minutes). Try once more on a later run, then skip this week and say so.
+            import traceback
+            traceback.print_exc()
+            tries = state.get("weekly_fail") or [today, 0]
+            tries = [today, (tries[1] if tries[0] == today else 0) + 1]
+            state["weekly_fail"] = tries
+            print(f"weekly report failed (attempt {tries[1]}): {e}", file=sys.stderr)
+            if tries[1] >= 2 and state.get("last_weekly") != today:
+                state["last_weekly"] = today
+                post_discord(digest_url, f"⚠️ This week's report couldn't be built (`{str(e)[:150]}`). "
+                                         f"Daily digests and alerts are unaffected.", dry_run, "weekly")
 
     db.commit()
     db.close()
@@ -1148,10 +1250,13 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         if parse_day(r.get("last_seen", r["first_seen"])) < keep_from:
             del games[gid]
     state["requests"] = {d: n for d, n in state["requests"].items() if parse_day(d) >= keep_from}
+    state["last_run_at"] = t.isoformat()
+    keep_cool = parse_day(today) - timedelta(days=C.COOLDOWN_KEEP_DAYS)
+    once = ("new", "studio")             # alerts that fire once per game: remembered while the game is still tracked
     state["alerts"] = {k: d for k, d in state["alerts"].items()
-                       if k.startswith("new:") or parse_day(d) >= keep_from}
+                       if parse_day(d) >= keep_cool or (k.split(":", 1)[0] in once and k.split(":", 1)[-1] in games)}
     save_state(state)
-    print(f"{today}: {len(top)} games, {len(new_ids)} new, {len(alerts)} alerts, "
+    print(f"{today}: {len(top)} games, {len(new_ids)} new, {found} alerts found, {len(alerts)} posted, "
           f"{state['requests'].get(today, 0)} API requests today")
 
 
@@ -1507,12 +1612,15 @@ def run_ask(question, dry_run=False):
         PR.post_cards(os.environ.get("DISCORD_DIGEST_WEBHOOK"), cards, content=content, dry_run=dry_run, label="ask")
     if not dry_run:
         try:
-            files = {"reports/ask.md": PUB.cards_md("Latest question", cards, content)}
+            # What you ask stays between you and the bot: the repo and its reports are public, so the question and
+            # its answer are only published if PUBLISH_QUESTIONS is switched on, and never named in the commit.
+            files = {"reports/ask.md": PUB.cards_md("Latest question", cards, content)} if C.PUBLISH_QUESTIONS else {}
             if re.search(r"money|revenue|earn|profit|income|robux|monetis|monetiz", question.lower()):
                 rows = MO.table(db, state, day_str(t), I.mechanics_of)
                 files["reports/money.md"] = MO.markdown(rows, fmt)
                 files["reports/money.csv"] = MO.to_csv(rows)
-            print(PUB.publish(files, f"Answer: {question[:60]}"))
+            if files:
+                print(PUB.publish(files, "Report refresh"))
         except Exception as e:
             print(f"report publish failed: {e}", file=sys.stderr)
     db.close()
@@ -1548,34 +1656,139 @@ def board_csv(rows):
     return buf.getvalue()
 
 
-KIND_RANK = ["trend", "abroad", "studio", "cp", "theme", "bridge", "future", "breakout", "predict", "chart", "new",
-             "surge", "heat", "early", "copy", "longterm", "update"]
+# How often each kind of alert has been followed by an explosion. These are starting guesses from the bot's first
+# 18 days (chart entries were followed by one about 4 times in 10, "crossed 2K" about 1 in 20, which is the base rate);
+# each is replaced, alert type by alert type, by the scorecard's own measured rate as alerts mature.
+KIND_PRIOR = {"predict": 0.35, "chart": 0.35, "trend": 0.30, "heat": 0.25, "studio": 0.20, "cp": 0.20, "theme": 0.20,
+              "breakout": 0.18, "bridge": 0.15, "future": 0.15, "longterm": 0.12, "surge": 0.10, "abroad": 0.09,
+              "copy": 0.08, "new": 0.055, "update": 0.05, "early": 0.04}
 
 
-def apply_budget(alerts, state, today):
-    """Keep #alerts readable: at most ALERT_DAILY_BUDGET cards a day. Pings and watchlist games always go
-    through; the rest are ranked (Trend Score, then alert type) and any overflow is listed in the digest."""
+def kind_precision(db, state, today):
+    """{alert kind: chance it's followed by an explosion}: the starting guess, pulled toward the measured rate as
+    that kind's alerts mature (a guess weighs as much as ALERT_PRIOR_WEIGHT real alerts). Worked out once a day."""
+    c = state.get("kind_prec") or {}
+    if c.get("day") == today and c.get("p"):
+        return c["p"]
+    p, seen = dict(KIND_PRIOR), {}
+    try:
+        for kind, r in L.scorecard(db, today).items():
+            n = r["hit"] + r["miss"]
+            if kind in p and n:
+                p[kind] = (r["hit"] + p[kind] * C.ALERT_PRIOR_WEIGHT) / (n + C.ALERT_PRIOR_WEIGHT)
+                seen[kind] = n
+    except Exception as e:
+        print(f"alert ranking: couldn't read the scorecard ({e}); using the starting guesses", file=sys.stderr)
+    state["kind_prec"] = {"day": today, "p": {k: round(v, 4) for k, v in p.items()}, "n": seen}
+    return state["kind_prec"]["p"]
+
+
+def priority(a, state, prec):
+    """One number per alert card, higher = more worth a slot: how often its kind(s) of alert have been right,
+    adjusted by the game's own Trend Score."""
+    miss = 1.0
+    for k in a.get("kinds") or [a["kind"]]:
+        miss *= 1 - prec.get(k, 0.05)
+    p = min(0.9, 1 - miss)               # several different signals on one game count for more than any one of them
+    ts = (state.get("ts") or {}).get(a.get("gid")) if a["kind"] in GAME_KINDS else None
+    if ts is None:
+        return p
+    if state.get("ts_mode") == "starting formula":
+        return p * (0.5 + ts / 100.0)    # an uncalibrated score is only a ranking: let it nudge, not decide
+    return (p + ts / 100.0) / 2          # a calibrated score is a chance in its own right
+
+
+def apply_budget(alerts, state, today, t, prec):
+    """Keep #alerts readable: at most ALERT_DAILY_BUDGET cards a day, and make them the day's best.
+
+    The old rule handed out the day's cards in the order alerts happened to fire from midnight UTC, so by mid-morning
+    the cards were gone and about nine alerts in ten were dropped whatever their quality - and each dropped alert still
+    started its cooldown, so that game stayed silent for days. Now:
+
+      - every alert gets a priority (how often that kind of alert has been right, and the game's Trend Score)
+      - cards are released through the day, about one every two hours, always to the best alert waiting
+      - an alert that would have made yesterday's top cards goes straight out, up to ALERT_BURST ahead of the clock
+      - alerts that don't fit wait up to ALERT_QUEUE_HOURS; after that they're listed in the digest, and their
+        cooldown is put back so the game can alert again tomorrow if it's still moving
+      - pings (at most PING_DAILY_CAP a day) and watchlist games always go straight out
+    """
     count = state.setdefault("alert_count", {})
+    pings = state.setdefault("ping_count", {})
     used = count.get(today, 0)
-    ts = state.get("ts") or {}
-    must = [a for a in alerts if a.get("ping") or (a.get("gid") in C.WATCHLIST)]
-    rest = [a for a in alerts if a not in must]
-    rest.sort(key=lambda a: (-(ts.get(a.get("gid")) or 0),
-                             KIND_RANK.index(a["kind"]) if a["kind"] in KIND_RANK else len(KIND_RANK)))
+    old_cut = day_str(t - timedelta(days=3))
+    for a in alerts:
+        a["prio"] = round(priority(a, state, prec), 4)
+        a["queued"] = t.isoformat()
+
+    # what's waiting from earlier runs (a fresh alert about the same thing replaces the waiting one)
+    ident = lambda a: (a["kind"], a.get("gid") or a["title"])
+    fresh = {ident(a) for a in alerts}
+    cutoff = (t - timedelta(hours=C.ALERT_QUEUE_HOURS)).isoformat()
+    waiting, expired = [], []
+    for a in state.get("alert_queue") or []:
+        if ident(a) in fresh:
+            continue
+        (waiting if a.get("queued", "") >= cutoff else expired).append(a)
+
+    # yesterday's alerts set the bar for "goes straight out"
+    hist = state.setdefault("alert_prios", {})
+    hist.setdefault(today, []).extend(a["prio"] for a in alerts)
+    ref = sorted(hist.get(day_str(t - timedelta(days=1))) or [], reverse=True)
+    bar = ref[C.ALERT_DAILY_BUDGET - 1] if len(ref) >= C.ALERT_DAILY_BUDGET else None
+
+    must = []
+    for a in alerts:
+        if a.get("gid") in C.WATCHLIST:
+            must.append(a)
+        elif a.get("ping"):
+            if pings.get(today, 0) + sum(1 for m in must if m.get("ping")) < C.PING_DAILY_CAP:
+                must.append(a)
+            else:
+                a["ping"] = False        # enough pings for one day: it competes for a card like any other alert
+    pool = sorted([a for a in alerts if a not in must] + waiting, key=lambda a: -a.get("prio", 0))
+    frac = (t.hour * 60 + t.minute) / 1440.0
+    on_clock = math.ceil(C.ALERT_DAILY_BUDGET * frac)
     room = max(0, C.ALERT_DAILY_BUDGET - used - len(must))
-    keep, over = rest[:room], rest[room:]
-    if over:
+    due = max(0, on_clock - used - len(must))
+    ahead = max(0, on_clock + C.ALERT_BURST - used - len(must))
+    send = []
+    for a in pool:
+        if len(send) >= room:
+            break
+        if len(send) < due or (bar is not None and a.get("prio", 0) >= bar and len(send) < ahead):
+            send.append(a)
+    held = [a for a in pool if a not in send]
+
+    for a in send:
+        was = a.get("queued", "")[:16]
+        if was and was != t.isoformat()[:16]:
+            a["desc"] += f"\n_First flagged {was[11:16]} UTC; numbers are from then._"
+    if expired:
         ov = state.setdefault("overflow", {})
-        ov.setdefault(today, [])
-        ov[today] += [a["title"][:90] for a in over]
-        for d in [d for d in ov if d < day_str(now_utc() - timedelta(days=3))]:
-            del ov[d]
-        print(f"alert budget: {len(over)} alert(s) moved to the digest")
-    count[today] = used + len(must) + len(keep)
-    for d in [d for d in count if d < day_str(now_utc() - timedelta(days=3))]:
-        del count[d]
-    out = must + keep
-    return [a for a in alerts if a in out]
+        hold = state.setdefault("alert_hold", {})
+        for a in expired:
+            ov.setdefault(today, []).append([a.get("prio", 0), a["title"][:90]])
+            for key, prev in a.get("keys") or []:
+                if state["alerts"].get(key) == a.get("queued", "")[:10]:      # only undo the cooldown this alert started
+                    if prev is None:
+                        state["alerts"].pop(key, None)
+                    else:
+                        state["alerts"][key] = prev
+                hold[key] = today
+        ov[today] = sorted(ov[today], key=lambda x: -x[0] if isinstance(x, list) else 0)[:40]
+        print(f"alert budget: {len(expired)} alert(s) waited {C.ALERT_QUEUE_HOURS}h without a free slot and moved to the digest list")
+    state["alert_queue"] = held
+    state["alert_hold"] = {k: d for k, d in (state.get("alert_hold") or {}).items() if d == today}
+    count[today] = used + len(must) + len(send)
+    pings[today] = pings.get(today, 0) + sum(1 for a in must if a.get("ping"))
+    for store in (count, pings, hist, state.setdefault("overflow", {})):
+        for d in [d for d in store if d < old_cut]:
+            del store[d]
+    if alerts or send:
+        print(f"alert budget: {len(must) + len(send)} card(s) out now ({len(must)} ping/watchlist), {len(held)} waiting, "
+              f"{count[today]}/{C.ALERT_DAILY_BUDGET} used today"
+              + (f", bar {bar:.2f}" if bar is not None else ", no bar yet (first day)"))
+    return must + send
 
 
 def merge_alerts(alerts, state):
@@ -1616,6 +1829,8 @@ def merge_alerts(alerts, state):
             fields.insert(0, ("Trend Score", f"{ts}/100"))
         lead["fields"] = fields
         lead["ping"] = any(a.get("ping") for a in group)
+        lead["kinds"] = [a["kind"] for a in group]
+        lead["keys"] = [k for a in group for k in (a.get("keys") or [])]
         out.append(lead)
     return out
 

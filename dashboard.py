@@ -12,9 +12,9 @@ HOOKS = {}  # bot.py fills in: fmt, is_young, age_days, growth
 def _md(text):
     """Discord-style markdown (bold, [name](url)) -> safe HTML."""
     import re
-    t = html.escape(text, quote=False)
+    t = html.escape(text, quote=True)    # quotes too: the link below goes inside an href="..." attribute
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
-    t = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', t)
+    t = re.sub(r"\[([^\]]+)\]\((https?://[^)\s\"'<>]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', t)
     return t
 
 

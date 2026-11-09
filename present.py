@@ -78,7 +78,8 @@ def _size(e):
 
 
 def post_cards(url, cards, content="", files=None, dry_run=False, label="digest"):
-    """Up to 10 cards and ~5,800 characters per message; files go with the last message."""
+    """Up to 10 cards and ~5,800 characters per message; files go with the last message.
+    Returns True if the first message got through."""
     cards = [c for c in cards if c]
     if dry_run or not url:
         print(f"----- [{label}] -----" + (f"\n{content}" if content else ""))
@@ -86,7 +87,7 @@ def post_cards(url, cards, content="", files=None, dry_run=False, label="digest"
             print(f"\n## {c['title']}\n{c['description']}" + (f"\n[{c['footer']['text']}]" if c.get("footer") else ""))
         if files:
             print(f"(+ attached: {', '.join(f[0] for f in files)})")
-        return
+        return True
     batches, cur, size = [], [], 0
     for c in cards:
         n = _size(c)
@@ -97,10 +98,14 @@ def post_cards(url, cards, content="", files=None, dry_run=False, label="digest"
         size += n
     if cur:
         batches.append(cur)
+    delivered = True
     for i, b in enumerate(batches):
         last = i == len(batches) - 1
-        DO.send(url, {"content": content if i == 0 else "", "embeds": b, "allowed_mentions": {"parse": []}},
-                files if last else None)
+        ok = DO.send(url, {"content": content if i == 0 else "", "embeds": b, "allowed_mentions": {"parse": []}},
+                     files if last else None)
+        if i == 0:
+            delivered = ok               # the first message is the digest's headline: without it, try again later
+    return delivered
 
 
 # --------------------------------------------------------------- the board ---
@@ -281,8 +286,11 @@ def digest_cards(db, state, today, cutoff, t, ctx):
         head.append(f"⚠️ **Watchlist falling:** {w['label']} {w['pct']:+.0f}% week on week")
     ov = (state.get("overflow") or {}).get(yday, []) + (state.get("overflow") or {}).get(today, [])
     if ov:
-        head.append(f"📥 **Also flagged** (kept out of #alerts to stay readable): " + "; ".join(o for o in ov[:5])
-                    + (f" (+{len(ov) - 5} more)" if len(ov) > 5 else ""))
+        # strongest first; entries are [priority, title] (plain titles from before alerts were ranked sort last)
+        ov = sorted(ov, key=lambda o: -o[0] if isinstance(o, list) else 0)
+        names = list(dict.fromkeys(o[1] if isinstance(o, list) else o for o in ov))
+        head.append(f"📥 **Also flagged** (didn't make the day's {C.ALERT_DAILY_BUDGET} alert cards; strongest first): "
+                    + "; ".join(names[:5]) + (f" (+{len(names) - 5} more)" if len(names) > 5 else ""))
     sl = season_line(state, today=today)
     if sl:
         head.append(sl)

@@ -29,15 +29,17 @@ def _multipart(payload, files):
 
 
 def send(url, payload, files=None):
-    """POST one message. Retries on rate limits; never raises."""
+    """POST one message. Retries on rate limits; never raises. Returns True if Discord accepted it."""
     if files:
         body, ctype = _multipart(payload, files)
     else:
         body, ctype = json.dumps(payload).encode(), "application/json"
+    ok = False
     for attempt in range(3):
         req = urllib.request.Request(url, data=body, headers={"Content-Type": ctype, "User-Agent": UA})
         try:
             urllib.request.urlopen(req, timeout=30).read()
+            ok = True
             break
         except urllib.error.HTTPError as e:
             if e.code == 429:
@@ -56,6 +58,7 @@ def send(url, payload, files=None):
                 break
             time.sleep(2)
     time.sleep(0.5)
+    return ok
 
 
 def edit_interaction(app_id, token, payload):
@@ -74,15 +77,23 @@ def edit_interaction(app_id, token, payload):
 
 
 def post_text(url, text, dry_run=False, label="", files=None):
-    """Long text split into ~1,900-char messages; files go with the last one."""
+    """Long text split into ~1,900-char messages; files go with the last one.
+    Returns True if the first message got through (so the caller knows whether to try again later)."""
     chunks, cur = [], ""
     for line in text.split("\n"):
+        while len(line) > 1900:          # one very long line: Discord rejects any message over 2,000 characters
+            if cur.strip():
+                chunks.append(cur)
+                cur = ""
+            chunks.append(line[:1900])
+            line = line[1900:]
         if len(cur) + len(line) + 1 > 1900:
             chunks.append(cur)
             cur = ""
         cur += line + "\n"
     if cur.strip():
         chunks.append(cur)
+    delivered = True
     for i, chunk in enumerate(chunks):
         last = i == len(chunks) - 1
         if dry_run or not url:
@@ -90,7 +101,10 @@ def post_text(url, text, dry_run=False, label="", files=None):
             if last and files:
                 print(f"(+ attached: {', '.join(f[0] for f in files)})")
             continue
-        send(url, {"content": chunk, "allowed_mentions": {"parse": []}}, files if last else None)
+        ok = send(url, {"content": chunk, "allowed_mentions": {"parse": []}}, files if last else None)
+        if i == 0:
+            delivered = ok
+    return delivered
 
 
 def _ping_payload():
@@ -101,15 +115,16 @@ def _ping_payload():
 
 
 def post_alerts(url, alerts, header, icons, dry_run=False):
-    """alerts: list of dicts {kind, title, desc, url, fields:[(name, value)], gid, ping, text}"""
+    """alerts: list of dicts {kind, title, desc, url, fields:[(name, value)], gid, ping, text}
+    Returns the alerts that actually reached Discord, so the rest can be tried again on a later run."""
     if not alerts:
-        return
+        return []
     if not C.RICH_CARDS or dry_run or not url:
         text = header + "\n" + "\n".join(a["text"] for a in alerts)
         if any(a.get("ping") for a in alerts) and _ping_payload():
             text = _ping_payload()["content"] + "\n" + text
-        post_text(url, text, dry_run, "alerts")
-        return
+        return list(alerts) if post_text(url, text, dry_run, "alerts") else []
+    delivered = []
     embeds = []
     for a in alerts:
         e = {"title": a["title"][:256], "description": a.get("desc", "")[:4000],
@@ -136,7 +151,8 @@ def post_alerts(url, alerts, header, icons, dry_run=False):
             if p:
                 payload["content"] = (p["content"] + "\n" + payload["content"]).strip()
                 payload["allowed_mentions"] = p["allowed_mentions"]
-        send(url, payload)
+        if send(url, payload):
+            delivered.extend(a for a, _ in batch)
         batch, size, first = [], 0, False
     for a, e in embeds:
         n = len(json.dumps(e))
@@ -145,3 +161,4 @@ def post_alerts(url, alerts, header, icons, dry_run=False):
         batch.append((a, e))
         size += n
     flush()
+    return delivered

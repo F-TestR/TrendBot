@@ -43,6 +43,7 @@ from datetime import datetime, timedelta
 from statistics import median
 
 import config as C
+import net as NET
 
 UA = {"User-Agent": "roblox-trend-bot/1.6", "Accept": "application/json"}
 
@@ -86,7 +87,7 @@ class RateLimited(Exception):
 def get_json(url, timeout=20):
     req = urllib.request.Request(url, headers=UA)
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
+        with NET.call(url), urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         if e.code == 429:
@@ -310,12 +311,14 @@ def collect(db, state, t):
     done = state.setdefault("badges_at", {})
     bstate = state.setdefault("badges", {})
     n = 0
-    for uid in candidates(state, today)[:C.BADGE_GAMES_PER_RUN]:
+    for uid in candidates(state, today)[:NET.quota(C.BADGE_GAMES_PER_RUN)]:
         try:
             rows = normalise(fetch_badges(uid))
         except RateLimited as e:
             log(str(e))
             break
+        except NET.Skipped:
+            break                        # out of time, or Roblox isn't answering: leave the rest for the next run
         except Exception as e:
             log(f"badges failed for {uid}: {e}")
             done[uid] = today

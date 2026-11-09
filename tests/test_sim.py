@@ -38,6 +38,7 @@ CAP = {"digest": [], "weekly": [], "ask": []}
 
 def cap(url, cards, content="", files=None, dry_run=False, label="digest"):
     CAP.setdefault(label, []).append({"cards": cards, "files": [f[0] for f in (files or [])]})
+    return True                          # "Discord accepted it"
 
 
 PR.post_cards = cap
@@ -83,6 +84,14 @@ except OSError:
     problems.append("diagnostics were not written")
 if len(CAP["digest"]) < days - 2:
     problems.append(f"only {len(CAP['digest'])} digests for {days} days")
+if len(CAP["digest"]) > days:
+    problems.append(f"{len(CAP['digest'])} digests for {days} days: the digest was posted more than once a day")
+st = json.load(open(os.environ["STATE_PATH"], encoding="utf-8"))
+over = {d: n for d, n in (st.get("alert_count") or {}).items() if n > bot.C.ALERT_DAILY_BUDGET + bot.C.PING_DAILY_CAP}
+if over:
+    problems.append(f"more alert cards than the daily budget allows: {over}")
+if [k for k in st if k.startswith("_")]:
+    problems.append("run-only keys were saved: " + ", ".join(k for k in st if k.startswith("_")))
 if not CAP["weekly"]:
     problems.append("no weekly report")
 if len(CAP.get("ask", [])) >= 6 and not any("accurate" in (c or {}).get("title", "") for c in CAP["ask"][-2]["cards"]):

@@ -10,7 +10,15 @@
 //   DISCORD_PUBLIC_KEY  — Discord Developer Portal → your app → General Information → Public Key
 //   GITHUB_TOKEN        — fine-grained GitHub token with "Actions: Read and write" on the bot's repo only
 //   GITHUB_REPO         — e.g.  F-TestR/TrendBot
-//   ALLOWED_USERS       — optional: comma-separated Discord user IDs allowed to use the commands
+//   ALLOWED_USERS       — comma-separated Discord user IDs allowed to use the commands (yours, at least)
+//   ALLOWED_GUILDS      — or: comma-separated Discord server IDs whose members may all use them
+// One of the last two must be set. With neither, the commands answer with a setup hint instead of running:
+// otherwise anyone who can reach the bot could start runs on your GitHub repo.
+//
+// Optional — a steadier clock. GitHub's free scheduler starts the bot about 30 times a day instead of the 72 it is
+// asked for. Add a Cron Trigger to this worker (Settings → Triggers → Cron Triggers → "*/20 * * * *") and the
+// worker starts the bot itself every 20 minutes. The bot ignores a start that comes too soon after the last one,
+// so the two schedulers can't double up.
 
 const WORKFLOW = "trendbot.yml";
 
@@ -31,8 +39,15 @@ export default {
 
     if (interaction.type === 2) {
       const user = (interaction.member && interaction.member.user) || interaction.user || {};
-      const allowed = (env.ALLOWED_USERS || "").split(",").map((s) => s.trim()).filter(Boolean);
-      if (allowed.length && !allowed.includes(user.id)) {
+      const list = (v) => (v || "").split(",").map((s) => s.trim()).filter(Boolean);
+      const users = list(env.ALLOWED_USERS);
+      const guilds = list(env.ALLOWED_GUILDS);
+      if (!users.length && !guilds.length) {
+        return json({ type: 4, data: { flags: 64, content:
+          "Almost set up: this bot doesn't know who its owner is yet. In Cloudflare, open the worker → Settings → " +
+          `Variables and Secrets, and add \`ALLOWED_USERS\` with your Discord user ID (yours is \`${user.id}\`).` } });
+      }
+      if (!users.includes(user.id) && !guilds.includes(interaction.guild_id)) {
         return json({ type: 4, data: { content: "Sorry, this bot only answers its owner.", flags: 64 } });
       }
       const question = toQuestion(interaction.data);
@@ -43,6 +58,20 @@ export default {
       return json({ type: 5 }); // "Trend bot is thinking…"
     }
     return new Response("unsupported interaction", { status: 400 });
+  },
+
+  // Cron Trigger (optional, see the top of this file): start a normal bot run.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(fetch(`https://api.github.com/repos/${env.GITHUB_REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "trendbot-discord-worker",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ref: "main" }),
+    }));
   },
 };
 

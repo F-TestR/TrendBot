@@ -1,8 +1,8 @@
 # Roblox Trend Bot
 
 A free, self-running bot that watches Roblox and the wider internet, learns from what happens next, and
-tells you in Discord which games and themes are about to take off. It runs on GitHub Actions every
-20 minutes, keeps its own database, uses no AI service (no tokens) and stays inside every free allowance.
+tells you in Discord which games and themes are about to take off. It runs on GitHub Actions (asked for every
+20 minutes; GitHub's free scheduler delivers about 30 runs a day — see step 8f for a steadier clock), keeps its own database, uses no AI service (no tokens) and stays inside every free allowance.
 
 ---
 
@@ -132,12 +132,17 @@ Then the worker's **Settings → Variables and Secrets → Add** (type *Secret*)
 | `DISCORD_PUBLIC_KEY` | the Public Key from (a) |
 | `GITHUB_TOKEN` | the token from (c) |
 | `GITHUB_REPO` | `F-TestR/TrendBot` |
-| `ALLOWED_USERS` | your Discord user ID (so only you can use it; leave out to allow everyone in the server) |
+| `ALLOWED_USERS` | your Discord user ID — required, so only you can start runs on your repo. (To let a whole server use it, set `ALLOWED_GUILDS` to the server ID instead.) If you leave both out, the commands reply with a setup hint that shows your ID. |
 
 Copy the worker's address (like `https://trendbot-discord.<you>.workers.dev`).
 
 **e) Connect them** — back in the Discord app's **General Information → Interactions Endpoint URL**, paste the worker address → **Save**
 (Discord checks it straight away; if it refuses, re-check `DISCORD_PUBLIC_KEY`). Type `/top` in your server.
+
+**f) Optional: a steadier clock** — GitHub's free scheduler is asked to start the bot every 20 minutes but in practice starts it
+about every 40–70 minutes (roughly 30 runs a day, not 72). The same worker can do it on time: worker → **Settings → Triggers →
+Cron Triggers → Add** → `*/20 * * * *`. Nothing else to change — the bot skips any start that comes within 12 minutes of the last,
+so the two schedulers never double up. More runs means more readings per game per day: sharper daily highs and faster alerts.
 
 ### 9. Check everything
 **Run workflow** with **"Test all data sources"** ticked → #alerts gets a ✅/❌ line per source.

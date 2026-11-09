@@ -21,6 +21,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 import config as C
+import net as NET
 
 # bot.py fills these in at start-up (is_young, growth, fmt) to avoid a circular import
 HOOKS = {}
@@ -32,7 +33,7 @@ UA = {"User-Agent": "roblox-trend-bot/1.1", "Accept": "application/json"}
 
 def get_json(url, timeout=20):
     req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with NET.call(url), urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -329,7 +330,7 @@ def twitch_token(cid, secret):
 def twitch_get(path, cid, token, params):
     url = "https://api.twitch.tv/helix/" + path + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers=dict(UA, **{"Client-Id": cid, "Authorization": f"Bearer {token}"}))
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with NET.call(url), urllib.request.urlopen(req, timeout=20) as r:
         return json.loads(r.read().decode())
 
 
@@ -497,7 +498,7 @@ def collect_community(state, t):
         g = (rbx.get(gid) or {}).get("group")
         if g and str(g) not in groups:
             groups.append(str(g))
-    for g in groups[:C.GROUP_LOOKUPS_PER_RUN]:
+    for g in groups[:NET.quota(C.GROUP_LOOKUPS_PER_RUN)]:
         try:
             d = get_json(f"https://groups.roblox.com/v1/groups/{g}")
             n = d.get("memberCount")

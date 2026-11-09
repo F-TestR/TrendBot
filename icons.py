@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from statistics import median
 
 import config as C
+import net as NET
 
 
 def log(m):
@@ -54,7 +55,7 @@ def distance(a, b):
 
 
 def _download(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=15) as r:
+    with NET.call(url), urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=15) as r:
         return r.read()
 
 
@@ -93,10 +94,16 @@ def update(db, state, today, ids, icon_lookup, big_ids):
                     log(f"icon download failed for {uid}: {e}")
         ic[uid] = {"u": url, "h": h, "d": today}
     # title changes (renames are already logged by the theme module)
+    # Everything since the last check, not only today: a rename logged after yesterday's digest used to be missed.
     try:
-        for r in db.execute("SELECT uid, day FROM renames WHERE day=?", (today,)):
-            changes.append({"uid": r["uid"], "day": today, "kind": "title",
-                            "before": avg_players(db, r["uid"], _s(_d(today) - timedelta(days=3)), _s(_d(today) - timedelta(days=1)))})
+        have = {(c["uid"], c["day"]) for c in changes if c["kind"] == "title"}
+        since = state.get("icons_day") or today
+        for r in db.execute("SELECT uid, day FROM renames WHERE day>=? AND day<=?", (since, today)):
+            if (r["uid"], r["day"]) in have:
+                continue
+            changes.append({"uid": r["uid"], "day": r["day"], "kind": "title",
+                            "before": avg_players(db, r["uid"], _s(_d(r["day"]) - timedelta(days=3)),
+                                                  _s(_d(r["day"]) - timedelta(days=1)))})
     except Exception:
         pass
     # effect after 3 days

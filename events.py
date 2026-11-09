@@ -45,17 +45,27 @@ def update(state, today):
     seen = state.setdefault("tag_seen", {})
     for t, n in counts.items():
         seen.setdefault(t, today)
-    for known in C.RBX_EVENTS:
-        for t, n in counts.items():
-            if known in t:
-                ev.setdefault(t, today)
+    # Tags that were already around when the bot first looked ("[FPS]", "[RP]", "[HORROR]"...) are how games label
+    # themselves, not events: only a tag that APPEARS later, in many games at once, can be one. (Every common tag
+    # from day one used to be marked as an event for good.)
+    start = state.setdefault("tag_start", min(seen.values()) if seen else today)
+    settled = _s(datetime.strptime(start, "%Y-%m-%d") + timedelta(days=2))
+    known = lambda t: any(k in t for k in C.RBX_EVENTS)
+    for t, n in counts.items():
+        if known(t):
+            ev.setdefault(t, today)
     cut = _s(datetime.strptime(today, "%Y-%m-%d") - timedelta(days=C.EVENT_NEW_DAYS))
     for t, n in counts.items():
-        if n >= C.EVENT_MIN_GAMES and seen.get(t, today) >= cut:
+        if n >= C.EVENT_MIN_GAMES and seen.get(t, today) >= cut and seen.get(t, today) > settled:
             ev.setdefault(t, today)
     old = _s(datetime.strptime(today, "%Y-%m-%d") - timedelta(days=45))
-    for t in [t for t, d in ev.items() if d < old and counts.get(t, 0) == 0]:
-        del ev[t]
+    ended = _s(datetime.strptime(today, "%Y-%m-%d") - timedelta(days=C.EVENT_MAX_DAYS))
+    for t in list(ev):
+        if known(t):
+            if ev[t] < old and counts.get(t, 0) == 0:
+                del ev[t]
+        elif seen.get(t, ev[t]) <= settled or ev[t] < ended or (ev[t] < old and counts.get(t, 0) == 0):
+            del ev[t]                    # was there from the start, or has outlived any real event
     for t in [t for t, d in seen.items() if d < old and counts.get(t, 0) == 0]:
         del seen[t]
     return {t: counts.get(t, 0) for t in ev}

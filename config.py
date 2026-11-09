@@ -200,6 +200,8 @@ HOURLY_KEEP_DAYS = 120
 DAILY_KEEP_DAYS = 400
 BACKUP_TO_RELEASES = True        # daily backup to the repo's Releases page (private repos only)
 BACKUP_TAG = "trendbot-db"
+BACKUP_MIN_RATIO = 0.5           # a backup under half the size of the last one is not allowed to replace it...
+BACKUP_SHRINK_DAYS = 7           # ...unless it stays that small for a week (a deliberate fresh start)
 
 # ---- Learning ----
 GBM_TREES = 200                  # boosted-tree challenger: number of trees...
@@ -275,6 +277,10 @@ game games play roblox obby simulator sim tycoon x2 x5 x10 2x 5x 10x part chapte
 but not are was have has can get got all any one two three more most very just how why what
 when who out over into off our its his her they them this that there then than like
 official full edition version remastered remake ultimate deluxe online world worlds
+""".split())
+# Copy waves ("3+ new games share a title word") ignore the same filler words: waves were firing on "but" and "don".
+STOPWORDS |= THEME_STOPWORDS | set("""
+don dont cant wont doesn isn let lets too now here some every will about only also been were did does had him she
 """.split())
 THEME_GENERIC = set("""
 game games world life city time super best mega ultra simulator tycoon roblox legends legend
@@ -476,6 +482,7 @@ MONEY_MIN_CCU = 400              # only games averaging 400+ concurrent players
 MONEY_SUSPECT_PER_PLAYER = 60.0  # $/player/month above this (~7x the median) is treated as a bad estimate in top lists
 MONEY_MIN_GROUP = 6              # groups smaller than this aren't shown
 PUBLISH_REPORTS = True           # write digest/weekly/money reports to the repo's "reports" branch
+PUBLISH_QUESTIONS = False        # also publish each /ask question and its answer there (off: the repo is public)
 REPORTS_BRANCH = "reports"
 HOUR_PROFILE_ALPHA = 0.1         # how fast the time-of-day profile adapts (daily averages are corrected by it)
 
@@ -485,6 +492,7 @@ HOUR_PROFILE_ALPHA = 0.1         # how fast the time-of-day profile adapts (dail
 RBX_EVENTS = ["the hollow", "the hunt", "the games", "the hatch", "the classic", "egg hunt"]  # known event names
 EVENT_MIN_GAMES = 8              # a new title tag in this many games at once counts as an event
 EVENT_NEW_DAYS = 10              # ...if it first appeared within this many days
+EVENT_MAX_DAYS = 30              # a tag spotted this way stops counting as an event after a month (real events last 2-3 weeks)
 STUDIO_ALERT_PEAK = 10000        # 🏆 alert when a studio whose other game peaked this high launches something new
 STUDIO_ALERT_MIN_PLAYERS = 100   # ...and the new game already has this many players
 PASSES_GAMES_PER_RUN = 8         # game-pass lists read per run (top earners first, each about once a week)
@@ -492,4 +500,20 @@ PASSES_REFRESH_DAYS = 7
 ICON_TRACK_MAX = 300             # games whose icon is checked for changes each day (young + board + watchlist)
 ICON_COPY_DISTANCE = 6           # icons this similar (perceptual hash bits) count as a copy
 ALERT_DAILY_BUDGET = 12          # most alert cards per day (pings and watchlist always go through); the rest go in the digest
+ALERT_BURST = 3                  # strong alerts may run this many cards ahead of the clock (12 a day = one every 2 hours)
+ALERT_QUEUE_HOURS = 12           # an alert that didn't fit waits this long for a free slot before it goes to the digest list
+ALERT_PRIOR_WEIGHT = 20          # how many alerts' worth of weight the starting guess for each alert type carries
+PING_DAILY_CAP = 6               # most @-pings per day; beyond this a ping-worthy alert is ranked like any other
+COOLDOWN_KEEP_DAYS = 70          # remember "already alerted" this long (the longest cooldown is 60 days)
+
+# =====================================================================
+# Staying inside the 15-minute job limit when an outside service is slow
+# =====================================================================
+RUN_MIN_GAP_MIN = 12             # a run that starts sooner than this after the last one is skipped (two schedulers can overlap)
+RUN_PLANNED_GAP_MIN = 20         # the "per run" allowances in this file assume a run this often...
+RUN_SCALE_MAX = 4.0              # ...and are scaled up (to at most 4x) when GitHub starts runs further apart than that
+RUN_SOFT_LIMIT_SEC = 540         # after 9 minutes, skip the remaining optional lookups so the digest still goes out
+BREAKER_FAILS = 3                # a service that fails this many times in a row is left alone for the rest of the run
+DAILY_JOB_RETRY_MIN = 90         # a once-a-day source that failed is tried again this much later...
+DAILY_JOB_MAX_RETRIES = 6        # ...up to this many times a day
 PAGES_DASHBOARD = True           # publish the dashboard as a live web page (GitHub Pages, from the reports branch)

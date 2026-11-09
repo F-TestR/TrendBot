@@ -18,11 +18,13 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
 
 import config as C
+import net as NET
 
 UA = {"User-Agent": "roblox-trend-bot/1.3 (personal project; https://github.com/"
                     + os.environ.get("GITHUB_REPOSITORY", "unknown") + ")", "Accept": "application/json"}
@@ -40,7 +42,7 @@ def log(m):
 
 def get_json(url, headers=None, timeout=25):
     req = urllib.request.Request(url, headers=dict(UA, **(headers or {})))
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with NET.call(url), urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
@@ -147,36 +149,64 @@ def collect_yt_trending(db, ust, today, key, units_cb):
 
 # -------------------------------------------------------------- wikipedia ---
 
+class NotReady(Exception):
+    pass
+
+
 def collect_wikipedia(db, ust, today):
-    y = datetime.strptime(today, "%Y-%m-%d") - timedelta(days=1)
-    url = ("https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/"
-           f"{y:%Y}/{y:%m}/{y:%d}")
-    d = get_json(url)
-    arts = ((d.get("items") or [{}])[0].get("articles")) or []
-    titles = {}
-    for a in arts:
-        t = a.get("article", "")
-        if ":" in t or t in ("Main_Page",):
-            continue
-        titles[t] = a.get("views", 0)
+    """The most-read Wikipedia pages of each finished day, and which of them are new.
+
+    Wikipedia publishes a day's list several hours after the day ends, so the first run after midnight used to get
+    "not found" and give up until tomorrow: the source never produced anything. Now the list is stored under the day
+    it describes, the day before is filled in if it's missing, and "not published yet" is retried later."""
+    base = datetime.strptime(today, "%Y-%m-%d")
     hist = ust.setdefault("wiki_hist", {})
-    seen_before = set()
-    for day, ts in hist.items():
-        seen_before |= set(ts)
-    hist[today] = list(titles)[:1000]
-    keep = (y - timedelta(days=8)).strftime("%Y-%m-%d")
+    for k in [k for k in hist if not isinstance(hist[k], dict)]:
+        del hist[k]                      # old layout (stored under the run day, not the day the list describes)
+    n, waiting = 0, False
+    for back in (2, 1):                  # older day first, so "new" compares against it
+        y = base - timedelta(days=back)
+        key = y.strftime("%Y-%m-%d")
+        if key in hist:
+            continue
+        url = ("https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/"
+               f"{y:%Y}/{y:%m}/{y:%d}")
+        try:
+            d = get_json(url)
+        except urllib.error.HTTPError as e:
+            if e.code == 404 and back == 1:
+                waiting = True
+                continue
+            raise
+        arts = ((d.get("items") or [{}])[0].get("articles")) or []
+        titles = {}
+        for a in arts:
+            t = a.get("article", "")
+            if ":" in t or t in ("Main_Page",):
+                continue
+            titles[t] = a.get("views", 0)
+        seen_before = set()
+        for day, ts in hist.items():
+            if day < key:
+                seen_before |= set(ts["titles"])
+        earlier = sum(1 for day in hist if day < key)
+        hist[key] = {"titles": list(titles)[:1000]}
+        if earlier < 2:
+            continue                     # need a few days of history to know what's "new"
+        spikes = [(v, t) for t, v in titles.items() if t not in seen_before]
+        spikes.sort(reverse=True)
+        for v, t in spikes[:200]:
+            name = t.replace("_", " ")
+            for w in words_of(name):
+                put(db, "wikipedia", today, w, min(3.0, v / 100000), f"Wikipedia: {name}")
+        ust["wiki_spikes"] = [t.replace("_", " ") for _, t in spikes[:15]]
+        n = len(spikes)
+    keep = (base - timedelta(days=9)).strftime("%Y-%m-%d")
     for k in [k for k in hist if k < keep]:
         del hist[k]
-    if len(hist) < 3:
-        return 0  # need a few days of history to know what's "new"
-    spikes = [(v, t) for t, v in titles.items() if t not in seen_before]
-    spikes.sort(reverse=True)
-    for v, t in spikes[:200]:
-        name = t.replace("_", " ")
-        for w in words_of(name):
-            put(db, "wikipedia", today, w, min(3.0, v / 100000), f"Wikipedia: {name}")
-    ust["wiki_spikes"] = [t.replace("_", " ") for _, t in spikes[:15]]
-    return len(spikes)
+    if waiting:
+        raise NotReady("yesterday's list isn't published yet — will try again later today")
+    return n
 
 
 # ----------------------------------------------------------------- twitch ---
@@ -238,18 +268,26 @@ def collect_all(db, state, t, env, units_cb):
         jobs.append(("twitch_top", lambda: collect_twitch_top(db, ust, today, env["TWITCH_CLIENT_ID"],
                                                               env["TWITCH_CLIENT_SECRET"]), "6h"))
     last = ust.setdefault("last", {})
+    fails = ust.setdefault("fail", {})
     for name, fn, every in jobs:
         prev = last.get(name)
         if every == "daily" and prev and prev[:10] == today:
             continue
         if every == "6h" and prev and (t - datetime.fromisoformat(prev)) < timedelta(hours=6):
             continue
+        if not NET.may_try(fails, name, t):
+            continue
         try:
             n = fn()
             ran.append(f"{name}:{n}")
+            last[name] = t.isoformat()   # only a run that worked counts as done: a failure is retried later
+            NET.worked(fails, name)
+        except NotReady as e:
+            NET.failed(fails, name, t)
+            print(f"upstream {name}: {e}")
         except Exception as e:
+            NET.failed(fails, name, t)
             log(f"upstream {name} failed: {e}")
-        last[name] = t.isoformat()
     cut = (t - timedelta(days=C.UPSTREAM_KEEP_DAYS)).strftime("%Y-%m-%d")
     db.execute("DELETE FROM upstream WHERE day < ?", (cut,))
     return ran

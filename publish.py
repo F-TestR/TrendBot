@@ -50,24 +50,38 @@ def publish(files, message):
     branch = C.REPORTS_BRANCH
     try:
         _ensure_branch(repo, token, branch)
-        done = 0
-        for path, text in files.items():
-            url = f"{API}{repo}/contents/{path}"
-            sha = None
-            try:
-                sha = _req("GET", f"{url}?ref={branch}", token).get("sha")
-            except urllib.error.HTTPError as e:
-                if e.code != 404:
-                    raise
-            body = {"message": message, "branch": branch,
-                    "content": base64.b64encode(text.encode("utf-8")).decode()}
-            if sha:
-                body["sha"] = sha
-            _req("PUT", url, token, body)
-            done += 1
-        return f"published {done} report file(s) to the '{branch}' branch"
     except Exception as e:
         return f"report publish failed: {e}"
+    done, failed = 0, []
+    for path, text in files.items():
+        url = f"{API}{repo}/contents/{path}"
+        # Each file on its own, and a second try if another run changed the branch in between (a question answered
+        # while the digest is publishing): one clash used to abandon every file after it.
+        for attempt in (1, 2):
+            try:
+                sha = None
+                try:
+                    sha = _req("GET", f"{url}?ref={branch}", token).get("sha")
+                except urllib.error.HTTPError as e:
+                    if e.code != 404:
+                        raise
+                body = {"message": message, "branch": branch,
+                        "content": base64.b64encode(text.encode("utf-8")).decode()}
+                if sha:
+                    body["sha"] = sha
+                _req("PUT", url, token, body)
+                done += 1
+                break
+            except urllib.error.HTTPError as e:
+                if e.code in (409, 422) and attempt == 1:
+                    continue
+                failed.append(f"{path} ({e.code})")
+                break
+            except Exception as e:
+                failed.append(f"{path} ({e})")
+                break
+    return (f"published {done} report file(s) to the '{branch}' branch"
+            + (f"; failed: {', '.join(failed)}" if failed else ""))
 
 
 def pages_url():
