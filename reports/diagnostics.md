@@ -1,52 +1,52 @@
 # Diagnostics · 2026-11-09
 
-_generated 2026-11-09T21:42:23Z · models retrained in memory only_
+_generated 2026-11-09T21:48:07Z · models retrained in memory only_
 
 ## Tables and coverage
 
 - games: 8,137
-- daily: 156,041
-- hourly: 715,241
-- alerts: 2,449
-- predictions: 400
-- backfill: 2,518
-- trend_feats: 9,643
-- promo_preds: 45,031
-- theme_daily: 44,215
+- daily: 156,196
+- hourly: 716,110
+- alerts: 2,455
+- predictions: 408
+- backfill: 2,529
+- trend_feats: 9,736
+- promo_preds: 45,358
+- theme_daily: 44,256
 - theme_preds: 22,062
-- hold_weekly: 8,834
-- engage_weekly: 11,845
-- fc_preds: 13,308
-- cp_fires: 83
-- renames: 3,807
-- effects: 0
-- upstream: 69,834
+- hold_weekly: 9,209
+- engage_weekly: 12,194
+- fc_preds: 13,315
+- cp_fires: 84
+- renames: 3,811
+- effects: 2,579
+- upstream: 70,679
 - database file: 118 MB
 - daily covers 2026-07-26 → 2026-11-09 (107 days)
 
 game-days per day, last 21 days (live / backfill / other):
-- 2026-10-19: 0 / 1,878 / 0 · most readings of one game that day (≈ runs): 1033
-- 2026-10-20: 0 / 1,921 / 0 · most readings of one game that day (≈ runs): 1035
-- 2026-10-21: 0 / 1,959 / 0 · most readings of one game that day (≈ runs): 1006
-- 2026-10-22: 6,046 / 176 / 15 · most readings of one game that day (≈ runs): 293
-- 2026-10-23: 6,030 / 174 / 23 · most readings of one game that day (≈ runs): 294
-- 2026-10-24: 6,084 / 185 / 29 · most readings of one game that day (≈ runs): 295
-- 2026-10-25: 6,081 / 207 / 18 · most readings of one game that day (≈ runs): 294
-- 2026-10-26: 2,836 / 670 / 42 · most readings of one game that day (≈ runs): 295
-- 2026-10-27: 2,888 / 633 / 43 · most readings of one game that day (≈ runs): 295
-- 2026-10-28: 2,764 / 630 / 47 · most readings of one game that day (≈ runs): 295
-- 2026-10-29: 2,790 / 622 / 59 · most readings of one game that day (≈ runs): 295
-- 2026-10-30: 2,824 / 597 / 66 · most readings of one game that day (≈ runs): 295
-- 2026-10-31: 2,796 / 599 / 77 · most readings of one game that day (≈ runs): 295
-- 2026-11-01: 2,769 / 601 / 85 · most readings of one game that day (≈ runs): 295
-- 2026-11-02: 2,797 / 556 / 118 · most readings of one game that day (≈ runs): 295
-- 2026-11-03: 2,790 / 570 / 134 · most readings of one game that day (≈ runs): 98
-- 2026-11-04: 2,848 / 532 / 141 · most readings of one game that day (≈ runs): 161
-- 2026-11-05: 2,823 / 520 / 161 · most readings of one game that day (≈ runs): 294
-- 2026-11-06: 2,825 / 447 / 173 · most readings of one game that day (≈ runs): 294
-- 2026-11-07: 2,712 / 329 / 196 · most readings of one game that day (≈ runs): 294
-- 2026-11-08: 2,721 / 199 / 222 · most readings of one game that day (≈ runs): 295
-- 2026-11-09: 2,725 / 79 / 9 · most readings of one game that day (≈ runs): 266
+- 2026-10-19: 0 / 1,883 / 0 · most readings of one game that day (≈ runs): 1033
+- 2026-10-20: 0 / 1,927 / 0 · most readings of one game that day (≈ runs): 1035
+- 2026-10-21: 0 / 1,965 / 0 · most readings of one game that day (≈ runs): 1006
+- 2026-10-22: 6,046 / 177 / 15 · most readings of one game that day (≈ runs): 293
+- 2026-10-23: 6,030 / 176 / 23 · most readings of one game that day (≈ runs): 294
+- 2026-10-24: 6,084 / 187 / 29 · most readings of one game that day (≈ runs): 295
+- 2026-10-25: 6,081 / 209 / 18 · most readings of one game that day (≈ runs): 294
+- 2026-10-26: 2,836 / 672 / 42 · most readings of one game that day (≈ runs): 295
+- 2026-10-27: 2,888 / 636 / 43 · most readings of one game that day (≈ runs): 295
+- 2026-10-28: 2,764 / 632 / 47 · most readings of one game that day (≈ runs): 295
+- 2026-10-29: 2,790 / 623 / 59 · most readings of one game that day (≈ runs): 295
+- 2026-10-30: 2,824 / 598 / 66 · most readings of one game that day (≈ runs): 295
+- 2026-10-31: 2,796 / 600 / 77 · most readings of one game that day (≈ runs): 295
+- 2026-11-01: 2,769 / 603 / 85 · most readings of one game that day (≈ runs): 295
+- 2026-11-02: 2,797 / 557 / 118 · most readings of one game that day (≈ runs): 295
+- 2026-11-03: 2,790 / 571 / 134 · most readings of one game that day (≈ runs): 98
+- 2026-11-04: 2,848 / 534 / 141 · most readings of one game that day (≈ runs): 161
+- 2026-11-05: 2,823 / 522 / 161 · most readings of one game that day (≈ runs): 294
+- 2026-11-06: 2,825 / 449 / 173 · most readings of one game that day (≈ runs): 294
+- 2026-11-07: 2,712 / 331 / 196 · most readings of one game that day (≈ runs): 294
+- 2026-11-08: 2,721 / 201 / 232 · most readings of one game that day (≈ runs): 295
+- 2026-11-09: 2,725 / 81 / 9 · most readings of one game that day (≈ runs): 270
 - alerts: 2026-10-22 → 2026-11-09 (19 distinct)
 - trend_feats: 2026-10-26 → 2026-11-09 (15 distinct)
 - promo_preds: 2026-10-24 → 2026-11-09 (17 distinct)
@@ -66,7 +66,7 @@ state.json: 5.5 MB · biggest keys:
 - stick: 0.13 MB
 - rw_trends: 0.07 MB
 - alerts: 0.07 MB
-- longterm: 0.07 MB
+- badges: 0.06 MB
 
 _0.1s_
 
@@ -89,14 +89,14 @@ _0.0s_
 ## Alerts, updates, breakouts
 
 alerts by kind: total · first day · last day · last 7 days
-- new: 641 · 2026-10-22 · 2026-11-09 · 231
+- new: 642 · 2026-10-22 · 2026-11-09 · 232
 - surge: 600 · 2026-10-23 · 2026-11-09 · 282
 - abroad: 486 · 2026-10-26 · 2026-11-09 · 253
 - copy: 210 · 2026-10-23 · 2026-11-09 · 118
 - breakout: 161 · 2026-10-23 · 2026-11-09 · 50
 - early: 135 · 2026-10-22 · 2026-11-09 · 65
 - chart: 69 · 2026-10-22 · 2026-11-09 · 25
-- longterm: 46 · 2026-10-24 · 2026-11-05 · 30
+- longterm: 51 · 2026-10-24 · 2026-11-09 · 35
 - update: 43 · 2026-10-22 · 2026-11-08 · 22
 - heat: 34 · 2026-10-25 · 2026-11-09 · 16
 - studio: 15 · 2026-10-28 · 2026-11-09 · 12
@@ -110,9 +110,9 @@ _0.0s_
 
 ## Plumbing: runs, alert cards, sources, backup
 
-last full run: 2026-11-09T21:32:34.320859+00:00 · RoWatcher requests by day: {"2026-11-06": 533, "2026-11-07": 592, "2026-11-08": 592, "2026-11-09": 402}
-alert cards by day: {"2026-11-06": 37, "2026-11-07": 32, "2026-11-08": 39, "2026-11-09": 38} · pings: {"2026-11-09": 4}
-alerts waiting for a slot: 13 · strongest: 0.35 📈 Entered Roblox's algorithm charts: [GO; 0.31 🆕 Just crossed 2.0K players: 🧟 ZOMBIE MO; 0.28 🌍 Climbing abroad first: 🎨 Draw the Othe; 0.20 🌍 Climbing abroad first: [😈DEVIL UNIONS]; 0.16 🆕 Just crossed 2.0K players: Build and S
+last full run: 2026-11-09T21:45:06.656573+00:00 · RoWatcher requests by day: {"2026-11-06": 533, "2026-11-07": 592, "2026-11-08": 592, "2026-11-09": 421}
+alert cards by day: {"2026-11-06": 37, "2026-11-07": 32, "2026-11-08": 39, "2026-11-09": 40} · pings: {"2026-11-09": 6}
+alerts waiting for a slot: 34 · strongest: 0.60 🚀 Trend Score 83: Project Soul's [Undert; 0.59 🚀 Trend Score 82: [DISCO] Pok Pok; 0.59 🚀 Trend Score 81: Ship The Cargo 🚢; 0.39 🚀 Trend Score 79: Ragdoll Wars!; 0.38 🚀 Trend Score 77: Ragdoll Verity Sandbox
 yesterday's alert priorities: 0 alerts · top 12th = — · —
 
 alert type → chance it's followed by an explosion (starting guess → now, matured alerts behind it):
@@ -136,10 +136,10 @@ alert type → chance it's followed by an explosion (starting guess → now, mat
 
 outside sources last worked: {"steam": "2026-11-09T01:01:49.189491+00:00", "wikipedia": "2026-11-09T01:01:49.189491+00:00", "calendar": "2026-11-09T01:01:49.189491+00:00", "yt_trending": "2026-11-09T17:41:36.169371+00:00"}
 outside sources failing today: {} · Wikipedia days held: ['2026-10-22']
-backfill by status: {"error": 91, "error:1": 1, "ok": 1717, "ok-old": 709}
-worldwide trending lists last read: 2026-11-09T21:32:34.320859+00:00 · games in them: 140 · theme words saved for search: []
+backfill by status: {"error": 91, "error:1": 3, "ok": 1723, "ok-old": 712}
+worldwide trending lists last read: 2026-11-09T21:32:34.320859+00:00 · games in them: 140 · theme words saved for search: ['zero', 'ship', 'deep', 'hotel', 'monster', 'heaven', 'cozy', 'among', 'pack', 'west', 'flying', 'hospital', 'voice', 'pass', 'fighter']
 title tags currently treated as Roblox events: {"the hollow": "2026-10-26"}
-backup: encrypted backup saved (33.0 MB)
+backup: encrypted backup saved (33.9 MB)
 
 _0.0s_
 
@@ -150,29 +150,29 @@ daily digest: 5 cards built — 📊 Daily digest · Mon 09 Nov · 🎮 Games to
 weekly report: 9 cards built — 🗓️ Weekly report · week to Mon 09 Nov · 🧭 Mechanics: biggest moves · 🧠 What Roblox's algorithm is rewarding · 🏛️ Long-term games · ⏱ Engagement (from badges) · 🧩 What lasting games have in common · 📈 Forecasts & how long hits last · 🛠️ Do updates, icons and titles help? · 🔬 Are the predictions working?
 
 **📊 Daily digest · Mon 09 Nov**
-🚀 **Biggest riser:** [(NEW QUEST & MODIFFICATION) Onthe…](https://www.roblox.com/games/110534393529784) — ×64.5 to 1.1K
+🚀 **Biggest riser:** [(NEW QUEST & MODIFFICATION) Onthe…](https://www.roblox.com/games/110534393529784) — ×64.5 to 1.4K
 🔥 **Hottest across platforms:** [Throw Food For Animals](https://www.roblox.com/games/120219252362013) — heat 70
-⏱ **Most playtime per player:** [ABOVE (💀RUINS)](https://www.roblox.com/games/124357835578554) — 92 min/day
+⏱ **Most playtime per player:** [(⚡) Steal a Superpower!](https://www.roblox.com/games/74183246285569) — 82 min/day
 🔮 **Coming up:** Lucky Debt (out 8 days ago) — 🌉 1 new Roblox game already
 ⚠️ **Watchlist falling:** Eat Everything In A Grocery Store -61% week on week
 📥 **Also flagged** (didn't make the day's 12 alert cards; strongest first): 🚀 Surging: Chop and Steal an Egg; 🌍 Climbing abroad first: (CHAPTER 2) Left 4 Death; 🌍 Climbing abroad first: Ice Cream Shop [Anomaly] 🍦; 🌍 Climbing abroad first: [✈️UPD] Be a Pilot! ; 🌍 Climbing abroad first: Bloody Ragdoll Physics 🩸 (+170 more)
 🎃 **After Halloween:** 12% of games still carry Halloween tags. The event is over, so week-on-week falls right now are mostly that event unwinding, not games failing
 
 **🎮 Games to watch**
-**[Compliment](https://rowatcher.com/games/10772422537)** — 1.9K playing · 18d old · **×8.1** 🔥67 📺812.8K
-**[Low Range: Offroad 4x4 (EARLY ACC…](https://www.roblox.com/games/88131802740480)** — 7.2K playing · 31d old · **×5.8** 🔥64
-**[(⚡) Steal a Superpower!](https://www.roblox.com/games/74183246285569)** — 15.3K playing · 30d old · **×55.5** 🔥57 ⏱82m
-**[Ragdoll Physics 🩸](https://www.roblox.com/games/121868512253414)** — 32.6K playing · 28d old · **×10.1** 🔥55
-**[WRECKED (Realistic Crashes)](https://www.roblox.com/games/77843690602580)** — 5.8K playing · 14d old · **×30.8** 🔥55
-**[Untitled Symbiote Suit Game (VENO…](https://www.roblox.com/games/87483534479816)** — 8.2K playing · 15d old · **×37.5** 🔥55
-**[(🐟) Net a Fish!](https://www.roblox.com/games/93898234979111)** — 14.6K playing · 25d old · **×6.8** 🔥55
-**[🍦Cozy Lucky Scoop Order](https://www.roblox.com/games/70976799643592)** — 12.3K playing · 21d old · **×14.2** 🔥54 ⏱47m
+**[Compliment](https://rowatcher.com/games/10772422537)** — 1.9K playing · 18d old · **×8.1** 🔥67 📺901.0K
+**[Low Range: Offroad 4x4 (EARLY ACC…](https://www.roblox.com/games/88131802740480)** — 7.1K playing · 31d old · **×5.8** 🔥59
+**[(⚡) Steal a Superpower!](https://www.roblox.com/games/74183246285569)** — 15.3K playing · 30d old · **×55.5** 🔥59 ⏱82m
+**[WRECKED (Realistic Crashes)](https://www.roblox.com/games/77843690602580)** — 5.9K playing · 14d old · **×30.8** 🔥55
+**[(🐟) Net a Fish!](https://www.roblox.com/games/93898234979111)** — 14.4K playing · 25d old · **×6.8** 🔥55
+**[Untitled Symbiote Suit Game (VENO…](https://www.roblox.com/games/87483534479816)** — 8.3K playing · 15d old · **×37.5** 🔥55
+**[Ragdoll Physics 🩸](https://www.roblox.com/games/121868512253414)** — 32.5K playing · 28d old · **×10.1** 🔥55
+**[Makeup Salon💄](https://www.roblox.com/games/126608757616138)** — 2.8K playing · 35d old · **×5.9** 🔥54
 
 **🗓️ Weekly report · week to Mon 09 Nov**
 🎃 **After Halloween:** 12% of games still carry Halloween tags. The event is over, so week-on-week falls right now are mostly that event unwinding, not games failing
 🧭 **Demand:** Disasters / survival +10% · Anomaly / night shift -33%
-🏛️ **Most long-term genre:** Social — 78% of its games reliably hold players on weekdays (all genres: 28%)
-📏 **Stickiest young game:** [Chop and Steal an Egg](https://www.roblox.com/games/135361740992269) — 98/100
+🏛️ **Most long-term genre:** Social — 60% of its games reliably hold players on weekdays (all genres: 17%)
+📏 **Stickiest young game:** [Steal A Balut](https://www.roblox.com/games/90773083590844) — 92/100
 ⏱ **Most playtime (young):** [Oregon Trail (new!)](https://www.roblox.com/games/124172969655058) — 163 min/player/day
 
 **🧭 Mechanics: biggest moves**
@@ -185,54 +185,56 @@ weekly report: 9 cards built — 🗓️ Weekly report · week to Mon 09 Nov · 
 💥 59 breakouts: [Steal A Balut](https://www.roblox.com/games/90773083590844), [Survive Your Ideas](https://www.roblox.com/games/77900175935766), [Ragdoll Physics 🩸](https://www.roblox.com/games/121868512253414)
 
 **🧠 What Roblox's algorithm is rewarding**
-No quality signal is reliably rewarded or penalised right now — the weights flip direction when the model is refitted on resampled games, so none is reported as a finding.
+🟥🟥🟥 favourite rate
+🟥🟥🟥🟥 weekday hold vs a typical game — _games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention_
+🟥🟥🟥🟥🟥🟥 revenue per player — _fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation_
 🧪 enters a Roblox chart within 7 days: predictions the bot made scored **0.64** · top 10% came true 14% vs 7.0% overall
 🧪 players up 50%+ within 7 days: predictions the bot made scored **0.78** · top 10% came true 33% vs 7.8% overall
 
 **🏛️ Long-term games**
-**Social** · 78% long-term (7/9, likely 50%–92%) ✅
-**RPG** · 53% long-term (16/30, likely 39%–67%) ✅
-**Shooter** · 51% long-term (18/35, likely 38%–65%) ✅
-**Action** · 29% long-term (22/75, likely 22%–39%)
-**Simulation** · 24% long-term (89/364, likely 21%–28%)
-Young games already long-term: [Teach Your Granny How T…](https://www.roblox.com/games/93799361852148), [(RANKED) REALISTIC HOME…](https://www.roblox.com/games/105527962898452), [Clean a Painting](https://www.roblox.com/games/111695660104985)
-Stickiest young games: [Chop and Steal an Egg](https://www.roblox.com/games/135361740992269) (98), [(🦃) Build a Tower Def…](https://rowatcher.com/games/10769160756) (98), [🥀Drain All Life](https://www.roblox.com/games/115369271316070) (98)
+Weekday hold is 72% the game, 28% week-to-week noise — so one good week proves little
+**Social** · 60% long-term (6/10, likely 35%–81%) ✅
+**RPG** · 35% long-term (12/34, likely 23%–49%) ✅
+**Simulation** · 18% long-term (69/375, likely 15%–22%)
+**Obby & Platformer** · 19% long-term (11/58, likely 12%–29%)
+**Sports & Racing** · 21% long-term (6/29, likely 11%–35%)
+Young games already long-term: [Free Fire Zone (Max)](https://www.roblox.com/games/99610146753435), [(⚔️UPD) +1 Venom Evolut…](https://www.roblox.com/games/116448925875915), [Pixel Lineage (Dawn Upd…](https://www.roblox.com/games/126256942507957)
+Stickiest young games: [Steal A Balut](https://www.roblox.com/games/90773083590844) (92), [Club Legacy Soccer Ma…](https://www.roblox.com/games/119363206449928) (91), [(🫧CH3) 1M Clicks To E…](https://www.roblox.com/games/138666683767450) (91)
 
 **⏱ Engagement (from badges)**
-Typical game: **53 min** per player per day (292 games measured)
+Typical game: **54 min** per player per day (292 games measured)
 ⏱ [Oregon Trail (new!)](https://www.roblox.com/games/124172969655058) · **163 min** · 46.1K/day
 ⏱ [(🥷NINJA) Anime Legacy Simulator](https://www.roblox.com/games/106198175232796) · **145 min** · 50.1K/day
 ⏱ [Chop A Forest](https://www.roblox.com/games/103363457515322) · **118 min** · 105.7K/day
 ⏱ [(🎃)+1 Assassin Leveling](https://www.roblox.com/games/120731410233153) · **115 min** · 101.0K/day
 
 **🧩 What lasting games have in common**
-✅ PvP · **1.8×** as likely to be long-term (likely 1.2–2.8×, 49 games)
-✅ trading · **1.7×** as likely to be long-term (likely 1.0–2.8×, 35 games)
-✅ base building / decorating · **0.6×** as likely to be long-term (likely 0.4–0.9×, 169 games)
+✅ leaderboards · **2.0×** as likely to be long-term (likely 1.2–3.3×, 69 games)
+🧪 Stickiness can't be checked against survival until 2026-11-25 (needs games watched from the start, 4 weeks on)
 
 **📈 Forecasts & how long hits last**
 📈 Peak forecasts (made on day 5): typically off by **74%**; 54% within 2× of the real peak (573 games)
    ↳ not proven enough to quote numbers (needs 30+ games with 60% within 2×): the bot says "big rise ahead / more growth / near its peak" instead
 🧭 Breakout-start signal: followed by 2× players within 2 weeks **18%** of the time vs 22% for any young game (208 firings) · **alerts paused** until it beats that by 1.3× over 20+ firings
-⏳ A typical hit keeps half its peak players for **10 days** (1668 games; 1083 have dropped below half so far)
-By weekday hold in the weeks BEFORE the peak: holds weekday players well **23d** (422) · average weekday hold **15d** (528) · holds them poorly **6d** (543)
-By mechanic: Roleplay / life **14d** (79) · Anime / fighting style **12d** (39) · Eat / grow big **11d** (14) · Sports **10d** (46)
-By genre: Social **33d** (19) · Shooter **31d** (57) · Obby & Platformer **19d** (116) · Action **16d** (123)
+⏳ A typical hit keeps half its peak players for **11 days** (926 games; 399 have dropped below half so far)
+By weekday hold in the weeks BEFORE the peak: average weekday hold **13d** (117) · holds weekday players well **12d** (187) · holds them poorly **8d** (25)
+By mechanic: Care / baby / pets **13d** (15) · Anime / fighting style **12d** (23) · Roleplay / life **11d** (44) · Sports **10d** (30)
+By genre: RPG **12d** (35) · Roleplay & Avatar Sim **11d** (53) · Party & Casual **11d** (49) · Strategy **11d** (25)
 
 **🛠️ Do updates, icons and titles help?**
-▫️ Updates after a quiet week: measuring (0 so far)
-▫️ Icon changes: measuring (0 so far)
-▫️ Title changes: measuring (0 so far)
+▫️ Updates after a quiet week: measuring (18 so far)
+▫️ **Icon changes**: +7% (likely -3% to +15%) vs similar games that changed nothing · 47% beat them by 10%+ (136 measured)
+▫️ **Title changes**: +1% (likely -1% to +2%) vs similar games that changed nothing · 38% beat them by 10%+ (1260 measured)
 🖼️ 6 young games use an icon nearly identical to a hit from another studio (last 30 days)
 
 **🔬 Are the predictions working?**
-🚀 **Trend Score** — chance a young game at least doubles and passes 5,000 players within 2 weeks · now using: **learned**
-• Learned model — Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (?-day outcomes).
-  ⚙️ Using **boosted trees**: 0.70 vs 0.67 for the simple model (not comparable)
+🚀 **Trend Score** — chance a young game at least doubles and passes 5,000 players within 2 weeks · now using: **starting formula**
+• Starting formula vs real outcomes: accuracy **0.66** (likely 0.58–0.74) · its top 10% took off 16% of the time vs 6.8% for all · 501 snapshots over 1 days
+• Learned model: not trained yet — needs 2000+ outcomes with 60+ take-offs over 21+ days (has 501 / 34 over 1 day)
 🎯 Explosion model: not provable yet (too few finished explosions among games watched live) — its picks aren't used
-🌱 Theme model: not provable yet (too few finished breakouts among games watched live) — its picks aren't used
+🌱 Theme model: still collecting — needs 200+ calm theme-days with 8+ breakouts from days the bot watched live (has 0 / 0; the first live days finish their 21-day window on 2026-11-20)
 
-_4.0s_
+_5.0s_
 
 ## Trend Score
 
@@ -256,12 +258,12 @@ starting-formula raw scores (10/25/50/75/90th pct): 0.0105 / 0.0143 / 0.0244 / 0
 calibration of the starting formula: {"n": 501, "pos": 34, "days": 1, "cal": null, "auc": 0.663, "lo": 0.578, "hi": 0.74, "base": 0.068, "top": 0.16}
 learned model status: {"day": "2026-11-09", "examples": 501, "positives": 34, "days": 1, "trained": false, "why": "needs 2000+ outcomes with 60+ take-offs over 21+ days (has 501 / 34 over 1 day)"}
 
-_0.2s_
+_0.3s_
 
 ## Weekday hold: old vs new definition
 
-**OLD: Tue–Wed vs Sat–Sun** — games rated: 2,381 · weeks rated per game: 1 / 1 / 2 / 6 / 8 · week-to-week rank correlation: 0.521 (5,337 pairs) · share of one week's spread that is the game itself: 0.651 · noise sd 0.238 · old-rule 'long-term': 504 of 1682 with 2+ weeks (30%)
-**NEW: Mon–Wed vs two busiest of Fri–Sun** — games rated: 2,408 · weeks rated per game: 1 / 1 / 2 / 6 / 8 · week-to-week rank correlation: 0.524 (5,370 pairs) · share of one week's spread that is the game itself: 0.719 · noise sd 0.209 · old-rule 'long-term': 506 of 1691 with 2+ weeks (30%)
+**OLD: Tue–Wed vs Sat–Sun** — games rated: 2,381 · weeks rated per game: 1 / 1 / 2 / 6 / 8 · week-to-week rank correlation: 0.522 (5,345 pairs) · share of one week's spread that is the game itself: 0.651 · noise sd 0.238 · old-rule 'long-term': 505 of 1683 with 2+ weeks (30%)
+**NEW: Mon–Wed vs two busiest of Fri–Sun** — games rated: 2,408 · weeks rated per game: 1 / 1 / 2 / 6 / 8 · week-to-week rank correlation: 0.524 (5,377 pairs) · share of one week's spread that is the game itself: 0.719 · noise sd 0.209 · old-rule 'long-term': 506 of 1692 with 2+ weeks (30%)
 
 games the OLD measure flattered most (old ÷ new relative hold):
 - Hide ur Secret Base — ×3.91 (2 weeks)
@@ -277,42 +279,42 @@ games the OLD measure flattered most (old ÷ new relative hold):
 - [🎲] The Game Of Life — ×1.51 (2 weeks)
 - Draw a Pancake! 🥞 — ×1.50 (2 weeks)
 
-after the new rule: hold_meta {"week": "2026-11-04", "weekend": ["2026-10-31", "2026-11-01"], "weekday": ["2026-11-03", "2026-11-04"], "benchmark": 0.696, "roblox": 0.673, "weeks": 8, "reliability": 0.719, "noise_sd": 0.209} · long-term 152 · promising 341
-- [🌎W10] Throw a Coin — 1.551× over 8 weeks (z 6.23) · 5.7K
-- TANPANAMA — 1.532× over 8 weeks (z 6.06) · 4.3K
+after the new rule: hold_meta {"week": "2026-11-04", "weekend": ["2026-10-31", "2026-11-01"], "weekday": ["2026-11-03", "2026-11-04"], "benchmark": 0.696, "roblox": 0.673, "weeks": 8, "reliability": 0.719, "noise_sd": 0.209} · long-term 152 · promising 340
+- [🌎W10] Throw a Coin — 1.551× over 8 weeks (z 6.24) · 5.7K
+- TANPANAMA — 1.532× over 8 weeks (z 6.07) · 4.3K
 - [🍂] Anime Dice — 1.563× over 7 weeks (z 5.98) · 78.2K
 - [EVENT🎃] Noob Incremental — 1.518× over 8 weeks (z 5.93) · 5.5K
-- Free Fire Zone (Max) — 1.812× over 3 weeks (z 5.57) · 9.6K
+- Free Fire Zone (Max) — 1.812× over 3 weeks (z 5.58) · 9.6K
 - [UPD] Anime RNG Defense — 1.478× over 8 weeks (z 5.55) · 3.3K
 - [UPD 12] Defeat Anime RNG  — 1.499× over 7 weeks (z 5.42) · 6.0K
-- Forest Market — 1.461× over 8 weeks (z 5.39) · 3.7K
-- [🎃Part 2] 🔩 Resource Incremental — 1.431× over 8 weeks (z 5.09) · 1.9K
-- Sol's RNG [ Halloween Event 🎃] — 1.423× over 8 weeks (z 5.01) · 44.4K
-- Bee Swarm Simulator — 1.401× over 8 weeks (z 4.79) · 33.9K
+- Forest Market — 1.462× over 8 weeks (z 5.4) · 3.7K
+- [🎃Part 2] 🔩 Resource Incremental — 1.432× over 8 weeks (z 5.1) · 1.9K
+- Sol's RNG [ Halloween Event 🎃] — 1.423× over 8 weeks (z 5.02) · 44.4K
+- Bee Swarm Simulator — 1.401× over 8 weeks (z 4.8) · 33.9K
 - [⚔️UPD] +1 Venom Evolution — 1.66× over 3 weeks (z 4.75) · 38.6K
 
-_1.4s_
+_1.7s_
 
 ## What changes do (matched comparison)
 
-games watched for publishes: 834 · publish days seen: 2,191 · publishes after a quiet week: 96
+games watched for publishes: 862 · publish days seen: 2,270 · publishes after a quiet week: 99
 naive measure (day+3 vs the 3 days before), every publish: median -12.5% over 951 · by weekday of the publish: Mon -43% (88), Tue -29% (137), Wed +13% (178), Thu +20% (110), Fri -13% (111), Sat -14% (170), Sun -23% (157)
-measured now: 2579 changes
+measured now: 0 changes
 - icon: 235 events · 205 with complete weeks · 136 with enough twins
-- title: 2318 events · 1410 with complete weeks · 1258 with enough twins
+- title: 2318 events · 1412 with complete weeks · 1260 with enough twins
 - update: 26 events · 24 with complete weeks · 18 with enough twins
 • Updates after a quiet week: measuring — 18 measured so far (needs 20)
 • ▫️ **Icon changes**: typical lift **+7%** (likely -3% to +15%) vs similar games that changed nothing · 47% beat their twins by 10%+, 40% fell 10%+ behind · 136 measured
    ↳ the games themselves went -20% week on week while their twins went -25% — the naive before/after number is mostly that drift
-• ▫️ **Title changes**: typical lift **+1%** (likely -1% to +3%) vs similar games that changed nothing · 38% beat their twins by 10%+, 36% fell 10%+ behind · 1258 measured
+• ▫️ **Title changes**: typical lift **+1%** (likely -1% to +2%) vs similar games that changed nothing · 38% beat their twins by 10%+, 36% fell 10%+ behind · 1260 measured
    ↳ the games themselves went -11% week on week while their twins went -10% — the naive before/after number is mostly that drift
 _Lift = the game's week-on-week change divided by the median change of similar-size, similar-trend games that made no such change. Correlation still, but weekdays, natural decay and market swings are removed._
 
-_12.0s_
+_0.8s_
 
 ## Themes
 
-themes: 2,980 · calm candidate days: 29,055 · breakouts: 133 in 133 themes · history starts 2026-08-25
+themes: 2,981 · calm candidate days: 29,092 · breakouts: 133 in 133 themes · history starts 2026-08-25
 themes that broke out (count · name · most games): 1× walls escape (3); 1× walls (8); 1× verity (32); 1× together (17); 1× throw (12); 1× thai (7); 1× tesla (3); 1× survival (43); 1× steal eggs (8); 1× steal egg (14); 1× scooter (10); 1× say (3); 1× save (16); 1× sandbox (23); 1× roadster (4); 1× ride (46); 1× realistic (23); 1× ragdoll physics (6); 1× punch (8); 1× prison (69); 1× playground (20); 1× pixel (15); 1× physics (16); 1× pets (16); 1× makeup (12)
 
 model status: {"examples": 0, "positives": 0, "trained": false, "day": "2026-11-09", "themes": 0, "base_rate": null, "why": "needs 200+ calm theme-days with 8+ breakouts from days the bot watched live (has 0 / 0; the first live days finish their 21-day window on 2026-11-20)"}
@@ -337,38 +339,39 @@ top themes it would show today:
 🔬 **Which indicators actually work** (0 theme breakouts tracked so far)
 • No finished firings yet: 🧬 copy burst, 🐣 tiny-game burst, 🏢 3+ studios at once, ✏️ games renaming to it, 📈 theme doubled in a week, 📊 in the algorithm charts, 📺 Roblox YouTube buzz, 🎮 rising on Steam, 📚 Wikipedia spike, 🔥 YouTube trending, 🟣 Twitch top games, 🗓️ in season, 🔮 upcoming release/event, 🎬 YouTube Shorts buzz
 
-_2.9s_
+_3.6s_
 
 ## Algorithm mirror
 
-**chart**: 1,302 game-days over 9 days (2026-10-24 → 2026-11-01) · 46 positive (3.5%) · games: 1,051
-**growth**: 5,178 game-days over 28 days (2026-10-05 → 2026-11-01) · 613 positive (11.8%) · games: 2,225
+**chart**: 1,284 game-days over 9 days (2026-10-24 → 2026-11-01) · 67 positive (5.2%) · games: 1,044
+**growth**: 5,182 game-days over 28 days (2026-10-05 → 2026-11-01) · 593 positive (11.4%) · games: 2,190
 
-chart: coverage {"playtime": 0.019, "returning": 0.0, "first_step": 0.01, "sessions": 0.019, "hold": 0.486, "session_len": 0.975, "like_ratio": 0.938, "fav_conv": 0.889, "rev_per_player": 0.886, "size": 1.0, "momentum": 1.0, "age": 1.0, "has_badges": 1.0}
-chart: stability {"playtime": {"w": -0.019, "lo": -0.17, "hi": 0.151, "sign": 0.467}, "first_step": {"w": 0.17, "lo": 0.04, "hi": 0.331, "sign": 1.0}, "sessions": {"w": 0.1, "lo": -0.161, "hi": 0.322, "sign": 0.783}, "hold": {"w": -0.196, "lo": -0.389, "hi": -0.051, "sign": 0.983}, "session_len": {"w": 0.471, "lo": 0.29, "hi": 0.79, "sign": 1.0}, "like_ratio": {"w": 0.353, "lo": 0.125, "hi": 0.625, "sign": 0.983}, "fav_conv": {"w": -0.159, "lo": -0.846, "hi": 0.107, "sign": 0.85}, "rev_per_player": {"w": -0.56, "lo": -0.787, "hi": -0.213, "sign": 1.0}, "size": {"w": 0.811, "lo": 0.538, "hi": 1.21, "sign": 1.0}, "momentum": {"w": 0.321, "lo": 0.165, "hi": 0.634, "sign": 1.0}, "age": {"w": -0.247, "lo": -0.603, "hi": 0.049, "sign": 0.917}, "has_badges": {"w": -0.025, "lo": -0.34, "hi": 0.103, "sign": 0.783}}
+chart: coverage {"playtime": 0.02, "returning": 0.0, "first_step": 0.008, "sessions": 0.019, "hold": 0.481, "session_len": 0.963, "like_ratio": 0.925, "fav_conv": 0.879, "rev_per_player": 0.871, "size": 1.0, "momentum": 1.0, "age": 1.0, "has_badges": 1.0}
+chart: stability {"playtime": {"w": 0.098, "lo": -0.114, "hi": 0.331, "sign": 0.7}, "first_step": {"w": -0.059, "lo": -0.174, "hi": 0.141, "sign": 0.767}, "sessions": {"w": 0.034, "lo": -0.112, "hi": 0.287, "sign": 0.6}, "hold": {"w": -0.27, "lo": -0.418, "hi": -0.075, "sign": 1.0}, "session_len": {"w": 0.251, "lo": 0.048, "hi": 0.5, "sign": 0.983}, "like_ratio": {"w": 0.285, "lo": 0.026, "hi": 0.69, "sign": 0.983}, "fav_conv": {"w": -0.241, "lo": -0.61, "hi": 0.016, "sign": 0.933}, "rev_per_player": {"w": -0.375, "lo": -0.662, "hi": -0.126, "sign": 1.0}, "size": {"w": 0.774, "lo": 0.613, "hi": 1.094, "sign": 1.0}, "momentum": {"w": 0.452, "lo": 0.28, "hi": 0.711, "sign": 1.0}, "age": {"w": -0.311, "lo": -0.578, "hi": -0.024, "sign": 0.983}, "has_badges": {"w": 0.235, "lo": 0.035, "hi": 0.386, "sign": 0.967}}
 chart: wf {"folds": 0, "horizon": 8, "test_from": null}
 
-growth: coverage {"playtime": 0.054, "returning": 0.0, "first_step": 0.021, "sessions": 0.054, "hold": 0.487, "session_len": 0.946, "like_ratio": 0.953, "fav_conv": 0.908, "rev_per_player": 0.901, "size": 1.0, "momentum": 1.0, "age": 1.0, "has_badges": 1.0}
-growth: stability {"playtime": {"w": -0.19, "lo": -0.287, "hi": -0.075, "sign": 1.0}, "first_step": {"w": -0.027, "lo": -0.107, "hi": 0.054, "sign": 0.667}, "sessions": {"w": -0.065, "lo": -0.173, "hi": 0.107, "sign": 0.817}, "hold": {"w": -0.174, "lo": -0.34, "hi": -0.008, "sign": 0.967}, "session_len": {"w": 0.111, "lo": -0.02, "hi": 0.233, "sign": 0.867}, "like_ratio": {"w": 0.066, "lo": -0.07, "hi": 0.185, "sign": 0.717}, "fav_conv": {"w": 0.091, "lo": -0.027, "hi": 0.202, "sign": 0.85}, "rev_per_player": {"w": -0.252, "lo": -0.426, "hi": -0.047, "sign": 0.983}, "size": {"w": -0.34, "lo": -0.526, "hi": -0.247, "sign": 1.0}, "momentum": {"w": 0.794, "lo": 0.672, "hi": 0.958, "sign": 1.0}, "age": {"w": -0.361, "lo": -0.534, "hi": -0.168, "sign": 1.0}, "has_badges": {"w": -0.086, "lo": -0.264, "hi": 0.066, "sign": 0.85}}
-growth: wf {"folds": 4, "horizon": 8, "test_from": null, "lr": {"n": 2553, "pos": 291, "auc": 0.4746, "base": 0.114, "top": 0.1176, "top_n": 255, "lo": 0.4443, "hi": 0.5023}, "gbm": {"n": 2553, "pos": 291, "auc": 0.7974, "base": 0.114, "top": 0.4549, "top_n": 255, "lo": 0.7739, "hi": 0.8252}, "p_trees_better": 1.0, "diff": 0.3253}
-- chart, 0-day purge: simple 0.794 · trees 0.781 · n 625 · folds 4
+growth: coverage {"playtime": 0.057, "returning": 0.0, "first_step": 0.025, "sessions": 0.056, "hold": 0.484, "session_len": 0.942, "like_ratio": 0.944, "fav_conv": 0.903, "rev_per_player": 0.896, "size": 1.0, "momentum": 1.0, "age": 1.0, "has_badges": 1.0}
+growth: stability {"playtime": {"w": -0.139, "lo": -0.288, "hi": 0.023, "sign": 0.917}, "first_step": {"w": 0.002, "lo": -0.083, "hi": 0.084, "sign": 0.5}, "sessions": {"w": 0.111, "lo": -0.055, "hi": 0.347, "sign": 0.867}, "hold": {"w": -0.222, "lo": -0.502, "hi": -0.064, "sign": 0.983}, "session_len": {"w": 0.008, "lo": -0.155, "hi": 0.162, "sign": 0.45}, "like_ratio": {"w": -0.018, "lo": -0.123, "hi": 0.12, "sign": 0.617}, "fav_conv": {"w": -0.071, "lo": -0.223, "hi": 0.015, "sign": 0.9}, "rev_per_player": {"w": -0.324, "lo": -0.52, "hi": -0.188, "sign": 1.0}, "size": {"w": -0.437, "lo": -0.676, "hi": -0.265, "sign": 1.0}, "momentum": {"w": 0.911, "lo": 0.796, "hi": 1.023, "sign": 1.0}, "age": {"w": -0.298, "lo": -0.448, "hi": -0.142, "sign": 1.0}, "has_badges": {"w": 0.067, "lo": -0.217, "hi": 0.224, "sign": 0.667}}
+growth: wf {"folds": 4, "horizon": 8, "test_from": null, "lr": {"n": 2532, "pos": 272, "auc": 0.575, "base": 0.1074, "top": 0.1383, "top_n": 253, "lo": 0.5453, "hi": 0.6011}, "gbm": {"n": 2532, "pos": 272, "auc": 0.7982, "base": 0.1074, "top": 0.4387, "top_n": 253, "lo": 0.7667, "hi": 0.8255}, "p_trees_better": 1.0, "diff": 0.2239}
+- chart, 0-day purge: simple 0.836 · trees 0.867 · n 624 · folds 4
 - chart, 8-day purge: simple None · trees None · n None · folds 0
-- growth, 0-day purge: simple 0.663 · trees 0.837 · n 4179 · folds 4
-- growth, 8-day purge: simple 0.475 · trees 0.797 · n 2553 · folds 4
+- growth, 0-day purge: simple 0.728 · trees 0.822 · n 4168 · folds 4
+- growth, 8-day purge: simple 0.575 · trees 0.798 · n 2532 · folds 4
 
 🧠 **Algorithm mirror: what Roblox is rewarding right now**
 _Learned from which games Roblox promoted (chart entries, 50%+ growth) in the following week, after allowing for size, momentum and age. Only signals that keep their direction when the model is refitted on resampled games are listed as findings._
-🟥🟥 weekday hold vs a typical game (-0.18) — games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention
-🟥🟥🟥🟥 revenue per player (-0.41) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
-▫️ Unclear this week (direction flips when resampled, or measured for too few games): session length, like ratio, new players reaching the next badge, sessions per player per day, favourite rate, playtime per player per day
-• Model for *enters a Roblox chart within 7 days* (1,302 game-days): Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (8-day outcomes).
-• Model for *players up 50%+ within 7 days* (5,178 game-days): Honest test: accuracy **0.80** (likely between 0.77 and 0.83) · 0.5 = coin flip · top 10% picks came true **45%** of the time vs 11% for all · 2,553 predictions, each made by a model trained only on outcomes already known at the time
-  ⚙️ Using **boosted trees**: 0.80 vs 0.47 for the simple model (trees better in 100% of resamples)
-🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.64; their top 10% were promoted 14% of the time vs 7% overall (18,548 predictions).
-🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.78; their top 10% were promoted 33% of the time vs 8% overall (21,341 predictions).
+🟥🟥 favourite rate (-0.16)
+🟥🟥🟥 weekday hold vs a typical game (-0.25) — games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention
+🟥🟥🟥🟥 revenue per player (-0.35) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
+▫️ Unclear this week (direction flips when resampled, or measured for too few games): like ratio, session length, sessions per player per day, playtime per player per day, new players reaching the next badge
+• Model for *enters a Roblox chart within 7 days* (1,284 game-days): Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (8-day outcomes).
+• Model for *players up 50%+ within 7 days* (5,182 game-days): Honest test: accuracy **0.80** (likely between 0.77 and 0.83) · 0.5 = coin flip · top 10% picks came true **44%** of the time vs 11% for all · 2,532 predictions, each made by a model trained only on outcomes already known at the time
+  ⚙️ Using **boosted trees**: 0.80 vs 0.57 for the simple model (trees better in 100% of resamples)
+🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.64; their top 10% were promoted 14% of the time vs 7% overall (18,550 predictions).
+🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.78; their top 10% were promoted 33% of the time vs 8% overall (21,343 predictions).
 _Correlation from public data, not Roblox's actual model. The live check is the number to trust: it scores predictions made before the outcome existed._
 
-_12.5s_
+_14.6s_
 
 ## Explosion model
 
@@ -384,42 +387,42 @@ status: {"examples": 257, "positives": 12, "trained": true, "day": "2026-11-09",
 • Drivers that hold up when resampled: same-mechanic games that exploded in the month before (+), game age when noticed (−), copies in the same mechanic in the 2 weeks before (−), studio's best previous game (−), visits gained on day 1 (−), growth from day 0 to day 1 (+)
 
 🎯 **Scorecard: how often signals were followed by an explosion**
-• 🆕 crossed 2K: — · 640 still in their 21-day window (35 already exploded)
+• 🆕 crossed 2K: — · 641 still in their 21-day window (35 already exploded)
 • chart: — · 69 still in their 21-day window (28 already exploded)
 • 👀 early warning: — · 108 still in their 21-day window (4 already exploded)
 • update: — · 8 still in their 21-day window (4 already exploded)
 • 🚀 surge: — · 356 still in their 21-day window (36 already exploded)
 • 💥 breakout: — · 161 still in their 21-day window (29 already exploded)
 • 🧬 copy wave: — · 166 still in their 21-day window (14 already exploded)
-• longterm: — · 45 still in their 21-day window (3 already exploded)
+• longterm: — · 50 still in their 21-day window (3 already exploded)
 • 🔥 heat: — · 18 still in their 21-day window (5 already exploded)
 • abroad: — · 405 still in their 21-day window (36 already exploded)
 • studio: — · 15 still in their 21-day window (2 already exploded)
 • 🎯 prediction: — · 9 still in their 21-day window
-• model < 50%: — · 153 still in their 21-day window
+• model < 50%: — · 161 still in their 21-day window
 • model ≥ 50%: — · 7 still in their 21-day window (1 already exploded)
 _Only signals whose 21 days are up are scored, so early wins don't flatter the rate._
 
-_2.5s_
+_3.1s_
 
 ## Stickiness and lasting features
 
-games scored: 2605 · weights {"hold_rel": 0.3, "playtime": 0.2, "session_min": 0.15, "level_kept": 0.15, "fav_conv": 0.1, "rev_per_ccu": 0.1} · per-signal rank correlation with players kept 4 weeks later: {} · n 0 · honest cross-check null
-description features: 152 long-term vs 759 others · checked 16
+games scored: 2606 · weights {"hold_rel": 0.3, "playtime": 0.2, "session_min": 0.15, "level_kept": 0.15, "fav_conv": 0.1, "rev_per_ccu": 0.1} · per-signal rank correlation with players kept 4 weeks later: {} · n 0 · honest cross-check null
+description features: 152 long-term vs 761 others · checked 16
 - leaderboards: lift 1.96 (1.17–3.27) · 69 games · reliable: True
-- offline / idle earnings: lift 1.72 (1.0–2.96) · 70 games · reliable: False
-- codes: lift 1.4 (0.85–2.32) · 112 games · reliable: False
-- pets / collecting: lift 1.25 (0.82–1.89) · 219 games · reliable: False
-- group rewards: lift 1.11 (0.67–1.83) · 143 games · reliable: False
-- trading: lift 1.39 (0.61–3.17) · 35 games · reliable: False
-- daily rewards / streaks: lift 1.6 (0.58–4.37) · 19 games · reliable: False
-- quests / missions: lift 1.11 (0.53–2.29) · 60 games · reliable: False
-- rebirth / prestige: lift 1.13 (0.51–2.51) · 48 games · reliable: False
-- limited events: lift 0.93 (0.43–2.02) · 64 games · reliable: False
-- base building / decorating: lift 0.74 (0.42–1.28) · 170 games · reliable: False
-- PvP: lift 0.81 (0.32–2.05) · 51 games · reliable: False
+- offline / idle earnings: lift 1.72 (1.0–2.97) · 70 games · reliable: False
+- codes: lift 1.41 (0.85–2.32) · 112 games · reliable: False
+- pets / collecting: lift 1.25 (0.82–1.9) · 219 games · reliable: False
+- group rewards: lift 1.1 (0.67–1.82) · 144 games · reliable: False
+- trading: lift 1.39 (0.61–3.18) · 35 games · reliable: False
+- daily rewards / streaks: lift 1.6 (0.58–4.38) · 19 games · reliable: False
+- quests / missions: lift 1.11 (0.53–2.3) · 60 games · reliable: False
+- rebirth / prestige: lift 1.13 (0.51–2.52) · 48 games · reliable: False
+- limited events: lift 0.93 (0.43–2.03) · 64 games · reliable: False
+- base building / decorating: lift 0.74 (0.43–1.28) · 170 games · reliable: False
+- PvP: lift 0.82 (0.32–2.06) · 51 games · reliable: False
 
-_1.8s_
+_2.0s_
 
 ## Money: top earners under 5K players
 
@@ -457,18 +460,19 @@ _Model check · 2026-11-09_
 **🧠 Algorithm mirror**
 🧠 **Algorithm mirror: what Roblox is rewarding right now**
 _Learned from which games Roblox promoted (chart entries, 50%+ growth) in the following week, after allowing for size, momentum and age. Only signals that keep their direction when the model is refitted on resampled games are listed as findings._
-🟥🟥 weekday hold vs a typical game (-0.18) — games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention
-🟥🟥🟥🟥 revenue per player (-0.41) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
-▫️ Unclear this week (direction flips when resampled, or measured for too few games): session length, like ratio, new players reaching the next badge, sessions per player per day, favourite rate, playtime per player per day
-• Model for *enters a Roblox chart within 7 days* (1,302 game-days): Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (8-day outcomes).
-• Model for *players up 50%+ within 7 days* (5,178 game-days): Honest test: accuracy **0.80** (likely between 0.77 and 0.83) · 0.5 = coin flip · top 10% picks came true **45%** of the time vs 11% for all · 2,553 predictions, each made by a model trained only on outcomes already known at the time
-  ⚙️ Using **boosted trees**: 0.80 vs 0.47 for the simple model (trees better in 100% of resamples)
-🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.64; their top 10% were promoted 14% of the time vs 7% overall (18,548 predictions).
-🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.78; their top 10% were promoted 33% of the time vs 8% overall (21,341 predictions).
+🟥🟥 favourite rate (-0.16)
+🟥🟥🟥 weekday hold vs a typical game (-0.25) — games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention
+🟥🟥🟥🟥 revenue per player (-0.35) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
+▫️ Unclear this week (direction flips when resampled, or measured for too few games): like ratio, session length, sessions per player per day, playtime per player per day, new players reaching the next badge
+• Model for *enters a Roblox chart within 7 days* (1,284 game-days): Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (8-day outcomes).
+• Model for *players up 50%+ within 7 days* (5,182 game-days): Honest test: accuracy **0.80** (likely between 0.77 and 0.83) · 0.5 = coin flip · top 10% picks came true **44%** of the time vs 11% for all · 2,532 predictions, each made by a model trained only on outcomes already known at the time
+  ⚙️ Using **boosted trees**: 0.80 vs 0.57 for the simple model (trees better in 100% of resamples)
+🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.64; their top 10% were promoted 14% of the time vs 7% overall (18,550 predictions).
+🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.78; their top 10% were promoted 33% of the time vs 8% overall (21,343 predictions).
 _Correlation from public data, not Roblox's actual model. The live check is the number to trust: it scores predictions made before the outcome existed._
 
 **⭐ Trend Score**
-🚀 **Trend Score** — chance a young game at least doubles and passes 5,000 players within 2 weeks · now using: **learned**
+🚀 **Trend Score** — chance a young game at least doubles and passes 5,000 players within 2 weeks · now using: **starting formula**
 • Starting formula vs real outcomes: accuracy **0.66** (likely 0.58–0.74) · its top 10% took off 16% of the time vs 6.8% for all · 501 snapshots over 1 days
 • Learned model: not trained yet — needs 2000+ outcomes with 60+ take-offs over 21+ days (has 501 / 34 over 1 day)
 • Scores as shown at the time: 50+: 36% took off (14) · 25–49: 6% took off (17) · 10–24: 14% took off (51) · under 10: 5% took off (419)
@@ -481,19 +485,19 @@ _Correlation from public data, not Roblox's actual model. The live check is the 
 • Drivers that hold up when resampled: same-mechanic games that exploded in the month before (+), game age when noticed (−), copies in the same mechanic in the 2 weeks before (−), studio's best previous game (−), visits gained on day 1 (−), growth from day 0 to day 1 (+)
 
 🎯 **Scorecard: how often signals were followed by an explosion**
-• 🆕 crossed 2K: — · 640 still in their 21-day window (35 already exploded)
+• 🆕 crossed 2K: — · 641 still in their 21-day window (35 already exploded)
 • chart: — · 69 still in their 21-day window (28 already exploded)
 • 👀 early warning: — · 108 still in their 21-day window (4 already exploded)
 • update: — · 8 still in their 21-day window (4 already exploded)
 • 🚀 surge: — · 356 still in their 21-day window (36 already exploded)
 • 💥 breakout: — · 161 still in their 21-day window (29 already exploded)
 • 🧬 copy wave: — · 166 still in their 21-day window (14 already exploded)
-• longterm: — · 45 still in their 21-day window (3 already exploded)
+• longterm: — · 50 still in their 21-day window (3 already exploded)
 • 🔥 heat: — · 18 still in their 21-day window (5 already exploded)
 • abroad: — · 405 still in their 21-day window (36 already exploded)
 • studio: — · 15 still in their 21-day window (2 already exploded)
 • 🎯 prediction: — · 9 still in their 21-day window
-• model < 50%: — · 153 still in their 21-day window
+• model < 50%: — · 161 still in their 21-day window
 • model ≥ 50%: — · 7 still in their 21-day window (1 already exploded)
 _Only signals whose 21 days are up are scored, so early wins don't flatter the rate._
 
@@ -508,14 +512,14 @@ _Only signals whose 21 days are up are scored, so early wins don't flatter the r
 📈 Peak forecasts (made on day 5): typically off by **74%**; 54% within 2× of the real peak (573 games)
    ↳ not proven enough to quote numbers (needs 30+ games with 60% within 2×): the bot says "big rise ahead / more growth / near its peak" instead
 🧭 Breakout-start signal: followed by 2× players within 2 weeks **18%** of the time vs 22% for any young game (208 firings) · **alerts paused** until it beats that by 1.3× over 20+ firings
-⏳ A typical hit keeps half its peak players for **10 days** (1668 games; 1083 have dropped below half so far)
-By weekday hold in the weeks BEFORE the peak: holds weekday players well **23d** (422) · average weekday hold **15d** (528) · holds them poorly **6d** (543)
-By mechanic: Roleplay / life **14d** (79) · Anime / fighting style **12d** (39) · Eat / grow big **11d** (14) · Sports **10d** (46)
-By genre: Social **33d** (19) · Shooter **31d** (57) · Obby & Platformer **19d** (116) · Action **16d** (123)
+⏳ A typical hit keeps half its peak players for **11 days** (926 games; 399 have dropped below half so far)
+By weekday hold in the weeks BEFORE the peak: average weekday hold **13d** (117) · holds weekday players well **12d** (187) · holds them poorly **8d** (25)
+By mechanic: Care / baby / pets **13d** (15) · Anime / fighting style **12d** (23) · Roleplay / life **11d** (44) · Sports **10d** (30)
+By genre: RPG **12d** (35) · Roleplay & Avatar Sim **11d** (53) · Party & Casual **11d** (49) · Strategy **11d** (25)
 
 **📏 Stickiness weights**
 weekday hold 30% · playtime per player 20% · session length 15% · players kept vs best week 15% · favourite rate 10% · revenue per player 10% — starting weights (0 of 300 game-weeks needed to learn)
 
-📥 Past histories downloaded: **2,426** games (2,518 tried)
+📥 Past histories downloaded: **2,435** games (2,529 tried)
 
-_3.4s_
+_3.8s_
