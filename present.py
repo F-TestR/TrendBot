@@ -502,7 +502,8 @@ def weekly_cards(db, state, today, ctx, table):
         if solid:
             scale = max(abs(r["w"]) for r in solid)
             for r in solid[:6]:
-                al.append(f"{_bar(r['w'], scale)} {P.LABEL[r['f']].split(' (')[0]}")
+                al.append(f"{_bar(r['w'], scale)} {P.LABEL[r['f']].split(' (')[0]}"
+                          + (f" — _{P.NOTES[r['f']]}_" if r["f"] in getattr(P, "NOTES", {}) else ""))
             top2 = [P.LABEL[r["f"]].split(" (")[0] for r in solid[:2] if r["w"] > 0]
             if top2:
                 head.append(f"🧠 **Roblox is reliably rewarding:** {' and '.join(top2)}")

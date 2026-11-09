@@ -503,7 +503,8 @@ ALERT_DAILY_BUDGET = 12          # most alert cards per day (pings and watchlist
 ALERT_BURST = 3                  # strong alerts may run this many cards ahead of the clock (12 a day = one every 2 hours)
 ALERT_QUEUE_HOURS = 12           # an alert that didn't fit waits this long for a free slot before it goes to the digest list
 ALERT_PRIOR_WEIGHT = 20          # how many alerts' worth of weight the starting guess for each alert type carries
-PING_DAILY_CAP = 6               # most @-pings per day; beyond this a ping-worthy alert is ranked like any other
+PING_DAILY_CAP = 6               # most @-pings per day, spread through the day; raise it if you want more
+PING_PRIO_BOOST = 1.5            # a ping-worthy alert that doesn't get a ping still ranks this much higher than its kind
 COOLDOWN_KEEP_DAYS = 70          # remember "already alerted" this long (the longest cooldown is 60 days)
 
 # =====================================================================

@@ -78,8 +78,15 @@ except TypeError as e:
     check("budget: everything it keeps can be saved", False, str(e))
 ping = [{"kind": "surge", "gid": f"p{i}", "title": f"ping {i}", "desc": "d", "url": None, "fields": [], "ping": True,
          "keys": [], "text": "t"} for i in range(C.PING_DAILY_CAP + 4)]
-out = bot.apply_budget(ping, {"alerts": {}, "ts": {}}, "2026-11-20", datetime(2026, 11, 20, 0, 7, tzinfo=timezone.utc), prec)
-check("budget: pings are capped per day", sum(1 for a in out if a["ping"]) == C.PING_DAILY_CAP, str(len(out)))
+pst, got_pings = {"alerts": {}, "ts": {}}, []
+for hour in (0, 6, 12, 18, 23):
+    for a in ping:
+        a["ping"] = True
+    batch = [dict(a, gid=f"{a['gid']}h{hour}") for a in ping]
+    out = bot.apply_budget(batch, pst, "2026-11-20", datetime(2026, 11, 20, hour, 7, tzinfo=timezone.utc), prec)
+    got_pings.append(sum(1 for a in out if a["ping"]))
+check("budget: pings are capped per day and spread through it",
+      sum(got_pings) == C.PING_DAILY_CAP and got_pings[0] <= 2 and sum(got_pings[2:]) >= 2, str(got_pings))
 
 # ---- circuit breaker ------------------------------------------------------------------------------------------------
 NET.begin()

@@ -283,8 +283,11 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
     try:
         restored = W.restore_if_missing()  # before loading state, so a lost cache comes back whole
     except W.RestoreFailed as e:
-        sys.exit(f"The bot's memory is missing from the cache and {e}. Stopping here rather than starting from "
-                 f"nothing, which would replace the real memory. The next run will try again.")
+        msg = (f"The bot's memory is missing from the cache and {e}. Stopping here rather than starting from "
+               f"nothing, which would replace the real memory. The next run will try again.")
+        if now_utc().minute < 20 and not dry_run:        # about once an hour while it lasts, not every run
+            post_discord(alerts_url, "⚠️ **Trend bot is paused** — " + msg, False, "ops")
+        sys.exit(msg)
     if restored:
         print(restored)
     state = load_state()
@@ -1005,7 +1008,7 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
                 db.commit()
                 print(f"trend score: {nts} games scored ({state.get('ts_mode')}), "
                       f"{tst.get('examples', 0)} outcomes / {tst.get('positives', 0)} took off")
-                raw_mode = state.get("ts_mode") == "starting formula"     # not yet calibrated against real outcomes
+                raw_mode = not TS.calibrated(state)                      # not yet calibrated against real outcomes
                 ts_alert, ts_ping = (C.TS_ALERT, C.TS_PING) if raw_mode else (C.TS_ALERT_CAL, C.TS_PING_CAL)
                 base = (W.meta_get(db, "trend_prior", {}) or {}).get("base")
                 for gid, v in sorted((state.get("_ts") or {}).items(), key=lambda kv: -kv[1]["score"]):
@@ -1146,6 +1149,8 @@ def run_once(dry_run=False, force_digest=False, force_weekly=False):
         except Exception as e:
             state["backup"] = f"failed: {e}"
         print("backup: " + state["backup"])
+        if state["backup"].startswith(("failed", "⚠️")) and not dry_run:
+            ops_notice(state, "backup", "⚠️ **Backup problem** — " + state["backup"][:600].lstrip("⚠️ "))
     def weekly():
         text, table = I.weekly_report(state, today)
         files = []
@@ -1693,7 +1698,7 @@ def priority(a, state, prec):
     ts = (state.get("ts") or {}).get(a.get("gid")) if a["kind"] in GAME_KINDS else None
     if ts is None:
         return p
-    if state.get("ts_mode") == "starting formula":
+    if not TS.calibrated(state):
         return p * (0.5 + ts / 100.0)    # an uncalibrated score is only a ranking: let it nudge, not decide
     return (p + ts / 100.0) / 2          # a calibrated score is a chance in its own right
 
@@ -1710,7 +1715,8 @@ def apply_budget(alerts, state, today, t, prec):
       - an alert that would have made yesterday's top cards goes straight out, up to ALERT_BURST ahead of the clock
       - alerts that don't fit wait up to ALERT_QUEUE_HOURS; after that they're listed in the digest, and their
         cooldown is put back so the game can alert again tomorrow if it's still moving
-      - pings (at most PING_DAILY_CAP a day) and watchlist games always go straight out
+      - watchlist games always go straight out; so do pings, the strongest first, at most PING_DAILY_CAP a day
+        (about 25 a day were going out, on top of the 12 cards, because pings skipped the budget entirely)
     """
     count = state.setdefault("alert_count", {})
     pings = state.setdefault("ping_count", {})
@@ -1730,23 +1736,26 @@ def apply_budget(alerts, state, today, t, prec):
             continue
         (waiting if a.get("queued", "") >= cutoff else expired).append(a)
 
+    # Pings: the strongest first, at most PING_DAILY_CAP a day and spread through it like the cards. A ping-worthy
+    # alert that doesn't get a ping still counts for more than an ordinary alert of its kind.
+    frac = (t.hour * 60 + t.minute) / 1440.0
+    ping_room = min(C.PING_DAILY_CAP, math.ceil(C.PING_DAILY_CAP * frac) + 1) - pings.get(today, 0)
+    must = [a for a in alerts if a.get("gid") in C.WATCHLIST]
+    for a in sorted([a for a in alerts if a.get("ping") and a not in must], key=lambda a: -a["prio"]):
+        if ping_room > 0:
+            must.append(a)
+            ping_room -= 1
+        else:
+            a["ping"] = False
+            a["prio"] = round(min(0.95, a["prio"] * C.PING_PRIO_BOOST), 4)
+
     # yesterday's alerts set the bar for "goes straight out"
     hist = state.setdefault("alert_prios", {})
     hist.setdefault(today, []).extend(a["prio"] for a in alerts)
     ref = sorted(hist.get(day_str(t - timedelta(days=1))) or [], reverse=True)
     bar = ref[C.ALERT_DAILY_BUDGET - 1] if len(ref) >= C.ALERT_DAILY_BUDGET else None
 
-    must = []
-    for a in alerts:
-        if a.get("gid") in C.WATCHLIST:
-            must.append(a)
-        elif a.get("ping"):
-            if pings.get(today, 0) + sum(1 for m in must if m.get("ping")) < C.PING_DAILY_CAP:
-                must.append(a)
-            else:
-                a["ping"] = False        # enough pings for one day: it competes for a card like any other alert
     pool = sorted([a for a in alerts if a not in must] + waiting, key=lambda a: -a.get("prio", 0))
-    frac = (t.hour * 60 + t.minute) / 1440.0
     on_clock = math.ceil(C.ALERT_DAILY_BUDGET * frac)
     room = max(0, C.ALERT_DAILY_BUDGET - used - len(must))
     due = max(0, on_clock - used - len(must))

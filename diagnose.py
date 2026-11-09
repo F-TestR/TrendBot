@@ -162,6 +162,22 @@ def report(db, state, today, fmt):
         o.append(f"backup: {state.get('backup', '—')}")
     section(out, "Plumbing: runs, alert cards, sources, backup", plumbing)
 
+    # ------------------------------------------------------------ the cards
+    def cards(o):
+        """Build the daily digest and the weekly report from today's real data, without posting them: a mistake in
+        a card would otherwise only show up when the real digest falls back to plain text."""
+        import bot as B
+        import present as PR
+        ctx = B.present_ctx()
+        dc = [c for c in PR.digest_cards(db, state, today, state.get("cutoff") or 0, B.now_utc(), ctx) if c]
+        o.append(f"daily digest: {len(dc)} cards built — " + " · ".join(c["title"][:45] for c in dc))
+        text, table = I.weekly_report(state, today)
+        wc = [c for c in PR.weekly_cards(db, state, today, ctx, table) if c]
+        o.append(f"\nweekly report: {len(wc)} cards built — " + " · ".join(c["title"][:45] for c in wc))
+        for c in dc[:2] + wc:
+            o.append(f"\n**{c['title']}**\n{c['description'][:1500]}")
+    section(out, "Digest and weekly cards, built from today's data (not posted)", cards)
+
     # --------------------------------------------------------------- trend score
     def trend(o):
         rows = db.execute("SELECT day, uid, players, feats, score FROM trend_feats WHERE day<=?", (_s(_d(today) - timedelta(days=14)),)).fetchall()

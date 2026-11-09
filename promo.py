@@ -426,7 +426,9 @@ def shifts(db):
 
 
 NOTES = {"rev_per_player": "fast-growing games are full of new players who haven't paid yet, so this mostly means "
-                           "\"is growing\", not that Roblox punishes monetisation"}
+                           "\"is growing\", not that Roblox punishes monetisation",
+         "hold": "games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "
+                 "\"already settled\", not that Roblox punishes retention"}
 
 
 def report_lines(db, today):

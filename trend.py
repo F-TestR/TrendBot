@@ -47,6 +47,16 @@ PRIOR = {"growth": 0.9, "accel": 1.2, "headroom": 0.5, "promo": 2.0, "breakout":
 PRIOR_BIAS = -3.4
 
 
+RULE = 2    # 2 = "at least doubles and passes 5,000 players on 2+ days"; scores saved under an older rule aren't percentages
+
+
+def calibrated(state):
+    """Are the saved scores real percentages? Only if they were made under the current definition, by the learned
+    model or the calibrated formula. (Scores saved before the definition changed came from a model trained on one
+    day of data, and must not be read as chances until the next daily update replaces them.)"""
+    return state.get("ts_rule") == RULE and (state.get("ts_mode") or "starting formula") != "starting formula"
+
+
 def _d(s):
     return datetime.strptime(s, "%Y-%m-%d")
 
@@ -375,6 +385,7 @@ def update(db, state, today, ids, ctx):
     state["_ts"] = out
     state["ts"] = {u: v["score"] for u, v in out.items() if v["score"] >= 20}  # small, kept between runs for alerts
     state["ts_mode"] = "learned" if trusted else ("starting formula, calibrated" if cal else "starting formula")
+    state["ts_rule"] = RULE              # which definition these scores were made under (see calibrated())
     return len(out), st
 
 
