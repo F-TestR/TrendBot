@@ -1,72 +1,70 @@
-# Daily digest · 2026-11-16
+# Daily digest · 2026-11-17
 
-## 📊 Daily digest · Mon 16 Nov
+## 📊 Daily digest · Tue 17 Nov
 
-⭐ **Highest Trend Score:** [(UPD 2) Barber Simulator](https://www.roblox.com/games/134026357772960) — **61** (players ×11.7 vs last week, players come back on weekdays)
-🚀 **Biggest riser:** [Sandworm Playground](https://www.roblox.com/games/88246556972100) — ×120.0 to 15.6K
-🧠 **Roblox likely to push next:** [Hyper Realistic Ragdoll](https://www.roblox.com/games/101277003916102) — 87%
-📈 **Biggest forecast:** [Ragdoll Soccer](https://www.roblox.com/games/106931373443671) — 15.8K now, more growth ahead (rough)
-🔥 **Hottest across platforms:** [In This Town... (NEW MAPS)](https://www.roblox.com/games/114539048616311) — heat 81
-⏱ **Most playtime per player:** [DigCrew](https://www.roblox.com/games/121026651633542) — 71 min/day
+⭐ **Highest Trend Score:** [In This Town... (NEW MAPS)](https://www.roblox.com/games/114539048616311) — **55** (forecast: big rise ahead, Shorts taking off (23.5K views/hour))
+🚀 **Biggest riser:** [Realistic Ragdoll MMA 🥊](https://www.roblox.com/games/124780003623150) — ×77.5 to 15.3K
+🧠 **Roblox likely to push next:** [😺+1 Catboy Evolution](https://rowatcher.com/games/10774906107) — 83%
+🔥 **Hottest across platforms:** [Stop The Tsunami!](https://www.roblox.com/games/71586501620185) — heat 73
+⏱ **Most playtime per player:** [DigCrew](https://www.roblox.com/games/121026651633542) — 91 min/day
 🌱 **Theme to watch:** "market" — 5 signals, 0 new games this week
-🔮 **Coming up:** A Dog's Perfect Christmas (out 12 days ago) — 🌉 2 new Roblox games already
-⚠️ **Watchlist falling:** Eat Everything In A Grocery Store -48% week on week
-📥 **Also flagged** (didn't make the day's 12 alert cards; strongest first): 🆕 Just crossed 2.0K players: ✈️ Paper To Plane; 🚀 Trend Score 39: Voxelcraft 1.21.4; 📈 Entered Roblox's algorithm charts: [🐜] Ant Evolution; 🔥 Heating up on 2 platforms: [UPD] Rollercoaster Tycoon 🎢; 🚀 Surging: SAURUS [HORROR] (+75 more)
+🔮 **Coming up:** Hack it Tycoon (out 5 days ago) — 🌉 1 new Roblox game already
+⚠️ **Watchlist falling:** Eat Everything In A Grocery Store -56% week on week
+📥 **Also flagged** (didn't make the day's 12 alert cards; strongest first): 🚀 Trend Score 54: In This Town... [NEW MAPS]; 🚀 Trend Score 50: Throw Key for Cars; 🚀 Trend Score 50: 💣 Ragdoll Destruction Playground; 🚀 Trend Score 40: Car Destruction Engine [EARLY ACCESS]; 🚀 Trend Score 39: DigCrew (+75 more)
 
-_5,346 games tracked · 254,368 game-days stored · comparing Sunday with the same kind of day last week_
+_5,433 games tracked · 262,178 game-days stored · comparing Monday with the same kind of day last week_
 
 ## 🎮 Games to watch · ranked by Trend Score
 
-**61** · **[(UPD 2) Barber Simulator](https://www.roblox.com/games/134026357772960)** — 4.3K playing · 33d old · players ×11.7 vs last week · players come back on weekdays
-**59** · **[Run a Christmas Tree Lot](https://www.roblox.com/games/112146301142141)** — 5.9K playing · 12d old · players ×12.4 vs last week · forecast: big rise ahead
-**56** · **[(UPD) Build a REAL House](https://www.roblox.com/games/113986269985034)** — 6.2K playing · 26d old · players come back on weekdays · players ×13.9 vs last week
-**55** · **[🤡 Class Clowns](https://www.roblox.com/games/128447145965727)** — 5.2K playing · 20d old · players ×46.9 vs last week · forecast: big rise ahead
-**54** · **[In This Town... (NEW MAPS)](https://www.roblox.com/games/114539048616311)** — 923 playing · 10d old · forecast: big rise ahead · Shorts taking off (11.3K views/hour)
-**50** · **[Throw Key for Cars](https://www.roblox.com/games/115599018087832)** — 7.6K playing · 18d old · players ×33.9 vs last week · forecast: big rise ahead
-**50** · **[💣 Ragdoll Destruction Playground](https://www.roblox.com/games/135471930388646)** — 7.1K playing · 13d old · players ×54.4 vs last week · forecast: big rise ahead
-**40** · **[Car Destruction Engine (EARLY ACC…](https://www.roblox.com/games/136302164521498)** — 2.6K playing · 41d old · players ×16.2 vs last week · forecast: big rise ahead
+**55** · **[In This Town... (NEW MAPS)](https://www.roblox.com/games/114539048616311)** — 1.1K playing · 11d old · forecast: big rise ahead · Shorts taking off (23.5K views/hour)
+**47** · **[😺+1 Catboy Evolution](https://rowatcher.com/games/10774906107)** — 741 playing · 11d old · growth just accelerated · forecast: big rise ahead
+**43** · **[Throw Key for Cars](https://www.roblox.com/games/115599018087832)** — 7.7K playing · 19d old · players ×28.9 vs last week · forecast: big rise ahead
+**43** · **[Pixel Z (UPDATE!)](https://www.roblox.com/games/88379863274840)** — 2.1K playing · 13d old · players ×19.9 vs last week · forecast: big rise ahead
+**42** · **[Raise an Ant Colony 🐜](https://www.roblox.com/games/74280534082174)** — 2.5K playing · 29d old · players ×11.1 vs last week · forecast: big rise ahead
+**41** · **[+1 Fighter Jet Evolution](https://rowatcher.com/games/10773617422)** — 930 playing · 19d old · forecast: big rise ahead · growth just accelerated
+**41** · **[Dig out of Hospital 🏥](https://www.roblox.com/games/128018439975947)** — 2.1K playing · 18d old · players ×11.5 vs last week · forecast: big rise ahead
+**40** · **[🌎 In This World](https://www.roblox.com/games/98272441761103)** — 580 playing · 13d old · forecast: big rise ahead · Shorts taking off (35.5K views/hour)
 
 _Trend Score = how likely it is to at least double AND pass 5,000 players within 2 weeks, combining every signal · reasons = what pushed it up most · starting formula, calibrated_
 
 ## 🌱 Trends
 
-🌱 "market" · 5 signals · 4 games, 0 new · 21.9K players
-🌱 "chase" · 4 signals · 2 games, 0 new · 13.0K players
-🌱 "rob" · 4 signals · 8 games, 0 new · 23.7K players
-🌱 "mine" · 3 signals · 5 games, 0 new · 22.8K players
-🧬 "steal" in 28 new titles: Steal A Dumpling, [🔥] Jump To Steal Anime!, [👑] Hussing To Steal Eg…
-🧬 "build" in 28 new titles: Grow And Build Giants, [UPD ✈️] Build a Car to…, Build To Survive The Di…
-🧬 "ragdoll" in 21 new titles: Untitled Ragdoll Game, Ragdoll Frenzy, Disasters Ragdoll Engine
-🎬 Rising in YouTube Shorts: "doors", "admin abuse", "#inthistown", "slick rick", "ovo"
-🗣️ Rising in YouTube video titles: "admin", "admin abuse", "slick rick"
+🌱 "market" · 5 signals · 4 games, 0 new · 8.5K players
+🌱 "titan" · 4 signals · 2 games, 0 new · 49.7K players
+🌱 "guard" · 4 signals · 2 games, 0 new · 2.2K players
+🌱 "mine" · 3 signals · 5 games, 0 new · 20.0K players
+🧬 "tower" in 31 new titles: Climb the Creepypasta T…, [🍁] 8-Bit Tower Defense, Troll Grab Tower
+🧬 "build" in 27 new titles: 🦃 Rootfall: Build and S…, Build a Clone Army, 🏁 Build A Racetrack
+🧬 "steal" in 26 new titles: [UPD🌸] Climb and Steal …, Steal A Mukbang!, Steal an Entity Egg!
+🎬 Rising in YouTube Shorts: "pet", "ovo", "roube ovo", "face", "fake"
 
 _🌱 theme model chance · 🧬 copy wave · 🌉 outside-Roblox word now in new games_
 
 ## 🔮 Coming up & outside Roblox
 
-🔮 **The Remarried Empress** · out 13 days ago · ✨ not on Roblox yet
-🔮 **Never Surrender** · out 5 days ago · ✨ not on Roblox yet
-🔮 **Godzilla Minus Zero** · out 13 days ago · 8 older Roblox games
-🔮 **The Body** · out 5 days ago · ✨ not on Roblox yet
-🔮 **Ramayana: Rise of a Legend** · out 11 days ago · ✨ not on Roblox yet
-🔮 **Ebenezer** · out 5 days ago · ✨ not on Roblox yet
-🔮 **A Dog's Perfect Christmas** · out 12 days ago · 🌉 2 new Roblox games already
-🔮 **CARTA CHAIN: Maou-chan’s Deal** · date tbc · ✨ not on Roblox yet
+🔮 **The Remarried Empress** · out 14 days ago · ✨ not on Roblox yet
+🔮 **Never Surrender** · out 6 days ago · ✨ not on Roblox yet
+🔮 **The Body** · out 6 days ago · ✨ not on Roblox yet
+🔮 **Ebenezer** · out 6 days ago · ✨ not on Roblox yet
+🔮 **Godzilla Minus Zero** · out 14 days ago · 5 older Roblox games
+🔮 **Ramayana: Rise of a Legend** · out 12 days ago · ✨ not on Roblox yet
+🔮 **A Dog's Perfect Christmas** · out 13 days ago · 18 older Roblox games
+🔮 **12 Board Games** · date tbc · 4 older Roblox games
 🎮 Steam climbers: ROB RUN, Euro Truck Simulator 2, Marvel Rivals
-📚 Wikipedia spikes: 9/11, List of Nazi concentrati, Stephen Thompson (fighte
+📚 Wikipedia spikes: Robert Pattinson filmogr, Saturn Devouring His Son, Mordechai Vanunu
 
 _✨ not on Roblox yet = first-mover chance · 🌉 already appearing in new Roblox games_
 
 ## 👀 Watchlist
 
-🔻 **[Sell Fries! (Anomaly)](https://www.roblox.com/games/94891079210424)** · 32.1K · -31% · ⏱83m
-🔻 **[Cat Battles](https://www.roblox.com/games/130906410042392)** · 8.0K · -35%
-🔻 **[Eat Everything In A Grocery Store](https://www.roblox.com/games/128201586883489)** · 1.7K · -48% · ⏱41m
-🔻 **[Clone Baby Care (Anomaly)](https://www.roblox.com/games/87346021451395)** · 17.1K · -25% · ⏱44m
-🔻 **[What If Disasters](https://www.roblox.com/games/109440485612336)** · 5.6K · -43% · ⏱67m
-🔻 **[Facecard: Makeup Showdown](https://www.roblox.com/games/72293101527469)** · 8.0K · -16% · ⏱60m
-🔻 **[Kukirin Life](https://www.roblox.com/games/122840796290491)** · 24.8K · -33%
-🔻 **[Illegal Soccer](https://www.roblox.com/games/126987974021910)** · 50.8K · -12% · ⏱51m
-🔺 **[100 Days at Sea](https://www.roblox.com/games/70411440483149)** · 41.6K · +40% · ⏱75m
+🔻 **[Sell Fries! (Anomaly)](https://www.roblox.com/games/94891079210424)** · 18.4K · -26% · ⏱80m
+🔻 **[Cat Battles](https://www.roblox.com/games/130906410042392)** · 6.7K · -34%
+🔻 **[Eat Everything In A Grocery Store](https://www.roblox.com/games/128201586883489)** · 837 · -56% · ⏱42m
+🔻 **[Clone Baby Care (Anomaly)](https://www.roblox.com/games/87346021451395)** · 9.6K · -19% · ⏱45m
+🔻 **[What If Disasters](https://www.roblox.com/games/109440485612336)** · 4.9K · -35% · ⏱71m
+🔻 **[Facecard: Makeup Showdown](https://www.roblox.com/games/72293101527469)** · 6.2K · -12% · ⏱65m
+🔻 **[Kukirin Life](https://www.roblox.com/games/122840796290491)** · 17.5K · -35%
+🔻 **[Illegal Soccer](https://www.roblox.com/games/126987974021910)** · 37.1K · -12% · ⏱55m
+🔺 **[100 Days at Sea](https://www.roblox.com/games/70411440483149)** · 21.9K · +27% · ⏱72m
 
-_vs same day last week · RoWatcher 930/1,000 requests yesterday · live dashboard: https://f-testr.github.io/TrendBot/_
+_vs same day last week · RoWatcher 613/1,000 requests yesterday · live dashboard: https://f-testr.github.io/TrendBot/_
