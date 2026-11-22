@@ -1,102 +1,102 @@
-# Weekly report · 2026-11-15
+# Weekly report · 2026-11-22
 
-## 🗓️ Weekly report · week to Sun 15 Nov
+## 🗓️ Weekly report · week to Sun 22 Nov
 
-🎃 **After Halloween:** 8% of games still carry Halloween tags. The event is over, so week-on-week falls right now are mostly that event unwinding, not games failing
-🧭 **Demand:** Fishing / farming +17% · Find / search -25%
-🏛️ **Most long-term genre:** Social — 68% of its games reliably hold players on weekdays (all genres: 14%)
-📏 **Stickiest young game:** [Roll Pets to Fight](https://rowatcher.com/games/10770739222) — 91/100
-⏱ **Most playtime (young):** [ABOVE (⚡ARCANE)](https://www.roblox.com/games/124357835578554) — 121 min/player/day
-💰 **Best-earning genre per player:** Simulation — $11/player/month
+🧭 **Demand:** Jobs / work sim +34% · Anomaly / night shift -27%
+🏛️ **Most long-term genre:** Social — 82% of its games reliably hold players on weekdays (all genres: 15%)
+📏 **Stickiest young game:** [untitled ragdoll game](https://www.roblox.com/games/117446388741509) — 91/100
+🧠 **Roblox is reliably rewarding:** like ratio
+⚠️ **Algorithm change:** revenue per player ↓
+⏱ **Most playtime (young):** [ABOVE (🐴)](https://www.roblox.com/games/124357835578554) — 153 min/player/day
+💰 **Best-earning genre per player:** Simulation — $12/player/month
 
 _full-length report attached (weekly_report.md) · tables in the dashboard_
 
 ## 🧭 Mechanics: biggest moves
 
-🔴 **Find / search** · 30.8K (-25%) · 3 new · 1 hit
-🟡 **Fishing / farming** · 307.0K (+17%) · 16 new · 1 hit
-🟡 **Disasters / survival** · 300.1K (+16%) · 26 new · 1 hit
-🔴 **Anime / fighting style** · 896.3K (-16%) · 19 new · 5 hits
-🔴 **Care / baby / pets** · 466.5K (-16%) · 9 new · 2 hits
-🔴 **Eat / grow big** · 70.4K (-15%) · 8 new · 1 hit
-💥 66 breakouts: [Hyper Realistic Ragdo…](https://www.roblox.com/games/101277003916102), [Ragdoll Soccer](https://www.roblox.com/games/106931373443671), [Bloody Ragdoll Physic…](https://www.roblox.com/games/140431845542654)
+🟡 **Jobs / work sim** · 94.8K (+34%) · 13 new
+🔴 **Anomaly / night shift** · 229.6K (-27%) · 5 new
+🔴 **Steal / brainrot** · 1.6M (-24%) · 25 new · 2 hits
+🔴 **RNG / gacha / luck** · 1.6M (-20%) · 46 new · 7 hits
+🔴 **Vehicles / riding** · 450.3K (-14%) · 17 new · 5 hits
+🔴 **Eat / grow big** · 60.8K (-14%) · 13 new
+💥 47 breakouts: [100 Miles Down the Ri…](https://www.roblox.com/games/95105291546154), [(🏹) Shoot Arrows For …](https://www.roblox.com/games/128749725449995), [Realistic Ragdoll MMA…](https://www.roblox.com/games/124780003623150)
 
 _🟢 open gap · 🟡 growing but crowding · 🔴 saturating · avg players this week (vs last) · all mechanics in the dashboard_
 
 ## 🧠 What Roblox's algorithm is rewarding
 
-🟥🟥 weekday hold vs a typical game — _games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention_
-🟥🟥🟥🟥 favourite rate
+🟩🟩🟩 like ratio
 🟥🟥🟥🟥🟥🟥 revenue per player — _fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation_
-🧪 enters a Roblox chart within 7 days: predictions the bot made scored **0.65** · top 10% came true 17% vs 6.8% overall
-🧪 players up 50%+ within 7 days: predictions the bot made scored **0.78** · top 10% came true 33% vs 7.6% overall
+🧪 enters a Roblox chart within 7 days: predictions the bot made scored **0.67** · top 10% came true 16% vs 6.5% overall
+🧪 players up 50%+ within 7 days: predictions the bot made scored **0.80** · top 10% came true 36% vs 7.8% overall
+⚠️ **Changed since 11-01:** revenue per player ↓
 
 _learned from which games Roblox charted or grew 50%+ the next week · only signals that survive resampling are shown · 0.5 = coin flip_
 
 ## 🏛️ Long-term games
 
-Weekday hold is 80% the game, 20% week-to-week noise — so one good week proves little
-**Social** · 68% long-term (17/25, likely 52%–81%) ✅
-**RPG** · 24% long-term (11/45, likely 16%–36%) ✅
-**Sports & Racing** · 23% long-term (11/48, likely 15%–34%) ✅
-**Simulation** · 15% long-term (92/623, likely 13%–17%)
-**Puzzle** · 23% long-term (5/22, likely 12%–40%)
-Young games already long-term: [Free Fire Zone (Max)](https://www.roblox.com/games/99610146753435), [🗺️(MAPS) Bike Universe](https://www.roblox.com/games/98628861455414), [Ragdoll Engine ⚙️](https://www.roblox.com/games/112332082095944)
-Stickiest young games: [Roll Pets to Fight](https://rowatcher.com/games/10770739222) (91), [(⛩️CLANS) Anime Auto …](https://rowatcher.com/games/10770014246) (90), [(👽) Steal a PC ](https://www.roblox.com/games/135402322419238) (88)
+Weekday hold is 79% the game, 21% week-to-week noise — so one good week proves little
+**Social** · 82% long-term (28/34, likely 69%–91%) ✅
+**Puzzle** · 28% long-term (7/25, likely 16%–44%) ✅
+**RPG** · 24% long-term (13/54, likely 16%–35%) ✅
+**Sports & Racing** · 22% long-term (13/60, likely 14%–32%)
+**Simulation** · 15% long-term (108/715, likely 13%–17%)
+Young games already long-term: [Teach Your Granny How T…](https://www.roblox.com/games/93799361852148), [(⚔️) 1.8 KIT PVP](https://www.roblox.com/games/72393956865647), [(🏁) Steal A Scooter](https://www.roblox.com/games/107344344488571)
+Stickiest young games: [untitled ragdoll game](https://www.roblox.com/games/117446388741509) (91), [(🚗 UPD 3) Be The Bigg…](https://www.roblox.com/games/87324870231331) (90), [Shred A Billion 🦀](https://www.roblox.com/games/125332227026284) (87)
 
 _long-term = keeps its weekend crowd on weekdays reliably better than a typical game (3+ weeks)_
 
 ## ⏱ Engagement (from badges)
 
-Typical game: **51 min** per player per day (294 games measured)
-⏱ [ABOVE (⚡ARCANE)](https://www.roblox.com/games/124357835578554) · **121 min** · 59.0K/day
-⏱ [+1 Assassin Leveling](https://www.roblox.com/games/120731410233153) · **102 min** · 86.8K/day
-⏱ [(🛸) Sweep The Moon 🌕](https://www.roblox.com/games/109576450376407) · **102 min** · 452.0K/day
-⏱ [Project Soul's (Undertale RPG)](https://rowatcher.com/games/10768613071) · **101 min** · 43.5K/day
+Typical game: **50 min** per player per day (316 games measured)
+⏱ [ABOVE (🐴)](https://www.roblox.com/games/124357835578554) · **153 min** · 39.5K/day
+⏱ [Warnetopia: Internet Cafe](https://www.roblox.com/games/106267220422944) · **131 min** · 136.0K/day
+⏱ [(NOW) Clean the Moon!](https://www.roblox.com/games/76678170614451) · **123 min** · 72.5K/day
+⏱ [Merkado](https://rowatcher.com/games/10767892590) · **119 min** · 10.5K/day
 
 _players/day from badge win rates · streak = share of new players reaching it_
 
 ## 🧩 What lasting games have in common
 
-✅ leaderboards · **2.1×** as likely to be long-term (likely 1.4–3.2×, 109 games)
-✅ codes · **1.6×** as likely to be long-term (likely 1.0–2.3×, 200 games)
+✅ leaderboards · **1.7×** as likely to be long-term (likely 1.1–2.6×, 126 games)
 🧪 Stickiness can't be checked against survival until 2026-11-25 (needs games watched from the start, 4 weeks on)
 
 _from game descriptions · long-term = high weekday hold, which idle/AFK games partly get by being left running · correlation, not proof_
 
 ## 📈 Forecasts & how long hits last
 
-📈 Peak forecasts (made on day 5): typically off by **115%**; 45% within 2× of the real peak (76 games — only rises the bot watched from their start are checked)
+📈 Peak forecasts (made on day 5): typically off by **182%**; 40% within 2× of the real peak (128 games — only rises the bot watched from their start are checked)
    ↳ not proven enough to quote numbers (needs 30+ games with 60% within 2×): the bot says "big rise ahead / more growth / near its peak" instead
-🧭 Breakout-start signal: followed by 2× players within 2 weeks **11%** of the time vs 17% for any young game (64 firings) · **alerts paused** until it beats that by 1.3× over 20+ firings
-⏳ A typical hit keeps half its peak players for **8 days** (1207 games that peaked while the bot was watching; 684 have dropped below half so far)
-By weekday hold in the weeks BEFORE the peak: average weekday hold **13d** (148) · holds weekday players well **12d** (218) · holds them poorly **8d** (43)
-By mechanic: Vehicles / riding **9d** (39) · Sports **9d** (38) · RNG / gacha / luck **9d** (33) · Steal / brainrot **8d** (60)
-By genre: Shooter **14d** (41) · Action **10d** (84) · Obby & Platformer **10d** (78) · Roleplay & Avatar Sim **10d** (61)
+🧭 Breakout-start signal: followed by 2× players within 2 weeks **8%** of the time vs 14% for any young game (100 firings) · **alerts paused** until it beats that by 1.3× over 20+ firings
+⏳ A typical hit keeps half its peak players for **8 days** (1502 games that peaked while the bot was watching; 963 have dropped below half so far)
+By weekday hold in the weeks BEFORE the peak: holds weekday players well **11d** (249) · average weekday hold **11d** (178) · holds them poorly **4d** (55)
+By mechanic: Battles / army **8d** (62) · Roleplay / life **8d** (58) · Vehicles / riding **8d** (53) · Sports **8d** (40)
+By genre: Action **10d** (109) · Obby & Platformer **9d** (97) · Party & Casual **9d** (74) · Roleplay & Avatar Sim **9d** (67)
 
 _peak = S-curve fitted to each game's rise · start signal = Bayesian change-point detection · lifespan = Kaplan-Meier half-life (days until below half the peak)_
 
 ## 💰 What earns the most
 
-**2,702 games** (400+ players) · typical **$12K/month**
-💰 **Simulation** — $15K typical · $42K top-quartile · **$11**/player
-💰 **Entertainment** — $9.7K typical · $40K top-quartile · **$11**/player
-💰 **Puzzle** — $12K typical · $32K top-quartile · **$10**/player
-💰 **Survival** — $11K typical · $34K top-quartile · **$9.81**/player
-💰 **Party & Casual** — $14K typical · $26K top-quartile · **$9.56**/player
-Top earners under 5K players: [Wash the Car 🧽](https://rowatcher.com/games/10725799494) $238K, [Chop A Forest](https://www.roblox.com/games/103363457515322) $232K, [(🍲) Karinderya!](https://rowatcher.com/games/10648820673) $232K
+**2,718 games** (400+ players) · typical **$13K/month**
+💰 **Simulation** — $16K typical · $44K top-quartile · **$12**/player
+💰 **RPG** — $16K typical · $43K top-quartile · **$10**/player
+💰 **Party & Casual** — $14K typical · $25K top-quartile · **$9.88**/player
+💰 **Strategy** — $11K typical · $37K top-quartile · **$9.83**/player
+💰 **Survival** — $12K typical · $32K top-quartile · **$9.55**/player
+Top earners under 5K players: [🧸 My Small Business](https://www.roblox.com/games/136468592163527) $250K, [(UPDATE 3.1 & EXPANDE…](https://www.roblox.com/games/110534393529784) $217K, [Scare Your Neighbor](https://www.roblox.com/games/124710677460732) $193K
 🎟️ Best earners per player sell **7** passes (others: 6)
 Most common prices: R$99, R$199, R$149, R$299, R$399
-What they sell: 2x / multiplier (72%), VIP (50%), auto / skip (47%), luck (23%)
+What they sell: 2x / multiplier (72%), VIP (52%), auto / skip (43%), luck (22%)
 _…and 1 more_
 
 _RoWatcher revenue estimates, last 7 days · $/player = monthly $ per concurrent player · full tables: reports/money.md_
 
 ## 🛠️ Do updates, icons and titles help?
 
-▫️ **Updates after a quiet week**: -3% (likely -10% to +3%) vs similar games that changed nothing · 25% beat them by 10%+ (63 measured)
-✅ **Icon changes**: +9% (likely +4% to +13%) vs similar games that changed nothing · 48% beat them by 10%+ (275 measured)
-▫️ **Title changes**: +1% (likely -1% to +2%) vs similar games that changed nothing · 38% beat them by 10%+ (2063 measured)
+▫️ **Updates after a quiet week**: -6% (likely -10% to +1%) vs similar games that changed nothing · 24% beat them by 10%+ (90 measured)
+✅ **Icon changes**: +8% (likely +3% to +12%) vs similar games that changed nothing · 47% beat them by 10%+ (323 measured)
+✅ **Title changes**: +2% (likely +1% to +3%) vs similar games that changed nothing · 40% beat them by 10%+ (2951 measured)
 🖼️ 8 young games use an icon nearly identical to a hit from another studio (last 30 days)
 
 _lift = the game's week-on-week change vs similar-size, similar-trend games that made no such change_
@@ -104,187 +104,187 @@ _lift = the game's week-on-week change vs similar-size, similar-trend games that
 ## 🔬 Are the predictions working?
 
 🚀 **Trend Score** — chance a young game at least doubles and passes 5,000 players within 2 weeks · now using: **starting formula, calibrated**
-- Starting formula vs real outcomes: accuracy **0.77** (likely 0.73–0.81) · its top 10% took off 25% of the time vs 7.4% for all · 3,882 snapshots over 7 days
-- Learned model: not trained yet — needs 2000+ outcomes with 60+ take-offs over 21+ days (has 3882 / 286 over 7 days)
+- Starting formula vs real outcomes: accuracy **0.78** (likely 0.75–0.81) · its top 10% took off 24% of the time vs 7.2% for all · 8,121 snapshots over 14 days
+- Learned model: not trained yet — needs 2000+ outcomes with 60+ take-offs over 21+ days (has 8121 / 584 over 14 days)
 🎯 Explosion model: not provable yet (too few finished explosions among games watched live) — its picks aren't used
-🌱 Theme model: still collecting — needs 200+ calm theme-days with 8+ breakouts from days the bot watched live (has 0 / 0; the first live days finish their 21-day window on 2026-11-20)
+🌱 Theme model: not provable yet (too few finished breakouts among games watched live) — its picks aren't used
 
 _accuracy = ranking accuracy (0.5 coin flip, 1.0 perfect) on predictions made by a model trained only on outcomes already known · ranges come from resampling games_
 
 
 ---
 
-**📅 Weekly opportunity report** · week to Sun 15 Nov
+**📅 Weekly opportunity report** · week to Sun 22 Nov
 _Demand = average daily players across all games of that type (this week vs last week)._
 
 🧭 **Mechanics: demand vs how crowded**
-• 🟡 growing but crowding **Fishing / farming** — 307.0K avg players (+17%) · 16 new games this week, 1 hit 5.0K+ · top: [🏝️UPD] Fish It! 🐟, [🐟] Net a Fish!, [🏺] Grow a Garden 🌶️
-• 🟡 growing but crowding **Disasters / survival** — 300.1K avg players (+16%) · 26 new games this week, 1 hit 5.0K+ · top: [🗺️MAPS] Survive Your , 🦖 Creatures of Sonaria, [COBRA🐍] FERAL 🐺 Anima
-• 🟡 growing but crowding **Horror** — 79.3K avg players (+11%) · 12 new games this week, 2 hit 5.0K+ · top: [UPDATE] MM2 of The Mo, Monster Maker, [UPD] Steal an Nightma
-• ▫️ steady **Sports** — 478.2K avg players (+3%) · 19 new games this week, 2 hit 5.0K+ · top: [ALPHA] Practical Bask, [UPD] Volleyball Legen, Illegal Soccer
-• ▫️ steady **Jobs / work sim** — 70.5K avg players (+3%) · 22 new games this week, 3 hit 5.0K+ · top: [NOW] Clean the Moon!, Clean The Bugs 🐜, Clean Everything
-• ▫️ steady **Roleplay / life** — 1.0M avg players (+1%) · 26 new games this week, 1 hit 5.0K+ · top: Brookhaven 🏡RP, Berry Avenue 🏠 RP, LifeTogether 🏠 RP 
-• ▫️ steady **Anomaly / night shift** — 314.9K avg players (+0%) · 10 new games this week, 1 hit 5.0K+ · top: 99 Nights in the Fores, Scary Shawarma Kiosk: , FNAF: Eternal Nights 🍕
-• ▫️ steady **Tycoon / sell stuff** — 292.7K avg players (+0%) · 29 new games this week, 2 hit 5.0K+ · top: [💎] Sell Fries! [Anoma, LINE UP! Metro Tycoon, [🛒] Run a Sari-Sari St
-• ▫️ steady **Tower defense** — 164.8K avg players (+0%) · 10 new games this week, 1 hit 5.0K+ · top: [🕓] Cameraman Tower De, [🦃EVENT] Toilet Tower , Tower Defense Simulato
-• ▫️ steady **Obby / parkour** — 174.7K avg players (+0%) · 18 new games this week, 3 hit 5.0K+ · top: Climb For Animals Eggs, obby but you get small, [😈] Jump for Cases🎲
-• ▫️ steady **Battles / army** — 391.4K avg players (-1%) · 25 new games this week, 4 hit 5.0K+ · top: [🦖] Deagle Arena, Voxel Wars, [🔥Battlepass] Sniper A
-• ▫️ steady **Vehicles / riding** — 524.6K avg players (-6%) · 30 new games this week, 6 hit 5.0K+ · top: [🏁] Steal A Pet And Ri, (TOWING x LIMITED UPDA, Bike For Egg!
-• ▫️ steady **Steal / brainrot** — 2.1M avg players (-8%) · 35 new games this week, 4 hit 5.0K+ · top: Steal An Egg, [💀] Steal a Brainrot, Break and Steal an Egg
-• ▫️ steady **Merge / clicker** — 145.3K avg players (-9%) · 7 new games this week, 0 hit 5.0K+ · top: [🏰] Tap Simulator REBO, [UPD6 🎉] Depth Increme, [FPS] One Tap
-• 🔴 saturating **RNG / gacha / luck** — 2.0M avg players (-10%) · 43 new games this week, 8 hit 5.0K+ · top: Steal An Egg, Break and Steal an Egg, Sol's RNG [ Part 2 🎃 ]
-• 🔴 saturating **Fashion / makeup** — 110.4K avg players (-12%) · 2 new games this week, 0 hit 5.0K+ · top: [🎃] Dress To Impress, [🎀Accessories] Facecar, [UPD✨] Makeup Salon💄
-• 🔴 saturating **Eat / grow big** — 70.4K avg players (-15%) · 8 new games this week, 1 hit 5.0K+ · top: [🏺] Grow a Garden 🌶️, [🔥HM] Eat THE Ice Crea, Grow And Build Giants
-• 🔴 saturating **Care / baby / pets** — 466.5K avg players (-16%) · 9 new games this week, 2 hit 5.0K+ · top: [🥤] Adopt Me!, 🍁 [TYCOON] Pet Simulat, [🏁] Steal A Pet And Ri
-• 🔴 saturating **Anime / fighting style** — 896.3K avg players (-16%) · 19 new games this week, 5 hit 5.0K+ · top: [🎃] Blox Fruits, [🎃] Jujutsu Shenanigan, [☀️UPD 21🏖️] Anime Adv
-• 🔴 saturating **Find / search** — 30.8K avg players (-25%) · 3 new games this week, 1 hit 5.0K+ · top: [UPD] Find The Country, Find The Animals [280], Find or Die! 🔎
+• 🟡 growing but crowding **Jobs / work sim** — 94.8K avg players (+34%) · 13 new games this week, 0 hit 5.0K+ · top: Clean The Ballpit! , Clean The Bugs 🐜, [HOUSE] Clean Everythi
+• ▫️ steady **Battles / army** — 399.7K avg players (+3%) · 33 new games this week, 3 hit 5.0K+ · top: Voxel Wars, [🦃] Deagle Arena, +1 Boxing Battle Evolu
+• ▫️ steady **Tower defense** — 168.8K avg players (+2%) · 3 new games this week, 0 hit 5.0K+ · top: [Medal+X2💰] Cameraman , [💥UTS 3.0] Toilet Towe, Tower Defense Simulato
+• ▫️ steady **Horror** — 82.8K avg players (-0%) · 15 new games this week, 1 hit 5.0K+ · top: [UPDATE] MM2 of The Mo, [MOTION] Backrooms, [W3] +1 Scary Evolutio
+• ▫️ steady **Obby / parkour** — 167.6K avg players (-2%) · 26 new games this week, 4 hit 5.0K+ · top: Climb For Animals Eggs,  [24H] Impossible Hill, Jump for Cases🎲
+• ▫️ steady **Disasters / survival** — 291.8K avg players (-2%) · 16 new games this week, 2 hit 5.0K+ · top: [🦧 BOSS] Survive Your , 🦖 Creatures of Sonaria, [UPD] Stop The Tsunami
+• ▫️ steady **Sports** — 453.0K avg players (-5%) · 9 new games this week, 1 hit 5.0K+ · top: [THANKSGIVING] Practic, Ragdoll Soccer, [UPD] Volleyball Legen
+• ▫️ steady **Fishing / farming** — 289.6K avg players (-6%) · 10 new games this week, 3 hit 5.0K+ · top: [🗝️UPD] Fish It! 🐟, [🐟] Net a Fish!, [⚖️] Grow a Garden 🌶️
+• ▫️ steady **Fashion / makeup** — 105.9K avg players (-6%) · 5 new games this week, 0 hit 5.0K+ · top: [🎃] Dress To Impress, [🎀Accessories] Facecar, Makeup Salon💄
+• ▫️ steady **Tycoon / sell stuff** — 270.8K avg players (-7%) · 34 new games this week, 4 hit 5.0K+ · top: [💎] Sell Fries! [Anoma, [🛒] Run a Sari-Sari St, LINE UP! Metro Tycoon
+• ▫️ steady **Anime / fighting style** — 822.3K avg players (-8%) · 19 new games this week, 3 hit 5.0K+ · top: [🎃] Blox Fruits, [🎃] Jujutsu Shenanigan, [☀️UPD 21🏖️] Anime Adv
+• ▫️ steady **Roleplay / life** — 958.7K avg players (-8%) · 39 new games this week, 2 hit 5.0K+ · top: Brookhaven 🏡RP, Berry Avenue 🏠 RP, LifeTogether 🏠 RP [💃🏻 
+• ▫️ steady **Merge / clicker** — 131.6K avg players (-8%) · 5 new games this week, 2 hit 5.0K+ · top: [WILD WEST] Tap Simula, [CLANS ⚔️] Depth Incre, [FPS] One Tap
+• ▫️ steady **Find / search** — 28.1K avg players (-9%) · 8 new games this week, 0 hit 5.0K+ · top: Find The Country 🌍, [78] Find The Clown, Find or Die! 🔎
+• 🔴 saturating **Care / baby / pets** — 413.4K avg players (-11%) · 16 new games this week, 1 hit 5.0K+ · top: [🐶] Adopt Me!, 🦃 [TURKEY] Pet Simulat, [🌸] Steal A Pet And Ri
+• 🔴 saturating **Eat / grow big** — 60.8K avg players (-14%) · 13 new games this week, 0 hit 5.0K+ · top: [⚖️] Grow a Garden 🌶️, [❄️] Eat THE Ice Cream, Grow As Anomaly
+• 🔴 saturating **Vehicles / riding** — 450.3K avg players (-14%) · 17 new games this week, 5 hit 5.0K+ · top: (TOWING x LIMITED UPDA, Driving Empire [✨NEW L, Can You Pass A Driving
+• 🔴 saturating **RNG / gacha / luck** — 1.6M avg players (-20%) · 46 new games this week, 7 hit 5.0K+ · top: Steal An Egg, Break and Steal an Egg, Sol's RNG [ Part 2 🎃 ]
+• 🔴 saturating **Steal / brainrot** — 1.6M avg players (-24%) · 25 new games this week, 2 hit 5.0K+ · top: Steal An Egg, Break and Steal an Egg, [💀] Steal a Brainrot
+• 🔴 saturating **Anomaly / night shift** — 229.6K avg players (-27%) · 5 new games this week, 0 hit 5.0K+ · top: 99 Nights in the Fores, Scary Shawarma Kiosk: , Grow As Anomaly
 
 💡 **Best openings right now:** none clear-cut this week
 
 💥 **Breakouts this week** (young games crossing 10.0K players)
-• Hyper Realistic Ragdoll — 11d old when it broke out, peak 200.8K · 📈 still climbing <https://www.roblox.com/games/101277003916102>
-• Ragdoll Soccer — 28d old when it broke out, peak 73.2K · 📈 still climbing <https://www.roblox.com/games/106931373443671>
-• Bloody Ragdoll Physics 🩸 — 9d old when it broke out, peak 51.4K · 📈 still climbing <https://www.roblox.com/games/140431845542654>
-• Sandworm Playground — 11d old when it broke out, peak 43.9K · 📈 still climbing <https://www.roblox.com/games/88246556972100>
-• Stop The Tsunami! — 31d old when it broke out, peak 40.7K · 📈 still climbing <https://www.roblox.com/games/71586501620185>
-• Do Not Stop. — 16d old when it broke out, peak 39.7K · 📈 still climbing <https://www.roblox.com/games/116779912472448>
-• [👽] Steal a PC  — 33d old when it broke out, peak 34.4K · 📈 still climbing <https://www.roblox.com/games/135402322419238>
-• Run a Christmas Tree Lot — 10d old when it broke out, peak 32.4K · 📈 still climbing <https://www.roblox.com/games/112146301142141>
+• 100 Miles Down the River — 36d old when it broke out, peak 77.7K · 📈 still climbing <https://www.roblox.com/games/95105291546154>
+• [🏹] Shoot Arrows For Animals! — 13d old when it broke out, peak 61.1K · 📉 cooling <https://www.roblox.com/games/128749725449995>
+• Realistic Ragdoll MMA 🥊 — 10d old when it broke out, peak 39.4K · 📉 cooling <https://www.roblox.com/games/124780003623150>
+• Clean The Ballpit!  — 15d old when it broke out, peak 36.1K · 📈 still climbing <https://www.roblox.com/games/126221718321318>
+• [⚔️] Kit PVP FFA  — 18d old when it broke out, peak 35.0K · 📉 cooling <https://www.roblox.com/games/75260404327641>
+• Scare Your Favorite Streamer — 15d old when it broke out, peak 32.0K · 📈 still climbing <https://www.roblox.com/games/121011978933862>
+• [🚗 UPD 3] Be The Biggest Streamer — 26d old when it broke out, peak 24.4K · 📈 still climbing <https://www.roblox.com/games/87324870231331>
+• Flat the Mountain — 15d old when it broke out, peak 23.7K · 📉 cooling <https://www.roblox.com/games/99352685758267>
 
 ⏳ **How long trends last** (all breakouts tracked so far)
-• **Other** — 134 breakouts, broke out at ~20 days old, peaked ~3 days later (63 old enough to tell)
-• **Steal / brainrot** — 27 breakouts, broke out at ~32 days old, peaked ~0 days later (16 old enough to tell)
-• **RNG / gacha / luck** — 26 breakouts, broke out at ~26 days old, peaked ~0 days later (15 old enough to tell)
-• **Battles / army** — 11 breakouts, broke out at ~26 days old, peaked ~0 days later (4 old enough to tell)
-• **Vehicles / riding** — 10 breakouts, broke out at ~20 days old, peaked ~5 days later (8 old enough to tell)
-• **Disasters / survival** — 8 breakouts, broke out at ~24 days old, peaked ~4 days later (4 old enough to tell)
-• **Fishing / farming** — 7 breakouts, broke out at ~27 days old, peaked ~0 days later (3 old enough to tell)
-• **Anime / fighting style** — 5 breakouts, broke out at ~17 days old, peaked ~1 days later (3 old enough to tell)
+• **Other** — 163 breakouts, broke out at ~20 days old, peaked ~2 days later (92 old enough to tell)
+• **Steal / brainrot** — 29 breakouts, broke out at ~32 days old, peaked ~0 days later (25 old enough to tell)
+• **RNG / gacha / luck** — 27 breakouts, broke out at ~27 days old, peaked ~0 days later (24 old enough to tell)
+• **Battles / army** — 15 breakouts, broke out at ~28 days old, peaked ~0 days later (8 old enough to tell)
+• **Vehicles / riding** — 13 breakouts, broke out at ~19 days old, peaked ~4 days later (9 old enough to tell)
+• **Fishing / farming** — 9 breakouts, broke out at ~22 days old, peaked ~2 days later (6 old enough to tell)
+• **Disasters / survival** — 8 breakouts, broke out at ~24 days old, peaked ~8 days later (7 old enough to tell)
+• **Tycoon / sell stuff** — 7 breakouts, broke out at ~19 days old, peaked ~0 days later (4 old enough to tell)
 _Days to peak counts only breakouts at least 14 days old, so games still climbing aren't left out. A copy has to ship inside that window._
 
 🛠️ **Do updates, new icons and new titles help?** (vs similar games that changed nothing)
-• ▫️ **Updates after a quiet week**: typical lift **-3%** (likely -10% to +3%) vs similar games that changed nothing · 25% beat their twins by 10%+, 38% fell 10%+ behind · 63 measured
-   ↳ the games themselves went -24% week on week while their twins went -16% — the naive before/after number is mostly that drift
-   ↳ biggest: [NOW] Clean the Moon! (+172%), MOUSE 🐭 (+169%), 🎃 [Pokemon Brick Bronze] P (+131%)
-• ✅ **Icon changes**: typical lift **+9%** (likely +4% to +13%) vs similar games that changed nothing · 48% beat their twins by 10%+, 36% fell 10%+ behind · 275 measured
+• ▫️ **Updates after a quiet week**: typical lift **-6%** (likely -10% to +1%) vs similar games that changed nothing · 24% beat their twins by 10%+, 41% fell 10%+ behind · 90 measured
+   ↳ the games themselves went -23% week on week while their twins went -15% — the naive before/after number is mostly that drift
+   ↳ biggest: [NOW] Clean the Moon! (+172%), MOUSE (+169%), 🎃 [Pokemon Brick Bronze] P (+131%)
+• ✅ **Icon changes**: typical lift **+8%** (likely +3% to +12%) vs similar games that changed nothing · 47% beat their twins by 10%+, 37% fell 10%+ behind · 323 measured
    ↳ the games themselves went -22% week on week while their twins went -25% — the naive before/after number is mostly that drift
-• ▫️ **Title changes**: typical lift **+1%** (likely -1% to +2%) vs similar games that changed nothing · 38% beat their twins by 10%+, 35% fell 10%+ behind · 2063 measured
-   ↳ the games themselves went -13% week on week while their twins went -11% — the naive before/after number is mostly that drift
+• ✅ **Title changes**: typical lift **+2%** (likely +1% to +3%) vs similar games that changed nothing · 40% beat their twins by 10%+, 34% fell 10%+ behind · 2951 measured
+   ↳ the games themselves went -12% week on week while their twins went -11% — the naive before/after number is mostly that drift
 _Lift = the game's week-on-week change divided by the median change of similar-size, similar-trend games that made no such change. Correlation still, but weekdays, natural decay and market swings are removed._
 
 🧠 **Explosion model** (explode = 25.0K+ players within 21 days of first reaching 600)
-• Trained on 475 young games, 17 of which exploded (4%). Only 61 of them (0 explosions) were first noticed while the bot was watching — the rest come from downloaded history, which only contains games that survived, so the test below uses the watched ones only.
-• Honest test: too few explosions in the test window to score (0 of 61; needs 10+). Treat this model's picks as unproven.
+• Trained on 579 young games, 20 of which exploded (3%). Only 165 of them (3 explosions) were first noticed while the bot was watching — the rest come from downloaded history, which only contains games that survived, so the test below uses the watched ones only.
+• Honest test: too few explosions in the test window to score (3 of 165; needs 10+). Treat this model's picks as unproven.
 • **Not used yet**: its picks stay off the board and out of alerts until it passes that test.
-• Drivers that hold up when resampled: same-mechanic games that exploded in the month before (+), game age when noticed (−), copies in the same mechanic in the 2 weeks before (−), (no hourly data) (+), players the day after (+), visits gained on day 1 (−)
+• Drivers that hold up when resampled: same-mechanic games that exploded in the month before (+), game age when noticed (−), copies in the same mechanic in the 2 weeks before (−), (no hourly data) (+), players the day after (+), growth from day 0 to day 1 (+)
 
 🎯 **Scorecard: how often signals were followed by an explosion**
-• 🆕 crossed 2K: **5/145** (3%) · 735 still in their 21-day window (50 already exploded)
-• 💥 breakout: **6/44** (14%) · 167 still in their 21-day window (40 already exploded)
-• 👀 early warning: **1/20** (5%) · 116 still in their 21-day window (4 already exploded)
-• chart: **4/14** (29%) · 79 still in their 21-day window (42 already exploded)
-• 🚀 surge: **1/14** (7%) · 516 still in their 21-day window (55 already exploded)
-• 🧬 copy wave: **0/9** (0%) · 285 still in their 21-day window (25 already exploded)
+• 🆕 crossed 2K: **28/368** (8%) · 737 still in their 21-day window (37 already exploded)
+• abroad: **20/206** (10%) · 488 still in their 21-day window (44 already exploded)
+• 🚀 surge: **28/176** (16%) · 512 still in their 21-day window (38 already exploded)
+• 💥 breakout: **20/97** (21%) · 151 still in their 21-day window (36 already exploded)
+• model < 50%: **0/76** (0%) · 395 still in their 21-day window (4 already exploded)
+• 🧬 copy wave: **5/66** (8%) · 399 still in their 21-day window (28 already exploded)
+• 👀 early warning: **2/63** (3%) · 98 still in their 21-day window (7 already exploded)
+• chart: **20/41** (49%) · 74 still in their 21-day window (35 already exploded)
+• longterm: **2/15** (13%) · 59 still in their 21-day window (4 already exploded)
+• 🔥 heat: **2/8** (25%) · 25 still in their 21-day window (8 already exploded)
 • update: **2/4** (50%) · 4 still in their 21-day window (3 already exploded)
-• longterm: **0/2** (0%) · 54 still in their 21-day window (4 already exploded)
-• 🔥 heat: — · 27 still in their 21-day window (8 already exploded)
-• abroad: — · 537 still in their 21-day window (55 already exploded)
-• studio: — · 31 still in their 21-day window (2 already exploded)
-• 🎯 prediction: — · 9 still in their 21-day window (1 already exploded)
-• model < 50%: — · 318 still in their 21-day window (2 already exploded)
-• model ≥ 50%: — · 7 still in their 21-day window (2 already exploded)
+• model ≥ 50%: **1/4** (25%) · 4 still in their 21-day window (1 already exploded)
+• 🎯 prediction: **0/3** (0%) · 6 still in their 21-day window (1 already exploded)
+• studio: **0/2** (0%) · 47 still in their 21-day window (2 already exploded)
 _Only signals whose 21 days are up are scored, so early wins don't flatter the rate._
 
 🏛️ **Long-term games** (weekday hold reliably above a typical game's over 3+ weeks; 8 weeks of data so far)
-• How repeatable is weekday hold? **80%** of the difference between games in one week is the game itself; the rest is week-to-week noise. That's why one good week proves little.
-By genre (share of rated games that are long-term; all genres together: 14%, and ~5% would pass by luck):
-• **Social** — 17/25 long-term (68%, likely 52–81%) · ✅ reliably above average · median 1.31× · e.g. Clarity Over Resonance, 🎃 Neighbors 🔊 [18+], Hutan [Voice Chat]
-• **RPG** — 11/45 long-term (24%, likely 16–36%) · ✅ reliably above average · median 1.06× · e.g. Attack on Titan Revolu, [🎃HALLOWEEN PT 3] Gran, [🎃]Legacy Piece 
-• **Sports & Racing** — 11/48 long-term (23%, likely 15–34%) · ✅ reliably above average · median 1.05× · e.g. Realistic Street Socce, [🧿 RIN + 🎃] Azure Latc, 8 Ball Duels
-• **Simulation** — 92/623 long-term (15%, likely 13–17%) · median 0.97× · e.g. Break and Steal an Egg, [🏝️UPD] Fish It! 🐟, [🍂] Anime Dice
-• **Puzzle** — 5/22 long-term (23%, likely 12–40%) · median 1.03× · e.g. Clean Everything, IQ Test 🧠, STOP! Word Duel
-• **Shooter** — 11/62 long-term (18%, likely 11–27%) · median 1.04× · e.g. [🔥Battlepass] Sniper A, [ZOMBIES!] BloxStrike, [CLANS] KNIFE DUELS
-• **Roleplay & Avatar Sim** — 15/111 long-term (14%, likely 9–20%) · median 1.01× · e.g. [👮UPD] San Diego Rolep, [将] Shogun's Reign, Savannah Life
-• **Obby & Platformer** — 15/113 long-term (13%, likely 9–19%) · median 1.02× · e.g. Tower of Hell, [💥] Troll Ragdoll Towe, [EVENT] MOUNT SOREYA🌄
-• **Action** — 17/143 long-term (12%, likely 8–17%) · median 1.01× · e.g. [💀DUELS] Murderers VS , Blade Ball, BlockSpin 🔪 
-• **Party & Casual** — 11/86 long-term (13%, likely 8–20%) · median 1.02× · e.g. Timebomb Duels [Alpha], 50 Player BINGO!, Paint the Face
-• **Strategy** — 5/47 long-term (11%, likely 5–20%) · median 0.99× · e.g. [ 🍀 UPDATE 2 ] Anime M, [CRAZY CHESTS] Monopol, Ronopoly
-• **Survival** — 16/208 long-term (8%, likely 5–11%) · 🔻 reliably below average · median 0.96× · e.g. 🎃Flee the Facility🍁, [UPD] Lethal Ape Exper, Survive a Million Monk
+• How repeatable is weekday hold? **79%** of the difference between games in one week is the game itself; the rest is week-to-week noise. That's why one good week proves little.
+By genre (share of rated games that are long-term; all genres together: 15%, and ~5% would pass by luck):
+• **Social** — 28/34 long-term (82%, likely 69–91%) · ✅ reliably above average · median 1.31× · e.g. Clarity Over Resonance, Neighbors 🔊 [18+], Hutan [Voice Chat]
+• **Puzzle** — 7/25 long-term (28%, likely 16–44%) · ✅ reliably above average · median 1.01× · e.g. [HOUSE] Clean Everythi, IQ Test 🧠, STOP! Word Duel
+• **RPG** — 13/54 long-term (24%, likely 16–35%) · ✅ reliably above average · median 1.06× · e.g. Attack on Titan Revolu, [🎃HALLOWEEN PT 3] Gran, [🎃]Legacy Piece 
+• **Sports & Racing** — 13/60 long-term (22%, likely 14–32%) · median 1.06× · e.g. Illegal Soccer, Realistic Street Socce, [🧿 RIN + 🎃] Azure Latc
+• **Simulation** — 108/715 long-term (15%, likely 13–17%) · median 0.97× · e.g. Break and Steal an Egg, [🗝️UPD] Fish It! 🐟, Anime Dice
+• **Obby & Platformer** — 22/132 long-term (17%, likely 12–23%) · median 1.02× · e.g. Tower of Hell, [💥] Troll Ragdoll Towe, [EVENT] MOUNT SOREYA🌄
+• **Roleplay & Avatar Sim** — 20/131 long-term (15%, likely 11–21%) · median 1.01× · e.g. San Diego Roleplay, [将] Shogun's Reign, Lakefalls Medical: GP 
+• **Shooter** — 10/68 long-term (15%, likely 9–23%) · median 1.04× · e.g. [🦃Thanks Giving] Snipe, [ZOMBIES!] BloxStrike, [NEW CASE] KNIFE DUELS
+• **Action** — 19/164 long-term (12%, likely 8–16%) · median 1.00× · e.g. [💀DUELS] Murderers VS , Blade Ball, BlockSpin 🔪 
+• **Strategy** — 7/53 long-term (13%, likely 7–23%) · median 0.94× · e.g. [☀️UPD 21🏖️] Anime Adv, [ 🍀 UPDATE 2 ] Anime M, Monopoly
+• **Party & Casual** — 10/97 long-term (10%, likely 6–17%) · median 1.02× · e.g. Timebomb Duels [Alpha], Paint the Face, 50 Player BINGO!
+• **Survival** — 20/232 long-term (9%, likely 6–12%) · 🔻 reliably below average · median 0.96× · e.g. [UPD] Lethal Ape Exper, Survive a Million Monk, [🐍] What If Disasters
 
 🌱🏛️ **Young games that are already long-term** (the ones to study):
-• Free Fire Zone (Max) — 1.67× typical over 4 weeks (2/4 above) · 9.6K weekend players <https://www.roblox.com/games/99610146753435>
-• 🗺️[MAPS] Bike Universe — 1.62× typical over 3 weeks (1/3 above) · 37.9K weekend players <https://www.roblox.com/games/98628861455414>
-• Ragdoll Engine ⚙️ — 1.50× typical over 4 weeks (1/4 above) · 16.4K weekend players <https://www.roblox.com/games/112332082095944>
-• Pixel Lineage [Dawn Update] — 1.42× typical over 5 weeks (3/5 above) · 10.8K weekend players <https://www.roblox.com/games/126256942507957>
-• [⚔️UPD] +1 Venom Evolution — 1.47× typical over 4 weeks (2/4 above) · 42.5K weekend players <https://www.roblox.com/games/116448925875915>
-• [🐍] What If Disasters — 1.42× typical over 3 weeks (1/3 above) · 16.0K weekend players <https://www.roblox.com/games/109440485612336>
-Promising (strong so far, too few weeks to be sure): [UPD] Build a REAL House (6.75×, 1wk), [UPD 2] Barber Simulator (6.25×, 1wk),  SF BIKE [UPD Dragster]  (5.64×, 1wk), Steal A Balut (4.50×, 1wk), Build a Bridge (4.38×, 1wk), Teach Your Granny How To (3.54×, 2wk)
+• Teach Your Granny How To Drive! 🎙️ — 2.04× typical over 3 weeks (1/3 above) · 5.6K weekend players <https://www.roblox.com/games/93799361852148>
+• [⚔️] 1.8 KIT PVP — 1.99× typical over 3 weeks (2/3 above) · 8.6K weekend players <https://www.roblox.com/games/72393956865647>
+• [🏁] Steal A Scooter — 1.92× typical over 3 weeks (2/3 above) · 7.2K weekend players <https://www.roblox.com/games/107344344488571>
+• [🌊] Steal Eggs From Tsunami! — 1.85× typical over 3 weeks (2/3 above) · 14.4K weekend players <https://www.roblox.com/games/99838015219458>
+• Free Fire Zone (Max) — 1.55× typical over 5 weeks (3/5 above) · 9.6K weekend players <https://www.roblox.com/games/99610146753435>
+• Can You Pass A Driving Test? — 1.64× typical over 3 weeks (2/3 above) · 22.8K weekend players <https://www.roblox.com/games/91652462379782>
+Promising (strong so far, too few weeks to be sure): [🚗 UPD 3] Be The Biggest (12.02×, 1wk), Pixel Z [UPDATE] (8.76×, 1wk), [UPD 2] Barber Simulator (6.29×, 1wk), Clean The Ballpit!  (5.54×, 1wk), [99 PLAYERS] DONT LET IT (3.92×, 1wk), [🚀 MOON] Property Empire (3.71×, 1wk)
 
 📏 **Stickiness** (weekday hold 30% · playtime per player 20% · session length 15% · players kept vs best week 15% · favourite rate 10% · revenue per player 10%) — starting weights. Learning needs games the bot watched from the start AND their numbers 4 weeks later; the first such week pairs up on 2026-11-25. Earlier "learned" weights came from downloaded history, where every game is a survivor.
-• Estimated session length this week: median game **12.9 min** (Roblox Creator Hub benchmark: 13.5 min typical, 25.8 min top-10%; 156 of our games are in the top 10%).
+• Estimated session length this week: median game **14.2 min** (Roblox Creator Hub benchmark: 13.5 min typical, 25.8 min top-10%; 262 of our games are in the top 10%).
 Stickiest young games:
-• Roll Pets to Fight — **91**/100, ~28 min sessions <https://rowatcher.com/games/10770739222>
-• [⛩️CLANS] Anime Auto Battle — **90**/100, ~31 min sessions <https://rowatcher.com/games/10770014246>
-• [👽] Steal a PC  — **88**/100, ~15 min sessions <https://www.roblox.com/games/135402322419238>
-• Ride Mobs For Eggs — **87**/100, ~15 min sessions <https://www.roblox.com/games/86268685858813>
-• Impossible Hill Climb — **87**/100, ~15 min sessions <https://www.roblox.com/games/100981917200669>
-• [🎃] Anime Realms X — **86**/100, ~36 min sessions <https://rowatcher.com/games/10769197023>
+• untitled ragdoll game — **91**/100 <https://www.roblox.com/games/117446388741509>
+• [🚗 UPD 3] Be The Biggest Streamer — **90**/100, ~17 min sessions <https://www.roblox.com/games/87324870231331>
+• Shred A Billion 🦀 — **87**/100, ~21 min sessions <https://www.roblox.com/games/125332227026284>
+• [UPD] Fix PCs! 🔧 — **86**/100, ~21 min sessions <https://rowatcher.com/games/10772400342>
+• ABOVE [🐴] — **86**/100, ~38 min sessions <https://www.roblox.com/games/124357835578554>
+• [🌾 HARVEST EVENT] Summon a Pet Army 🐲 — **86**/100, ~28 min sessions <https://www.roblox.com/games/89695026030574>
 
 🧪 **Does stickiness predict survival?** (score in a week vs players 4 weeks later)
 • Not measurable yet (0 game-weeks the bot watched live that are 4 weeks old; needs 40). Until then the score is a reasoned guess, not a proven predictor.
 
 🧩 **What long-term games do differently** (features mentioned in their descriptions)
-• leaderboards: games mentioning it were **2.1×** as likely to be long-term (likely 1.4–3.2×; in 13% of long-term games vs 6% of others; 109 games)
-• codes: games mentioning it were **1.6×** as likely to be long-term (likely 1.0–2.3×; in 18% of long-term games vs 12% of others; 200 games)
+• leaderboards: games mentioning it were **1.7×** as likely to be long-term (likely 1.1–2.6×; in 11% of long-term games vs 6% of others; 126 games)
 _16 features were checked, so the ranges are deliberately wide (99%). Long-term here means high weekday hold, which idle / AFK-friendly games get partly because players leave them running. Descriptions are marketing and this is correlation, not proof._
 
 🗺️ **Opportunity map** (growth vs stickiness, by genre — chart attached)
-• 🟢 growing + sticky: RPG (+28%, 60)
-• 🟡 growing, not sticky (hype): Strategy (+17%, 48)
-• 🔵 sticky, not growing (steady): Social (-3%, 70), Shopping (-7%, 51), Roleplay & Avatar Sim (-15%, 53), Sports & Racing (-18%, 51), Shooter (-21%, 52), Simulation (-33%, 51)
-• 🔴 not growing, not sticky: Adventure (+1%, 48), Obby & Platformer (-11%, 48), Action (-23%, 49), Survival (-21%, 46), Party & Casual (-24%, 48), All (-22%, 45)
+• 🟢 growing + sticky: RPG (+37%, 55)
+• 🟡 growing, not sticky (hype): Strategy (+11%, 46)
+• 🔵 sticky, not growing (steady): Social (-1%, 71), Shopping (-10%, 51), Roleplay & Avatar Sim (-12%, 52), Puzzle (-27%, 53), Sports & Racing (-25%, 51), Simulation (-29%, 51)
+• 🔴 not growing, not sticky: Obby & Platformer (-17%, 50), Shooter (-16%, 48), Adventure (-12%, 43), Party & Casual (-27%, 50), Action (-30%, 49), All (-48%, 48)
 
 🏅 **Badges: real players per day, playtime and funnels** (from Roblox's public badge stats)
-• 294 games measured · median **51 min** played per player per day · 3.8 sessions each (GameAnalytics median 1.56, top 10% 3.22)
+• 316 games measured · median **50 min** played per player per day · 3.6 sessions each (GameAnalytics median 1.56, top 10% 3.22)
 Young games with the most playtime per player (a signal Roblox says it ranks on):
-• ABOVE [⚡ARCANE] — **121 min/day** · 59.0K players/day <https://www.roblox.com/games/124357835578554>
-• +1 Assassin Leveling — **102 min/day** · 86.8K players/day <https://www.roblox.com/games/120731410233153>
-• [🛸] Sweep The Moon 🌕 — **102 min/day** · 452.0K players/day <https://www.roblox.com/games/109576450376407>
-• Project Soul's [Undertale RPG] — **101 min/day** · 43.5K players/day <https://rowatcher.com/games/10768613071>
-• Escape The Matrix — **101 min/day** · 66.2K players/day <https://www.roblox.com/games/90088244419227>
-• [🏝️ISLAND] Criminal Simulator 💰 — **99 min/day** · 409.5K players/day <https://www.roblox.com/games/83048653078891>
-Best streak retention (share of new players who ever hit a ~7-day streak; GameAnalytics top 1% D7 = 9.1%):
-• Pet Store Tycoon — **9.8%** reach a 7-day streak
-First-step hook (share of new players who earn the game's next badge): median 57%; weakest: [❄️] Be Flash For Eggs 0%, Moped Drag 0%, Superhero Universe 0%
+• ABOVE [🐴] — **153 min/day** · 39.5K players/day <https://www.roblox.com/games/124357835578554>
+• Warnetopia: Internet Cafe — **131 min/day** · 136.0K players/day <https://www.roblox.com/games/106267220422944>
+• [NOW] Clean the Moon! — **123 min/day** · 72.5K players/day <https://www.roblox.com/games/76678170614451>
+• Merkado — **119 min/day** · 10.5K players/day <https://rowatcher.com/games/10767892590>
+• Project Soul's [Undertale RPG] — **114 min/day** · 56.9K players/day <https://rowatcher.com/games/10768613071>
+• [🏴‍☠️UPD] Anime Nexus RNG X : GEAR 5 — **114 min/day** · 63.6K players/day <https://www.roblox.com/games/85829558919037>
+First-step hook (share of new players who earn the game's next badge): median 58%; weakest: [🍂] Be Flash For Eggs 0%, Terracraft SMP 0%, 🎨 Decorate a Home 0%
 Your watchlist (funnels — study these for your own game):
-• **[💎] Sell Fries! [Anomaly] 🍟** — 499,428 players/day · ~80 min each per day · 4.0 sessions each
+• **[💎] Sell Fries! [Anomaly] 🍟** — 334,561 players/day · ~83 min each per day · 3.6 sessions each
   Of new players: 15% get "Win Chapter 1"
-• **[RANKED] Eat Everything In A Grocery Sto** — 52,501 players/day · ~41 min each per day · 3.1 sessions each
-  Of new players: 92% get "First Game"
-• **Clone Baby Care (Anomaly)** — 449,983 players/day · ~41 min each per day · 3.7 sessions each
-• **[🐍] What If Disasters** — 98,593 players/day · ~65 min each per day · 4.0 sessions each
-  Of players who earn "Survived 1 Disaster": ladder: Survived 10 Disasters 28.5% → Survived 50 Disasters 5.2% → Survived 100 Disasters 2.0% → Survived 250 Disasters 0.6% → Survived 500 Disasters 0.1%
-• **[🎀Accessories] Facecard: Makeup Showdown** — 156,250 players/day · ~62 min each per day · 4.0 sessions each
+• **[RANKED] Eat Everything In A Grocery Sto** — 32,662 players/day · ~43 min each per day · 2.7 sessions each
+  Of new players: 91% get "First Game"
+• **Clone Baby Care (Anomaly)** — 279,960 players/day · ~40 min each per day · 3.3 sessions each
+• **[🐍] What If Disasters** — 67,324 players/day · ~64 min each per day · 3.5 sessions each
+  Of players who earn "Survived 1 Disaster": ladder: Survived 10 Disasters 28.3% → Survived 50 Disasters 5.3% → Survived 100 Disasters 2.3% → Survived 250 Disasters 0.8% → Survived 500 Disasters 0.2%
+• **[🎀Accessories] Facecard: Makeup Showdown** — 127,831 players/day · ~48 min each per day · 3.2 sessions each
   Of new players: 28% get "First Lethal Facecard"
-• **Illegal Soccer** — 1,156,822 players/day · ~51 min each per day · 4.0 sessions each
-  Of players who earn "First Tackle": 14.3% hit a 7-day streak · 8.8% hit a 14-day streak · 5.6% hit a 30-day streak · ladder: 10 Tackles 56.9% → 100 Tackles 20.8% → 1,000 Tackles 3.5%
+• **Illegal Soccer** — 1,003,122 players/day · ~51 min each per day · 3.4 sessions each
+  Of players who earn "First Tackle": 10.4% hit a 7-day streak · 7.2% hit a 14-day streak · 4.5% hit a 30-day streak · ladder: 10 Tackles 51.7% → 100 Tackles 16.2% → 1,000 Tackles 3.0%
 
 🧠 **Algorithm mirror: what Roblox is rewarding right now**
 _Learned from which games Roblox promoted (chart entries, 50%+ growth) in the following week, after allowing for size, momentum and age. Only signals that keep their direction when the model is refitted on resampled games are listed as findings._
-🟥🟥 weekday hold vs a typical game (-0.13) — games that keep a steady crowd all week rarely jump 50% in a week, so this mostly means "already settled", not that Roblox punishes retention
-🟥🟥🟥 favourite rate (-0.23)
-🟥🟥🟥🟥 revenue per player (-0.31) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
-▫️ Unclear this week (direction flips when resampled, or measured for too few games): session length, like ratio, playtime per player per day, sessions per player per day, new players reaching the next badge
-• Model for *enters a Roblox chart within 7 days* (2,150 game-days): Honest test: accuracy **0.72** (likely between 0.58 and 0.86) · 0.5 = coin flip · top 10% picks came true **20%** of the time vs 5% for all · 300 predictions, each made by a model trained only on outcomes already known at the time
-  ⚙️ Simple model kept: 0.72 vs 0.66 for boosted trees (trees better in 24% of resamples; they need 90%+ and a 0.01+ lead)
-• Model for *players up 50%+ within 7 days* (4,939 game-days): Honest test: accuracy **0.82** (likely between 0.79 and 0.85) · 0.5 = coin flip · top 10% picks came true **46%** of the time vs 9% for all · 2,501 predictions, each made by a model trained only on outcomes already known at the time
-  ⚙️ Using **boosted trees**: 0.82 vs 0.63 for the simple model (trees better in 100% of resamples)
-🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.65; their top 10% were promoted 17% of the time vs 7% overall (30,830 predictions).
-🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.78; their top 10% were promoted 33% of the time vs 8% overall (35,648 predictions).
+🟩🟩 like ratio (+0.16)
+🟥🟥🟥🟥 revenue per player (-0.28) — fast-growing games are full of new players who haven't paid yet, so this mostly means "is growing", not that Roblox punishes monetisation
+▫️ Unclear this week (direction flips when resampled, or measured for too few games): session length, new players reaching the next badge, playtime per player per day, sessions per player per day, weekday hold vs a typical game, favourite rate
+• Model for *enters a Roblox chart within 7 days* (3,130 game-days): Honest test: accuracy **0.83** (likely between 0.78 and 0.88) · 0.5 = coin flip · top 10% picks came true **23%** of the time vs 5% for all · 1,256 predictions, each made by a model trained only on outcomes already known at the time
+  ⚙️ Using **boosted trees**: 0.83 vs 0.70 for the simple model (trees better in 100% of resamples)
+• Model for *players up 50%+ within 7 days* (4,647 game-days): Honest test: accuracy **0.84** (likely between 0.81 and 0.87) · 0.5 = coin flip · top 10% picks came true **45%** of the time vs 10% for all · 2,502 predictions, each made by a model trained only on outcomes already known at the time
+  ⚙️ Using **boosted trees**: 0.84 vs 0.82 for the simple model (trees better in 92% of resamples)
+⚠️ **Algorithm change watch** (vs 2026-11-01): revenue per player less rewarded (-0.00 → -0.28)
+🧪 Live check, enters a Roblox chart within 7 days: predictions the bot actually made scored 0.67; their top 10% were promoted 16% of the time vs 6% overall (45,461 predictions).
+🧪 Live check, players up 50%+ within 7 days: predictions the bot actually made scored 0.80; their top 10% were promoted 36% of the time vs 8% overall (52,632 predictions).
 _Correlation from public data, not Roblox's actual model. The live check is the number to trust: it scores predictions made before the outcome existed._
 
 🌱 **Theme model** (a small theme "breaks out" when, after 21+ calm days, 3+ of its games under 45 days old pass 2.0K players within 21 days; established themes with more than 2 hits aren't candidates)
-• Still collecting — needs 200+ calm theme-days with 8+ breakouts from days the bot watched live (has 0 / 0; the first live days finish their 21-day window on 2026-11-20).
+• Trained on 1,892 calm theme-days from 1,094 themes; 56 (3.0%) were followed by a breakout.
+• Honest test: not possible yet — it needs enough history to train only on outcomes that were already known (21-day outcomes).
+• Biggest drivers: number of games (+), theme growth over 7 days (+), players across the theme (+), an upcoming release or event (−), YouTube Shorts mentions rising (+)
 
 🔬 **Which indicators actually work** (0 theme breakouts tracked so far)
-• No finished firings yet: 🧬 copy burst, 🐣 tiny-game burst, 🏢 3+ studios at once, ✏️ games renaming to it, 📈 theme doubled in a week, 📊 in the algorithm charts, 📺 Roblox YouTube buzz, 🎮 rising on Steam, 📚 Wikipedia spike, 🔥 YouTube trending, 🟣 Twitch top games, 🗓️ in season, 🔮 upcoming release/event, 🎬 YouTube Shorts buzz
+• Too few firings to judge (under 8): 📊 in the algorithm charts (0/1)
+• No finished firings yet: 🧬 copy burst, 🐣 tiny-game burst, 🏢 3+ studios at once, ✏️ games renaming to it, 📈 theme doubled in a week, 📺 Roblox YouTube buzz, 🎮 rising on Steam, 📚 Wikipedia spike, 🔥 YouTube trending, 🟣 Twitch top games, 🗓️ in season, 🔮 upcoming release/event, 🎬 YouTube Shorts buzz
